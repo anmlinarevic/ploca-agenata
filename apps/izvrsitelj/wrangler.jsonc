@@ -1,0 +1,44 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ploca-izvrsitelj",
+  "main": "src/index.js",
+  "compatibility_date": "2026-04-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Nema javne adrese: zove ga samo dashboard (service binding) i Cron.
+  "workers_dev": false,
+  "preview_urls": false,
+  // Upute agenata (Markdown) učitavaju se kao tekst.
+  "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ploca",
+      "database_id": "62f241b2-5223-4c6e-94cc-4079f48b0c71",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  "services": [{ "binding": "MCP", "service": "ploca-mcp" }],
+  "queues": {
+    "producers": [{ "binding": "RED", "queue": "ploca-pokretanja" }],
+    // Jedan posao istodobno i bez automatskog ponavljanja (agent troši novac).
+    "consumers": [{ "queue": "ploca-pokretanja", "max_batch_size": 1, "max_concurrency": 1, "max_retries": 0 }]
+  },
+  // Ponedjeljak 06:00 UTC (07:00 zimi, 08:00 ljeti). Pokreće samo zakupce s postavke_json.raspored = true.
+  "triggers": { "crons": ["0 6 * * 1"] },
+  "vars": {
+    "MODEL": "claude-sonnet-5-5",
+    "EFFORT": "medium",
+    // USD po milijun tokena za gornji model; PROVJERI na Anthropicovu cjeniku prije oslanjanja na limit.
+    "CENA_ULAZ": "2",
+    "CENA_IZLAZ": "10",
+    "CENA_CACHE_CITANJE": "0.1",
+    "CENA_CACHE_PISANJE": "2.5",
+    // USD po jednoj web pretrazi (procjena, provjeri)
+    "CENA_PRETRAGA": "0.01"
+  }
+  // Secreti (nisu u repozitoriju):
+  //   ANTHROPIC_API_KEY   ključ s console.anthropic.com
+  //   AGENT_TOKENS        JSON: {"piccolini": {"koordinator": "pl_...", "konkurencija": "pl_..."}}
+  //   INTERNI_KLJUC       dugačak nasumičan niz; isti u dashboardu
+}

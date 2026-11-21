@@ -186,6 +186,8 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     <a href="#brojke">Brojke</a>
     <a href="#konkurencija">Konkurencija</a>
     <a href="#napredak">Napredak</a>
+    <a href="#agenti">Agenti</a>
+    <a href="#izvjestaji">Izvještaji</a>
     <a href="#aktivnost">Dnevnik</a>
   </nav>
 
@@ -308,6 +310,23 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     <div class="faze" id="faze"><p class="prazno">Učitavam faze…</p></div>
   </section>
 
+  <section id="agenti" aria-labelledby="h-agenti">
+    <div class="naslov-red">
+      <h2 id="h-agenti">Agenti: pokretanja i trošak</h2>
+      <span class="sitno" id="potrosnja"></span>
+    </div>
+    <div class="kontrole">
+      <button class="btn glavni" type="button" id="pokreni-pregled">Pokreni tjedni pregled sada</button>
+      <span class="poruka" id="pregled-poruka" aria-live="polite"></span>
+    </div>
+    <div class="lista" id="lista-pokretanja"><p class="prazno">Učitavam…</p></div>
+  </section>
+
+  <section id="izvjestaji" aria-labelledby="h-izvjestaji">
+    <h2 id="h-izvjestaji">Izvještaji agenata</h2>
+    <div class="lista" id="lista-izvjestaja"><p class="prazno">Učitavam…</p></div>
+  </section>
+
   <section id="aktivnost" aria-labelledby="h-aktivnost">
     <h2 id="h-aktivnost">Što se radilo</h2>
     <ul class="dnevnik" id="dnevnik"><li><span class="tiho">Učitavam dnevnik…</span></li></ul>
@@ -326,7 +345,7 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
   var STATUSI = { ceka: 'čeka', odobreno: 'odobreno', odbijeno: 'odbijeno', u_izradi: 'u izradi', gotovo: 'gotovo', novo: 'novo' };
   var IZVORI = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['ai', 'AI asistent'], ['preporuka', 'Preporuka'], ['ostalo', 'Ostalo']];
 
-  var mozePisati = true, mozePokrenuti = false;
+  var mozePisati = true, mozePokrenuti = true;
   var S = { odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, filtar: 'ceka' };
   /* Retci usporedbe bannera: ključ u konkurenti/{id}.usporedba, naziv, što je bolje (niže/više/ništa) */
   var ATRIBUTI = [
@@ -569,7 +588,46 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     }).join('');
   }
 
-  function renderSve() { renderSazetak(); renderOdluke(); renderZadaci(); renderBrojke(); renderKonkurencija(); renderNapredak(); renderAktivnost(); }
+  /* ── Agenti: pokretanja i izvještaji ── */
+  var STATUS_POKRETANJA = { u_redu: 'u redu', radi: 'radi', uspjeh: 'gotovo', greska: 'greška', odbijeno_limit: 'limit', prekinuto_limit: 'prekinuto (limit)', prekinuto_vrijeme: 'prekinuto (vrijeme)' };
+  var KLASA_POKRETANJA = { u_redu: 'novo', radi: 'u_izradi', uspjeh: 'gotovo', greska: 'odbijeno', odbijeno_limit: 'odbijeno', prekinuto_limit: 'odbijeno', prekinuto_vrijeme: 'odbijeno' };
+  function usdTekst(n) { return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' USD'; }
+  function aktivnaPokretanja() { return (S.pokretanja || []).some(function (p) { return p.status === 'u_redu' || p.status === 'radi'; }); }
+
+  function renderAgenti() {
+    var P = S.potrosnja;
+    if (P) $('#potrosnja').textContent = 'Ovaj mjesec: ' + usdTekst(P.potroseno) + ' od ' + usdTekst(P.limit) + (P.raspored ? ' · ponedjeljkom se pokreće sam' : ' · raspored je isključen');
+    var el = $('#lista-pokretanja');
+    if (!S.pokretanja) return;
+    if (!S.pokretanja.length) { el.innerHTML = '<p class="prazno">Još nijedan agent nije pokrenut. Klikni „Pokreni tjedni pregled sada” ili „Pokreni sada” na zadatku.</p>'; return; }
+    el.innerHTML = S.pokretanja.map(function (p) {
+      var h = '<article class="kartica st-' + esc(KLASA_POKRETANJA[p.status] || 'novo') + '"><div class="meta"><span class="pil agent">' + esc(AGENTI[p.agent] || p.agent) + '</span><span class="pil s-' + esc(KLASA_POKRETANJA[p.status] || 'novo') + '">' + esc(STATUS_POKRETANJA[p.status] || p.status) + '</span><span>' + esc(datum(p.kreirano)) + '</span>' +
+        (p.trosak ? '<span>' + esc(usdTekst(p.trosak)) + '</span>' : '') + (p.pretrage ? '<span>' + p.pretrage + ' pretraga</span>' : '') + '</div>';
+      if (p.opis) h += '<p>' + esc(p.opis) + '</p>';
+      if (p.greska) h += '<p class="poruka greska">' + esc(p.greska) + '</p>';
+      else if (p.rezultat) h += '<p class="odgovor">' + esc(p.rezultat) + '</p>';
+      return h + '</article>';
+    }).join('');
+  }
+
+  function renderIzvjestaji() {
+    var el = $('#lista-izvjestaja');
+    if (!S.izvjestaji) return;
+    if (!S.izvjestaji.length) { el.innerHTML = '<p class="prazno">Još nema izvještaja. Pojavit će se kad agenti završe prvi pregled.</p>'; return; }
+    var otvoreni = {}; el.querySelectorAll('details[open]').forEach(function (d) { otvoreni[d.dataset.id] = true; });
+    el.innerHTML = S.izvjestaji.map(function (x) {
+      return '<details class="kartica" data-id="' + esc(x.id) + '"' + (otvoreni[x.id] ? ' open' : '') + '><summary><b>' + esc(x.naslov) + '</b> <span class="sitno">' + esc(AGENTI[x.agent] || x.agent) + ' · ' + esc(datum(x.kad)) + '</span></summary><pre class="izvjestaj" style="white-space:pre-wrap;font:inherit;margin:10px 0 0">Učitavam…</pre></details>';
+    }).join('');
+    el.querySelectorAll('details[open]').forEach(ucitajIzvjestaj);
+  }
+  function ucitajIzvjestaj(d) {
+    var pre = d.querySelector('pre');
+    if (!pre || pre.dataset.ucitano) return;
+    api('GET', '/api/izvjestaj/' + encodeURIComponent(d.dataset.id)).then(function (x) { pre.textContent = x.tijelo; pre.dataset.ucitano = '1'; })
+      .catch(function () { pre.textContent = 'Izvještaj se ne može učitati.'; });
+  }
+
+  function renderSve() { renderSazetak(); renderOdluke(); renderZadaci(); renderAgenti(); renderIzvjestaji(); renderBrojke(); renderKonkurencija(); renderNapredak(); renderAktivnost(); }
 
   /* ── Podaci i radnje (API) ── */
   var TENANT = null;
@@ -595,7 +653,7 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
 
   function ucitaj(tiho) {
     return api('GET', '/api/stanje').then(function (d) {
-      ['odluke', 'zadaci', 'tjedni', 'mjesecno', 'napredak', 'aktivnost', 'konkurenti'].forEach(function (k) { S[k] = d[k]; });
+      ['odluke', 'zadaci', 'tjedni', 'mjesecno', 'napredak', 'aktivnost', 'konkurenti', 'pokretanja', 'izvjestaji', 'potrosnja'].forEach(function (k) { S[k] = d[k]; });
       var t = new Date();
       veza('ok', 'Podaci su ažurni · ' + t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes());
       if (!tiho || !zauzet()) renderSve();
@@ -688,7 +746,31 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     return ucitaj();
   }).catch(function (e) { veza('greska', porukaGreske(e, 'Prijava nije uspjela. Osvježi stranicu.')); });
 
+  /* Pokreni agenta za zadatak / tjedni pregled; izvještaji se učitavaju kad ih se otvori */
+  document.addEventListener('click', function (e) {
+    var pk = e.target.closest('[data-pokreni]');
+    if (pk) {
+      var kart = pk.closest('.kartica'), por = kart.querySelector('.poruka');
+      kart.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+      if (por) { por.className = 'poruka'; por.textContent = 'Pokrećem agenta…'; }
+      api('POST', '/api/zadaci/' + encodeURIComponent(kart.dataset.id) + '/pokreni', {}).then(function () { return ucitaj(); }).catch(function (err) {
+        if (por) { por.className = 'poruka greska'; por.textContent = porukaGreske(err, 'Agent nije pokrenut.'); }
+        kart.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+      });
+      return;
+    }
+    if (e.target.closest('#pokreni-pregled')) {
+      var gumb = $('#pokreni-pregled'), p2 = $('#pregled-poruka');
+      gumb.disabled = true; p2.className = 'poruka'; p2.textContent = 'Pokrećem…';
+      api('POST', '/api/pregled', {}).then(function () { p2.textContent = 'Pregled je u redu čekanja. Izvještaj se pojavljuje ispod kad agenti završe.'; return ucitaj(); })
+        .catch(function (err) { p2.className = 'poruka greska'; p2.textContent = porukaGreske(err, 'Pregled nije pokrenut.'); })
+        .then(function () { gumb.disabled = false; });
+    }
+  });
+  document.addEventListener('toggle', function (e) { if (e.target.matches && e.target.matches('#lista-izvjestaja details') && e.target.open) ucitajIzvjestaj(e.target); }, true);
+
   setInterval(function () { if (!document.hidden) ucitaj(true); }, 60000);
+  setInterval(function () { if (!document.hidden && aktivnaPokretanja()) ucitaj(true); }, 8000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) ucitaj(true); });
 })();
 </script>

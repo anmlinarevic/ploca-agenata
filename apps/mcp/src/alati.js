@@ -105,6 +105,32 @@ TOOLS.push({
   },
 });
 
+
+TOOLS.push(
+  {
+    name: 'dohvati_izvjestaje',
+    description: 'Popis izvještaja agenata (najnoviji prvi), bez teksta. Neobavezno filtriraj po agentu.',
+    inputSchema: { type: 'object', properties: { agent: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 } }, additionalProperties: false },
+    run: async (a, { tenantId }, env) => {
+      const lim = ograniči(a.limit, 10, 50);
+      return a.agent
+        ? sve(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? AND agent = ? ORDER BY kad DESC LIMIT ?`, tenantId, a.agent, lim)
+        : sve(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? ORDER BY kad DESC LIMIT ?`, tenantId, lim);
+    },
+  },
+  {
+    name: 'dohvati_izvjestaj',
+    description: 'Cijeli tekst jednog izvještaja (Markdown) po id-ju.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'], additionalProperties: false },
+    run: async (a, { tenantId }, env) => {
+      const r = await env.DB.prepare(`SELECT id, agent, kad, naslov, tijelo FROM izvjestaji WHERE tenant_id = ? AND id = ?`)
+        .bind(tenantId, String(a.id || '')).first();
+      if (!r) throw new Error('Izvještaj ne postoji');
+      return r;
+    },
+  },
+);
+
 export async function pozoviAlat(alat, args, ctx, env) {
   return alat.run(args, ctx, env);
 }

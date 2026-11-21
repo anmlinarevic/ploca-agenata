@@ -19,6 +19,9 @@
       "migrations_dir": "../../packages/db/migrations"
     }
   ],
+  // Pokretanje agenata: izvršitelj nema javnu adresu, dashboard ga zove preko service bindinga.
+  // Secret INTERNI_KLJUC mora biti isti kao na izvršitelju: npx wrangler secret put INTERNI_KLJUC
+  "services": [{ "binding": "EXEC", "service": "ploca-izvrsitelj" }],
   // Postavke prijave (nisu tajne). Moraju biti ovdje, inače ih deploy briše iz nadzorne ploče.
   //   ACCESS_TEAM_DOMAIN  adresa tima u Zero Trustu
   //   ACCESS_AUD          "Application Audience (AUD) Tag" aplikacije "ploca"

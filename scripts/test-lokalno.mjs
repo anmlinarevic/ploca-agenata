@@ -1,8 +1,9 @@
 // Svježa lokalna baza (zasebna mapa, ne dira `npm run dev`) → migracije → uvoz → tokeni i korisnici
-// → serveri (MCP + dashboard) → testovi → gašenje samo vlastitih procesa.
+// → serveri (MCP samostalno; dashboard + izvršitelj + MCP zajedno) + lažni Claude API → testovi → gašenje samo vlastitih procesa.
 // Upotreba: node scripts/test-lokalno.mjs <mapa-s-izvozom-stare-ploce>
+// Privremeno piše apps/dashboard/.dev.vars i apps/izvrsitelj/.dev.vars; postojeće sadržaje vraća na kraju.
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const izvoz = process.argv[2];
 if (!izvoz) { console.error('Upotreba: node scripts/test-lokalno.mjs <mapa-s-izvozom>'); process.exit(1); }
@@ -15,22 +16,33 @@ const sh = (cmd, args, env = {}) => {
 };
 const d1 = (datoteka) => sh('npx', ['wrangler', 'd1', 'execute', 'ploca', '--local', ...CFG, '--persist-to', DB_STATE, `--file=${datoteka}`]);
 
+// .dev.vars: sačuvaj postojeće i vrati na kraju
+const DEVVARS = ['apps/dashboard/.dev.vars', 'apps/izvrsitelj/.dev.vars'];
+const sacuvano = Object.fromEntries(DEVVARS.map((p) => [p, existsSync(p) ? readFileSync(p, 'utf8') : null]));
+const vrati = () => DEVVARS.forEach((p) => (sacuvano[p] === null ? rmSync(p, { force: true }) : writeFileSync(p, sacuvano[p])));
+process.on('exit', vrati);
+
+// Pepper koji koristi MCP u zajedničkom procesu dolazi iz apps/mcp/.dev.vars (ili je prazan)
+const pepperMcp = existsSync('apps/mcp/.dev.vars')
+  ? (/^TOKEN_PEPPER=(.*)$/m.exec(readFileSync('apps/mcp/.dev.vars', 'utf8'))?.[1] ?? '').trim() : '';
+const pepperTest = 'test-pepper';
+
 rmSync('.wrangler-test', { recursive: true, force: true });
-const pepper = 'test-pepper';
 sh('node', ['scripts/uvoz-piccolini.mjs', `"${izvoz}"`, 'tenants/piccolini/seed.sql']);
 sh('npx', ['wrangler', 'd1', 'migrations', 'apply', 'ploca', '--local', ...CFG, '--persist-to', DB_STATE]);
 d1('tenants/piccolini/seed.sql');
 
 // jedan poziv po agentu: ispiše token, a SQL zapiše u datoteku
-const izdaj = (agent) => {
+const izdaj = (agent, pepper) => {
   const r = spawnSync('node', ['scripts/novi-token.mjs', 'piccolini', agent, 'zadano', `tenants/piccolini/token-test-${agent}.sql`],
     { encoding: 'utf8', env: { ...process.env, TOKEN_PEPPER: pepper } });
   const t = /TOKEN[^:]*: (\S+)/.exec(r.stdout)[1];
   d1(`tenants/piccolini/token-test-${agent}.sql`);
   return t;
 };
-const tKoord = izdaj('koordinator');
-const tKonk = izdaj('konkurencija');
+const tKoord = izdaj('koordinator', pepperTest);
+const tKonk = izdaj('konkurencija', pepperTest);
+const agentTokeni = { piccolini: { koordinator: izdaj('koordinator', pepperMcp), konkurencija: izdaj('konkurencija', pepperMcp) } };
 
 const korisnik = (...a) => spawnSync('node', ['scripts/novi-korisnik.mjs', ...a], { encoding: 'utf8' }).stdout;
 writeFileSync('tenants/piccolini/token-test-korisnici.sql',
@@ -39,27 +51,39 @@ writeFileSync('tenants/piccolini/token-test-korisnici.sql',
   "INSERT INTO odluke (id, tenant_id, naslov, agent, kreirano) VALUES ('x1', 'drugi', 'Tuđa odluka', 'seo', '2026-11-21T10:00:00Z');\n");
 d1('tenants/piccolini/token-test-korisnici.sql');
 
-const pokreni = (config, port, varijable) => spawn('npx',
-  ['wrangler', 'dev', '--config', config, '--port', String(port), '--persist-to', DB_STATE, ...varijable.flatMap((v) => ['--var', v])],
-  { shell: true, stdio: 'ignore' });
+writeFileSync('apps/dashboard/.dev.vars', 'DEV_USER=*\nINTERNI_KLJUC=test-interni\n');
+writeFileSync('apps/izvrsitelj/.dev.vars',
+  `ANTHROPIC_API_KEY=test-kljuc\nANTHROPIC_BASE_URL=http://localhost:8790\nINTERNI_KLJUC=test-interni\nAGENT_TOKENS='${JSON.stringify(agentTokeni)}'\n`);
+
+const procesi = [];
+const pokreni = (args) => { const p = spawn('npx', args, { shell: true, stdio: 'ignore' }); procesi.push(p); return p; };
 const cekaj = async (url) => {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 50; i++) {
     try { if ((await fetch(url)).status < 500) return true; } catch { /* još se diže */ }
     await new Promise((r) => setTimeout(r, 1500));
   }
   return false;
 };
-const ugasi = (p) => spawnSync('taskkill', ['/PID', String(p.pid), '/T', '/F'], { shell: true });
+const ugasi = () => procesi.forEach((p) => spawnSync('taskkill', ['/PID', String(p.pid), '/T', '/F'], { shell: true }));
+const node = (skripta, env = {}, args = []) =>
+  spawnSync('node', [skripta, ...args], { stdio: 'inherit', env: { ...process.env, ...env } }).status ?? 1;
 
-const mcp = pokreni('apps/mcp/wrangler.jsonc', 8799, [`TOKEN_PEPPER:${pepper}`]);
-const dash = pokreni('apps/dashboard/wrangler.jsonc', 8798, ['DEV_USER:*']);
+const lazni = spawn('node', ['scripts/fake-anthropic.mjs'], { stdio: 'ignore' }); procesi.push(lazni);
+pokreni(['wrangler', 'dev', '--config', 'apps/mcp/wrangler.jsonc', '--port', '8799', '--persist-to', DB_STATE, '--var', `TOKEN_PEPPER:${pepperTest}`]);
+pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/izvrsitelj/wrangler.jsonc', '-c', 'apps/mcp/wrangler.jsonc',
+  '--port', '8798', '--persist-to', DB_STATE]);
+
 let kod = 1;
-if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localhost:8798/'))) {
-  const a = spawnSync('node', ['scripts/smoke-test.mjs'], {
-    stdio: 'inherit', env: { ...process.env, URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk },
-  });
-  const b = spawnSync('node', ['scripts/dashboard-test.mjs'], { stdio: 'inherit', env: { ...process.env, URL: 'http://localhost:8798' } });
-  kod = (a.status ?? 1) || (b.status ?? 1);
+if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localhost:8798/')) && (await cekaj('http://localhost:8790/zahtjevi'))) {
+  kod = node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk })
+    || node('scripts/dashboard-test.mjs', { URL: 'http://localhost:8798' })
+    || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798' }, ['faza1']);
+  if (kod === 0) {
+    writeFileSync('tenants/piccolini/token-test-limit.sql',
+      `UPDATE tenants SET postavke_json = '{"limit_usd":0.01}' WHERE id = 'piccolini';\n`);
+    d1('tenants/piccolini/token-test-limit.sql');
+    kod = node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', BROJ_ZAHTJEVA: '9' }, ['faza2']);
+  }
 } else console.error('Serveri se nisu pokrenuli');
-ugasi(mcp); ugasi(dash);
+ugasi();
 process.exit(kod);

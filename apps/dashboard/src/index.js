@@ -24,7 +24,8 @@ const dnevnik = (env, tenant, sto) =>
 
 /** Oblik dokumenata isti je kao u staroj ploči (camelCase), pa front-end ostaje gotovo isti. */
 async function stanje(env, t) {
-  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti] = await Promise.all([
+  const mjesecOd = `${new Date().toISOString().slice(0, 7)}-01T00:00:00.000Z`;
+  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed] = await Promise.all([
     all(env, `SELECT * FROM odluke WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM zadaci WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM tjedni WHERE tenant_id = ? ORDER BY tjedan`, t),
@@ -33,8 +34,20 @@ async function stanje(env, t) {
     all(env, `SELECT * FROM napredak_stavke WHERE tenant_id = ? ORDER BY faza_id, red`, t),
     all(env, `SELECT * FROM aktivnost WHERE tenant_id = ? ORDER BY kad DESC LIMIT 40`, t),
     all(env, `SELECT * FROM konkurenti WHERE tenant_id = ? ORDER BY red`, t),
+    all(env, `SELECT id, agent, status, vrsta, opis, kreirano, pocetak, kraj, koraka, pretrage, trosak_usd, greska, rezultat, zadatak_id
+              FROM pokretanja WHERE tenant_id = ? ORDER BY kreirano DESC LIMIT 15`, t),
+    all(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? ORDER BY kad DESC LIMIT 12`, t),
+    one(env, `SELECT COALESCE(SUM(trosak_usd), 0) AS s FROM pokretanja WHERE tenant_id = ? AND kreirano >= ?`, t, mjesecOd),
+    one(env, `SELECT postavke_json FROM tenants WHERE id = ?`, t),
   ]);
+  const post = parse(tenantRed?.postavke_json) || {};
   return {
+    potrosnja: { mjesec: mjesecOd.slice(0, 7), potroseno: Math.round(potrosnja.s * 100) / 100, limit: Number.isFinite(+post.limit_usd) ? +post.limit_usd : 20, raspored: post.raspored === true },
+    pokretanja: pokretanja.map((p) => ({
+      id: p.id, agent: p.agent, status: p.status, vrsta: p.vrsta, opis: p.opis, kreirano: p.kreirano, kraj: p.kraj, koraka: p.koraka,
+      pretrage: p.pretrage, trosak: p.trosak_usd, greska: p.greska, rezultat: p.rezultat, zadatakId: p.zadatak_id,
+    })),
+    izvjestaji: izvjestaji.map((x) => ({ id: x.id, agent: x.agent, kad: x.kad, naslov: x.naslov })),
     odluke: odluke.map((o) => ({
       id: o.id, naslov: o.naslov, agent: o.agent, razlog: o.razlog, prijedlog: o.prijedlog, poveznica: o.poveznica,
       poveznicaTekst: o.poveznica_tekst, prioritet: o.prioritet, status: o.status, kreirano: o.kreirano,
@@ -132,6 +145,27 @@ async function api(request, env, u, tenant, putanja) {
       audit(env, u, tenant, 'zadatak_status', 'zadaci', r[1], { status: z.status }, { status: body.status }),
     ]);
     return json({ ok: true });
+  }
+
+  // Pokretanje agenta (izvršitelj preko service bindinga)
+  const izvrsitelj = async (put, tijelo) => {
+    if (!env.EXEC || !env.INTERNI_KLJUC) return greska('Izvršitelj nije spojen. Zadatak preuzima koordinator u idućem pregledu.', 503);
+    const odg = await env.EXEC.fetch(`https://izvrsitelj${put}`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-interni-kljuc': env.INTERNI_KLJUC },
+      body: JSON.stringify({ tenant, ...tijelo }),
+    });
+    const d = await odg.json().catch(() => ({}));
+    if (!odg.ok) return greska(d.greska || `Izvršitelj: greška ${odg.status}`, odg.status === 403 ? 502 : odg.status);
+    await env.DB.batch([audit(env, u, tenant, 'pokretanje', 'pokretanja', d.pokretanje_id, null, { put, ...tijelo })]);
+    return json({ ok: true, pokretanje_id: d.pokretanje_id });
+  };
+  if (m === 'POST' && (r = /^\/api\/zadaci\/([\w-]+)\/pokreni$/.exec(putanja))) return izvrsitelj('/zadatak', { zadatak_id: r[1] });
+  if (m === 'POST' && putanja === '/api/pregled') return izvrsitelj('/pregled', {});
+
+  // Cijeli tekst izvještaja
+  if (m === 'GET' && (r = /^\/api\/izvjestaj\/([\w-]+)$/.exec(putanja))) {
+    const x = await one(env, `SELECT id, agent, kad, naslov, tijelo FROM izvjestaji WHERE tenant_id = ? AND id = ?`, tenant, r[1]);
+    return x ? json(x) : greska('Izvještaj ne postoji', 404);
   }
 
   // Tjedne brojke (samo čovjek)

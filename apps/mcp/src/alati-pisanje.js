@@ -229,4 +229,18 @@ export const PISANJE = [
       return { id: a.id, promijenjeno: kljucevi };
     },
   },
+  {
+    name: 'spremi_izvjestaj',
+    description: 'Spremi izvještaj agenta (Markdown) koji vlasnik čita na ploči. Naslov kratak, tijelo najviše 40000 znakova.',
+    inputSchema: s({ naslov: { type: 'string' }, tijelo: { type: 'string' } }, ['naslov', 'tijelo']),
+    run: async (a, ctx, env) => {
+      const r = { id: novi(), kad: sada(), naslov: tekst(a.naslov, 'naslov', 200, true), tijelo: tekst(a.tijelo, 'tijelo', 40000, true) };
+      await env.DB.batch([
+        env.DB.prepare(`INSERT INTO izvjestaji (id, tenant_id, agent, kad, naslov, tijelo) VALUES (?, ?, ?, ?, ?, ?)`)
+          .bind(r.id, ctx.tenantId, ctx.agent, r.kad, r.naslov, r.tijelo),
+        nadzor(env, ctx, 'spremi_izvjestaj', 'izvjestaji', r.id, null, { naslov: r.naslov, znakova: r.tijelo.length }),
+      ]);
+      return { id: r.id };
+    },
+  },
 ];

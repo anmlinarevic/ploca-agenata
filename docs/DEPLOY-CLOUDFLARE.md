@@ -66,3 +66,51 @@ npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=t
 ```
 `TOKEN_PEPPER` zapiši u upravitelj lozinki: bez njega se tokeni ne mogu provjeriti. MCP adresa
 `https://ploca-mcp.<račun>.workers.dev/mcp` zaštićena je tokenom, a ne Accessom (agenti nemaju preglednik).
+
+## 8. Izvršitelj agenata (korak 4)
+
+**Redoslijed je bitan:** dashboard ima service binding na izvršitelja, a izvršitelj na MCP, pa deploy ide
+MCP → izvršitelj → dashboard (obrnuto deploy javlja da servis ne postoji). Migracija `0003` prvo.
+
+```
+npx wrangler d1 migrations apply ploca --remote --config apps/mcp/wrangler.jsonc
+npx wrangler queues create ploca-pokretanja
+```
+
+### Ključ za Claude API
+Napravi ključ na console.anthropic.com (API keys) i postavi **mjesečni limit potrošnje na računu** (Billing → Limits)
+kao drugu, neovisnu zaštitu uz naš limit u bazi. Ključ je tvoj trošak, ne dio pretplate.
+
+### Tajne (tri secreta na izvršitelju)
+Prvi deploy izvršitelja mora postojati prije secreta:
+```
+npx wrangler deploy --config apps/izvrsitelj/wrangler.jsonc
+npx wrangler secret put ANTHROPIC_API_KEY --config apps/izvrsitelj/wrangler.jsonc
+npx wrangler secret put INTERNI_KLJUC --config apps/izvrsitelj/wrangler.jsonc
+npx wrangler secret put AGENT_TOKENS --config apps/izvrsitelj/wrangler.jsonc
+```
+- `INTERNI_KLJUC`: dugačak nasumičan niz (npr. `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`),
+  **ista vrijednost** i na dashboardu (`npx wrangler secret put INTERNI_KLJUC --config apps/dashboard/wrangler.jsonc`).
+- `AGENT_TOKENS`: JSON s tokenima agenata po zakupcu. Tokene izdaješ kao u koraku 7 (sa stvarnim `TOKEN_PEPPER`), po jedan
+  za `koordinator` i `konkurencija`, i upisuješ hasheve u bazu (`d1 execute --remote`). Vrijednost secreta:
+  `{"piccolini":{"koordinator":"pl_...","konkurencija":"pl_..."}}` (u jednom retku).
+
+### Dashboard (zadnji)
+```
+npx wrangler deploy --config apps/dashboard/wrangler.jsonc
+```
+
+### Limit potrošnje i raspored
+Zadani limit je 20 USD mjesečno po zakupcu, a raspored (ponedjeljak 06:00 UTC) je **isključen** dok ga ne uključiš:
+```
+UPDATE tenants SET postavke_json = '{"limit_usd": 20, "raspored": true}' WHERE id = 'piccolini';
+```
+(`npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --command "..."` ili datoteka s `--file`.)
+Ručno pokretanje (gumb „Pokreni sada” i „Pokreni tjedni pregled sada”) radi bez rasporeda.
+
+### Provjeri prije oslanjanja na brojke
+- Cijene u `apps/izvrsitelj/wrangler.jsonc` (`vars`) su procjena za model `claude-sonnet-5-5` i cijenu web pretrage po upitu
+  (`CENA_PRETRAGA`). Usporedi s računom na console.anthropic.com nakon prvog tjedna i ispravi.
+- Izvršitelj ne zna za odbijanja koja model rješava rezervnim modelom (fallback): odbijen zahtjev završava kao greška u pokretanju.
+- Agenti `seo`, `ai`, `sadrzaj`, `lokalno`, `oglasi` i `materijal` još nemaju definiciju; zadatak za njih se ne pokreće gumbom,
+  nego ga preuzima koordinator. Danas rade `konkurencija` i `koordinator` (tjedni pregled).

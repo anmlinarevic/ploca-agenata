@@ -43,3 +43,9 @@ Samo čovjek odobrava odluke, zadaje zadatke, upisuje tjedne i kvačice. Savjetn
 Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji), pa
 `npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.
 Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i Access: `docs/DEPLOY-CLOUDFLARE.md`.
+
+## Korak 4: izvršitelj
+`apps/izvrsitelj`: Queue (jedan posao istodobno, bez automatskog ponavljanja) + Cron + petlja agenta nad Claude API-jem
+(`@anthropic-ai/sdk`), alati ploče kroz MCP (service binding), web pretraga/dohvat kao server alati. Definicije agenata su u
+`packages/agenti/*.md`. Trošak po pokretanju u `pokretanja`, mjesečni limit po zakupcu u `tenants.postavke_json` (`limit_usd`).
+Lokalni test bez troška: `npm test -- <mapa-s-izvozom>` (lažni Claude API u `scripts/fake-anthropic.mjs`). Deploy: `docs/DEPLOY-CLOUDFLARE.md` § 8.
