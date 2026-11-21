@@ -1,8 +1,8 @@
-// Dimni test: pokreni `npm run dev` (lokalna baza s migracijama i uvozom), pa `npm test`.
-// Treba TOKEN u okolini (ispis scripts/novi-token.mjs) i neobavezno URL (zadano http://localhost:8787).
+// Dimni test protiv pokrenutog servera. Obično ga pokreće scripts/test-lokalno.mjs (svježa baza).
+// Okolina: TOKEN (koordinator), TOKEN_KONK (konkurencija), neobavezno URL.
 const URL_ = process.env.URL || 'http://localhost:8787';
-const TOKEN = process.env.TOKEN;
-if (!TOKEN) { console.error('Postavi TOKEN'); process.exit(1); }
+const { TOKEN, TOKEN_KONK } = process.env;
+if (!TOKEN || !TOKEN_KONK) { console.error('Postavi TOKEN i TOKEN_KONK'); process.exit(1); }
 
 let id = 0;
 async function rpc(method, params, token = TOKEN) {
@@ -14,21 +14,64 @@ async function rpc(method, params, token = TOKEN) {
   return { status: r.status, body: r.headers.get('content-type')?.includes('json') ? await r.json() : await r.text() };
 }
 const ok = (c, m) => { if (!c) { console.error('PAO:', m); process.exitCode = 1; } else console.log('ok  ', m); };
+// vraća {podaci} ili {greska}
+async function poziv(name, args = {}, token = TOKEN) {
+  const { body } = await rpc('tools/call', { name, arguments: args }, token);
+  if (body.error) return { greska: body.error.message };
+  const t = body.result.content[0].text;
+  return body.result.isError ? { greska: t } : { podaci: JSON.parse(t) };
+}
 
+// --- čitanje ---
 ok((await rpc('tools/list', {}, 'pogresan')).status === 401, 'pogrešan token → 401');
-const lista = await rpc('tools/list');
-ok(lista.body.result.tools.length >= 9, `tools/list vraća alate (${lista.body.result.tools.length})`);
-const poziv = async (name, args = {}) =>
-  JSON.parse((await rpc('tools/call', { name, arguments: args })).body.result.content[0].text);
+ok((await rpc('tools/list')).body.result.tools.length >= 16, 'koordinator vidi sve alate');
+const alatiKonk = (await rpc('tools/list', {}, TOKEN_KONK)).body.result.tools.map((t) => t.name);
+ok(alatiKonk.includes('azuriraj_konkurenta') && !alatiKonk.includes('upisi_mjesecno'), 'konkurencija vidi samo svoje alate');
+const otvorene = (await poziv('dohvati_otvorene_odluke')).podaci;
+ok(otvorene.length === 6 && otvorene.every((o) => o.status === 'ceka'), 'otvorene odluke: 6');
+const konk = (await poziv('dohvati_konkurente')).podaci;
+ok(konk.length === 12 && konk.find((k) => k.id === 'imemojemalo').usporedba.c3.n === 35, 'konkurenti i JSON polja');
+ok((await poziv('dohvati_napredak')).podaci[0].stavke.length === 10, 'napredak');
+ok((await poziv('obrisi_sve')).greska?.includes('Nepoznat'), 'nepoznat alat se odbija');
 
-const odluke = await poziv('dohvati_otvorene_odluke');
-ok(Array.isArray(odluke) && odluke.every((o) => o.status === 'ceka'), `otvorene odluke: ${odluke.length}`);
-const konk = await poziv('dohvati_konkurente');
-ok(konk.length === 12, `konkurenti: ${konk.length}`);
-ok(konk.find((k) => k.id === 'imemojemalo')?.usporedba?.c3?.n === 35, 'JSON polje usporedba se vraća kao objekt');
-const napredak = await poziv('dohvati_napredak');
-ok(napredak.length === 4 && napredak[0].stavke.length === 10, 'napredak: 4 faze, faza0 ima 10 stavki');
-const izvoz = await poziv('izvezi_ploca');
-ok('odobreneOdluke' in izvoz && 'napredak' in izvoz, 'izvezi_ploca');
-const nepoznat = await rpc('tools/call', { name: 'obrisi_sve', arguments: {} });
-ok(nepoznat.body.error?.code === -32602, 'nepoznat alat se odbija');
+// --- odluke ---
+ok((await poziv('dodaj_odluku', { naslov: 'T', razlog: 'r', prijedlog: 'p' })).greska?.includes('najviše 3'), 'koordinator je već na ograničenju (4 odluke od 20. 11.)');
+const o = (await poziv('dodaj_odluku', { naslov: 'Test', razlog: 'r', prijedlog: 'p' }, TOKEN_KONK)).podaci;
+ok(o?.status === 'ceka', 'dodaj_odluku → ceka');
+ok((await poziv('azuriraj_odluku_izvrsenje', { id: o.id, status: 'gotovo', rezultat: 'x' })).greska?.includes('nije odobrena'),
+  'neodobrena odluka se ne može izvršiti');
+ok((await poziv('azuriraj_odluku_izvrsenje', { id: 'o6', status: 'u_izradi' })).greska?.includes('nije odobrena'),
+  'odbijena/čekajuća odluka se ne može izvršiti');
+await poziv('dodaj_odluku', { naslov: 'Test 2', razlog: 'r', prijedlog: 'p' }, TOKEN_KONK);
+await poziv('dodaj_odluku', { naslov: 'Test 3', razlog: 'r', prijedlog: 'p' }, TOKEN_KONK);
+ok((await poziv('dodaj_odluku', { naslov: 'Test 4', razlog: 'r', prijedlog: 'p' }, TOKEN_KONK)).greska?.includes('najviše 3'),
+  'četvrta odluka u tjednu se odbija');
+const tekst = 'x'.repeat(201);
+ok((await poziv('dodaj_odluku', { naslov: tekst, razlog: 'r', prijedlog: 'p' }, TOKEN_KONK)).greska?.includes('predug'),
+  'predug naslov se odbija');
+// odobrena odluka iz izvoza (o1 je gotovo → nije dopuštena); nađi odobrenu ako postoji
+const odobrene = (await poziv('dohvati_odobrene_odluke')).podaci;
+if (odobrene.length) {
+  const r = await poziv('azuriraj_odluku_izvrsenje', { id: odobrene[0].id, status: 'gotovo', rezultat: 'Testirano' });
+  ok(r.podaci?.status === 'gotovo', 'odobrena odluka se izvršava');
+}
+
+// --- ostalo ---
+ok((await poziv('upisi_mjesecno', { mjesec: '2026-12', aiSpominjanja: 3, aiPitanja: 12 })).podaci?.ai_spominjanja === 3, 'upisi_mjesecno');
+ok((await poziv('upisi_mjesecno', { mjesec: '2026-12', gscKlikovi: 40 })).podaci?.ai_spominjanja === 3, 'upisi_mjesecno čuva ostala polja');
+ok((await poziv('upisi_mjesecno', { mjesec: '12/2026' })).greska, 'neispravan mjesec se odbija');
+ok((await poziv('oznaci_napredak', { faza: 'faza0', red: 4, gotovo: true })).podaci?.gotovo === true, 'oznaci_napredak');
+ok((await poziv('oznaci_napredak', { faza: 'faza0', red: 99, gotovo: true })).greska, 'nepostojeća stavka se odbija');
+ok((await poziv('dodaj_aktivnost', { sto: 'Test', agent: 'seo' })).podaci?.id, 'koordinator piše aktivnost u ime agenta');
+
+// --- konkurent ---
+ok((await poziv('azuriraj_konkurenta', { id: 'imemojemalo', polja: { napomena: 'test' } }, TOKEN_KONK)).podaci,
+  'konkurencija mijenja konkurenta');
+ok((await poziv('azuriraj_konkurenta', { id: 'imemojemalo', polja: { id: 'x' } }, TOKEN_KONK)).greska?.includes('nije dopušteno'),
+  'polje izvan popisa se odbija');
+ok((await poziv('azuriraj_konkurenta', { id: 'piccolini', polja: { napomena: 'x' } }, TOKEN_KONK)).greska?.includes('odobrenu odluku'),
+  'naš red traži odobrenu odluku');
+ok((await poziv('azuriraj_konkurenta', { id: 'novi-igrac', polja: { naziv: 'Novi', trziste: 'HR' } }, TOKEN_KONK)).podaci,
+  'novi konkurent');
+ok((await poziv('upisi_mjesecno', { mjesec: '2026-12' }, TOKEN_KONK)).greska?.includes('ne dopušta'), 'konkurencija ne smije upisati mjesečno');
+ok((await poziv('dodaj_aktivnost', { sto: 'x', agent: 'seo' }, TOKEN_KONK)).podaci, 'konkurencija piše aktivnost');

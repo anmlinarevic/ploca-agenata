@@ -1,6 +1,9 @@
 /* MCP server „ploča” (Streamable HTTP, bez stanja). Korak 1: samo alati za čitanje.
  * Zakupac i agent dolaze isključivo iz tokena; tenant_id se nikad ne čita iz zahtjeva. */
-import { TOOLS, pozoviAlat } from './alati.js';
+import { TOOLS as CITANJE, pozoviAlat } from './alati.js';
+import { PISANJE } from './alati-pisanje.js';
+
+const TOOLS = [...CITANJE, ...PISANJE];
 
 const PROTOCOL = '2025-03-26';
 const json = (obj, status = 200) =>

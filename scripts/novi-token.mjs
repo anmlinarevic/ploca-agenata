@@ -4,7 +4,19 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 
-const [zakupac, agent, alati = '*', izlaz] = process.argv.slice(2);
+// Zadani alati po ulozi agenta (najmanje potrebno). Treći argument: '*', popis ili 'zadano'.
+const CITANJE = 'dohvati_odobrene_odluke,dohvati_nove_zadatke,dohvati_otvorene_odluke,dohvati_tjedne,dohvati_mjesecno,dohvati_aktivnost,dohvati_napredak,dohvati_konkurente,izvezi_ploca';
+const PRESETI = {
+  koordinator: '*',
+  konkurencija: `${CITANJE},azuriraj_konkurenta,dodaj_aktivnost,dodaj_odluku`,
+  seo: `${CITANJE},upisi_mjesecno,dodaj_aktivnost,dodaj_odluku`,
+  ai: `${CITANJE},upisi_mjesecno,dodaj_aktivnost,dodaj_odluku`,
+  sadrzaj: `${CITANJE},dodaj_aktivnost,dodaj_odluku`,
+  lokalno: `${CITANJE},dodaj_aktivnost,dodaj_odluku`,
+  oglasi: `${CITANJE},dodaj_aktivnost,dodaj_odluku`,
+};
+const [zakupac, agent, alatiArg = 'zadano', izlaz] = process.argv.slice(2);
+const alati = alatiArg === 'zadano' ? (PRESETI[agent] ?? CITANJE) : alatiArg;
 const pepper = process.env.TOKEN_PEPPER ?? '';
 if (!zakupac || !agent) { console.error('Upotreba: node scripts/novi-token.mjs <zakupac> <agent> [alati|*] [izlaz.sql]'); process.exit(1); }
 if (!pepper) console.error('UPOZORENJE: TOKEN_PEPPER nije postavljen (u redu samo za lokalni razvoj).');
