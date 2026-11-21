@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ploca-mcp",
+  "main": "src/index.js",
+  "compatibility_date": "2026-04-03",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ploca",
+      // Zamijeniti pravim ID-jem nakon: npx wrangler d1 create ploca --jurisdiction eu
+      // Lokalno (wrangler dev --local) ID nije bitan.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ]
+  // Secret (ne ide u repozitorij): npx wrangler secret put TOKEN_PEPPER
+}
