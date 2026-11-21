@@ -22,8 +22,8 @@ npx wrangler d1 migrations apply ploca --remote --config apps/mcp/wrangler.jsonc
 ```
 node scripts/uvoz-piccolini.mjs <mapa-s-izvozom> tenants/piccolini/seed.sql
 npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=tenants/piccolini/seed.sql
-node scripts/novi-korisnik.mjs <tvoj-email> vlasnik piccolini > tenants/piccolini/korisnik.sql
-npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=tenants/piccolini/korisnik.sql
+node scripts/novi-korisnik.mjs <tvoj-email> vlasnik piccolini > tenants/piccolini/token-korisnik.sql
+npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=tenants/piccolini/token-korisnik.sql
 ```
 Savjetnik (bez zakupca, vidi sve): `node scripts/novi-korisnik.mjs <email> savjetnik`. E-mail mora biti isti
 kojim se prijavljuješ u Access.

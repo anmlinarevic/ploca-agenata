@@ -10,7 +10,7 @@
       "database_name": "ploca",
       // Zamijeniti pravim ID-jem nakon: npx wrangler d1 create ploca --jurisdiction eu
       // Lokalno (wrangler dev --local) ID nije bitan.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "62f241b2-5223-4c6e-94cc-4079f48b0c71",
       "migrations_dir": "../../packages/db/migrations"
     }
   ]
