@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ploca-dashboard",
+  "main": "src/index.js",
+  "compatibility_date": "2026-04-03",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Worker se pokreće samo za /api/*; ostalo je statika (index.html).
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ploca",
+      // Isti ID kao u apps/mcp/wrangler.jsonc.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  // Postavke prijave (nisu tajne, ali ovise o tvom Cloudflare računu). Postavi pri deployu:
+  //   ACCESS_TEAM_DOMAIN  npr. "tvoj-tim.cloudflareaccess.com"
+  //   ACCESS_AUD          "Application Audience (AUD) Tag" aplikacije u Zero Trustu
+  // npx wrangler secret put ACCESS_AUD  (ili kao "vars" ovdje)
+  // Lokalno: apps/dashboard/.dev.vars s DEV_USER=tvoj@email (NIKAD u produkciji).
+}

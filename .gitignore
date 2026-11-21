@@ -7,3 +7,4 @@ node_modules
 tenants/*/seed.sql
 tenants/*/token-*.sql
 *.log
+.wrangler-test

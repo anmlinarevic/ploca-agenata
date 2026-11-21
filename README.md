@@ -36,3 +36,10 @@ Kad je server na Cloudflareu, u repozitoriju klijenta `.mcp.json`:
   "headers": { "Authorization": "Bearer ${PLOCA_TOKEN}" } } } }
 ```
 `PLOCA_TOKEN` je u okolini (ne u repozitoriju). Lokalno: `http://localhost:8787/mcp` uz `npm run dev`.
+
+## Korak 3: dashboard
+`apps/dashboard`: Worker (`/api/*`, prijava preko Cloudflare Accessa JWT-a) + statični front-end (`public/index.html`, izgled stare ploče).
+Samo čovjek odobrava odluke, zadaje zadatke, upisuje tjedne i kvačice. Savjetnik bira zakupca (zaglavlje X-Tenant).
+Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji), pa
+`npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.
+Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i Access: `docs/DEPLOY-CLOUDFLARE.md`.
