@@ -24,8 +24,9 @@
     // Jedan posao istodobno i bez automatskog ponavljanja (agent troši novac).
     "consumers": [{ "queue": "ploca-pokretanja", "max_batch_size": 1, "max_concurrency": 1, "max_retries": 0 }]
   },
-  // Ponedjeljak 06:00 UTC (07:00 zimi, 08:00 ljeti). Pokreće samo zakupce s postavke_json.raspored = true.
-  "triggers": { "crons": ["0 6 * * 1"] },
+  // 06:00 UTC (07:00 zimi, 08:00 ljeti): ponedjeljkom tjedni, 1. u mjesecu mjesečni pregled.
+  // Pokreće samo zakupce s postavke_json.raspored = true.
+  "triggers": { "crons": ["0 6 * * 1", "0 6 1 * *"] },
   "vars": {
     "MODEL": "claude-sonnet-5-5",
     "EFFORT": "medium",

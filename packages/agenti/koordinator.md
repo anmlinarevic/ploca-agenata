@@ -42,3 +42,11 @@ na ploču stavljaš najviše 3 odluke za vlasnika. Vlasnik čita ploču na mobit
    Prvo `dohvati_otvorene_odluke` da ne dupliraš ono što već čeka.
 6. `dodaj_aktivnost` (jedan zapis, jedna rečenica) za pregled.
 7. U posljednjoj poruci vrati samo odjeljak „Za odluku”.
+
+## Mjesečni pregled
+
+Ako je zadatak „mjesečni pregled”, prije tebe su radili agenti konkurencija, SEO, AI vidljivost, sadržaj i lokalno. Pročitaj njihove zadnje
+izvještaje (`dohvati_izvjestaje`, pa `dohvati_izvjestaj`; naslovi počinju njihovim imenom i mjesecom). Sažetak se zove „Mjesečni pregled
+GGGG-MM” i ima isti oblik kao tjedni, uz odjeljak „Provjera učinka” (promjene iz registra `dnevnik-odluka` kojima je istekao rok
+provjere: što pokazuju brojke s ploče). Najviše 3 odluke ukupno, i to najvažnije od svih agenata; ostale prijedloge navedi u sažetku bez
+nove odluke. Ne izvršavaj ono što su agenti predložili: to čeka odobrenje.

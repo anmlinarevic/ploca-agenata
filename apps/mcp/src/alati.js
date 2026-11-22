@@ -131,6 +131,19 @@ TOOLS.push(
   },
 );
 
+TOOLS.push({
+  name: 'dohvati_registar',
+  description: 'Registar (Markdown dokument koji agenti održavaju): kljucne-rijeci, ai-vidljivost, partneri, dnevnik-odluka, sadrzaj-plan, recenzije-predlosci. Bez `kljuc` vraća popis registara.',
+  inputSchema: { type: 'object', properties: { kljuc: { type: 'string' } }, additionalProperties: false },
+  run: async (a, { tenantId }, env) => {
+    if (!a.kljuc) return sve(env, `SELECT kljuc, naslov, verzija, azurirano, azurirao, LENGTH(tijelo) AS znakova FROM registri WHERE tenant_id = ? ORDER BY kljuc`, tenantId);
+    const r = await env.DB.prepare(`SELECT kljuc, naslov, tijelo, verzija, azurirano, azurirao FROM registri WHERE tenant_id = ? AND kljuc = ?`)
+      .bind(tenantId, String(a.kljuc)).first();
+    if (!r) throw new Error('Registar ne postoji');
+    return r;
+  },
+});
+
 export async function pozoviAlat(alat, args, ctx, env) {
   return alat.run(args, ctx, env);
 }

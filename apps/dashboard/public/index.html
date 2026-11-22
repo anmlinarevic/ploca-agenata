@@ -316,7 +316,8 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
       <span class="sitno" id="potrosnja"></span>
     </div>
     <div class="kontrole">
-      <button class="btn glavni" type="button" id="pokreni-pregled">Pokreni tjedni pregled sada</button>
+      <button class="btn glavni" type="button" id="pokreni-pregled" data-vrsta="tjedni">Pokreni tjedni pregled sada</button>
+      <button class="btn" type="button" id="pokreni-mjesecni" data-vrsta="mjesecni">Pokreni mjesečni pregled sada</button>
       <span class="poruka" id="pregled-poruka" aria-live="polite"></span>
     </div>
     <div class="lista" id="lista-pokretanja"><p class="prazno">Učitavam…</p></div>
@@ -759,10 +760,11 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
       });
       return;
     }
-    if (e.target.closest('#pokreni-pregled')) {
-      var gumb = $('#pokreni-pregled'), p2 = $('#pregled-poruka');
+    var pg = e.target.closest('#pokreni-pregled, #pokreni-mjesecni');
+    if (pg) {
+      var gumb = pg, p2 = $('#pregled-poruka');
       gumb.disabled = true; p2.className = 'poruka'; p2.textContent = 'Pokrećem…';
-      api('POST', '/api/pregled', {}).then(function () { p2.textContent = 'Pregled je u redu čekanja. Izvještaj se pojavljuje ispod kad agenti završe.'; return ucitaj(); })
+      api('POST', '/api/pregled', { vrsta: pg.dataset.vrsta }).then(function () { p2.textContent = 'Pregled je u redu čekanja. Agenti rade jedan za drugim; izvještaji se pojavljuju ispod.'; return ucitaj(); })
         .catch(function (err) { p2.className = 'poruka greska'; p2.textContent = porukaGreske(err, 'Pregled nije pokrenut.'); })
         .then(function () { gumb.disabled = false; });
     }

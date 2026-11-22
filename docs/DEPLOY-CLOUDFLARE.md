@@ -114,3 +114,53 @@ Ručno pokretanje (gumb „Pokreni sada” i „Pokreni tjedni pregled sada”) 
 - Izvršitelj ne zna za odbijanja koja model rješava rezervnim modelom (fallback): odbijen zahtjev završava kao greška u pokretanju.
 - Agenti `seo`, `ai`, `sadrzaj`, `lokalno`, `oglasi` i `materijal` još nemaju definiciju; zadatak za njih se ne pokreće gumbom,
   nego ga preuzima koordinator. Danas rade `konkurencija` i `koordinator` (tjedni pregled).
+
+## 9. Svi agenti i mjesečni pregled (ažuriranje nakon koraka 8)
+
+Dodano: agenti `seo`, `ai`, `sadrzaj`, `lokalno` i `oglasi`, registri (ključne riječi, AI test, partneri, dnevnik odluka, plan sadržaja)
+i mjesečni pregled (1. u mjesecu). Redoslijed: MCP → izvršitelj → dashboard; migracija prva.
+
+```
+npx wrangler d1 migrations apply ploca --remote --config apps/mcp/wrangler.jsonc
+```
+
+**Uvezi registre i postojeći izvještaj iz repozitorija Tina-Obrt** (jednom; ponovni uvoz ne briše ono što su agenti dopunili):
+```
+node scripts/uvoz-registara.mjs C:\Users\AnteMlinarevic\tina-obrt\docs\marketing tenants/piccolini/registri.sql
+npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=tenants/piccolini/registri.sql
+```
+(`docs/marketing` mora biti ažurna kopija iz grane s registrima: `kljucne-rijeci.md`, `ai-vidljivost.md`, `partneri.md`,
+`dnevnik-odluka.md`, `sadrzaj/2026-12-plan.md`, `sadrzaj/recenzije-predlosci.md`.)
+
+**Tokeni za sve agente.** Ponovi skriptu iz koraka 8 s dužim popisom agenata (stari tokeni ostaju valjani, ovo izdaje nove):
+
+```
+cd C:\Users\AnteMlinarevic\ploca-agenata
+$env:TOKEN_PEPPER = Read-Host "Zalijepi TOKEN_PEPPER"
+$tok = @{}
+foreach ($a in 'koordinator','konkurencija','seo','ai','sadrzaj','lokalno') {
+  $izlaz = node scripts/novi-token.mjs piccolini $a zadano "tenants/piccolini/token-izvrsitelj-$a.sql"
+  $tok[$a] = [regex]::Match(($izlaz -join "`n"), 'pl_\S+').Value
+  npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file="tenants/piccolini/token-izvrsitelj-$a.sql"
+}
+$json = @{ piccolini = $tok } | ConvertTo-Json -Compress
+$json | npx wrangler secret put AGENT_TOKENS --config apps/izvrsitelj/wrangler.jsonc
+Remove-Item Env:TOKEN_PEPPER
+```
+
+Agent `oglasi` nema token jer je Faza 3 (ožujak 2027.); do tada ga ne uključuj u lanac. Tada ga dodaš u petlju i u `LANCI.mjesecni`.
+
+**Deploy:**
+```
+npx wrangler deploy --config apps/mcp/wrangler.jsonc
+npx wrangler deploy --config apps/izvrsitelj/wrangler.jsonc
+npx wrangler deploy --config apps/dashboard/wrangler.jsonc
+```
+
+**Prvi mjesečni pregled ručno**, prije nego uključiš raspored: u ploči sekcija „Agenti” → „Pokreni mjesečni pregled sada”. Šest agenata radi
+jedan za drugim, a konkurencija i lokalno pretražuju web, pa je trošak veći od tjednog (procjena: nekoliko puta, nikako ne 20 USD; pogledaj
+stvarni iznos u ploči i na console.anthropic.com). Raspored (ponedjeljak tjedni, 1. u mjesecu mjesečni) uključuješ SQL-om iz koraka 8.
+
+**Što agenti ne mogu (po dizajnu izvršitelja):** nemaju datoteke repozitorija. Stranicu čitaju preko javnog weba, a promjene stranice
+predlažu kao tekst u izvještaju i odluci; PR-ove i dalje radi Claude Code. AI agent ne pita ChatGPT i druge asistente: obrađuje samo
+rezultate koje vlasnik upiše u registar `ai-vidljivost`.

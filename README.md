@@ -49,3 +49,8 @@ Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i A
 (`@anthropic-ai/sdk`), alati ploče kroz MCP (service binding), web pretraga/dohvat kao server alati. Definicije agenata su u
 `packages/agenti/*.md`. Trošak po pokretanju u `pokretanja`, mjesečni limit po zakupcu u `tenants.postavke_json` (`limit_usd`).
 Lokalni test bez troška: `npm test -- <mapa-s-izvozom>` (lažni Claude API u `scripts/fake-anthropic.mjs`). Deploy: `docs/DEPLOY-CLOUDFLARE.md` § 8.
+
+## Korak 6: svi agenti
+`packages/agenti`: konkurencija, seo, ai, sadrzaj, lokalno, oglasi (Faza 3, ne ulazi u lanac), koordinator. Pregledi: tjedni (konkurencija → koordinator),
+mjesečni (konkurencija → seo → ai → sadrzaj → lokalno → koordinator). Registri (Markdown) u tablici `registri` s dozvolama po agentu
+(`apps/mcp/src/alati-pisanje.js`, `REGISTRI_DOZVOLE`), uvoz iz repozitorija klijenta: `scripts/uvoz-registara.mjs`.

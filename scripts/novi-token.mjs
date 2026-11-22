@@ -5,14 +5,14 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 
 // Zadani alati po ulozi agenta (najmanje potrebno). Treći argument: '*', popis ili 'zadano'.
-const CITANJE = 'dohvati_izvjestaje,dohvati_izvjestaj,dohvati_odobrene_odluke,dohvati_nove_zadatke,dohvati_otvorene_odluke,dohvati_tjedne,dohvati_mjesecno,dohvati_aktivnost,dohvati_napredak,dohvati_konkurente,izvezi_ploca';
+const CITANJE = 'dohvati_registar,dohvati_izvjestaje,dohvati_izvjestaj,dohvati_odobrene_odluke,dohvati_nove_zadatke,dohvati_otvorene_odluke,dohvati_tjedne,dohvati_mjesecno,dohvati_aktivnost,dohvati_napredak,dohvati_konkurente,izvezi_ploca';
 const PRESETI = {
   koordinator: '*',
   konkurencija: `${CITANJE},azuriraj_konkurenta,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
-  seo: `${CITANJE},upisi_mjesecno,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
-  ai: `${CITANJE},upisi_mjesecno,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
-  sadrzaj: `${CITANJE},dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
-  lokalno: `${CITANJE},dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
+  seo: `${CITANJE},spremi_registar,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
+  ai: `${CITANJE},spremi_registar,upisi_mjesecno,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
+  sadrzaj: `${CITANJE},spremi_registar,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
+  lokalno: `${CITANJE},spremi_registar,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
   oglasi: `${CITANJE},dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
 };
 const [zakupac, agent, alatiArg = 'zadano', izlaz] = process.argv.slice(2);

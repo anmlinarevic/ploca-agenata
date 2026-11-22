@@ -4,6 +4,7 @@
 // Privremeno piše apps/dashboard/.dev.vars i apps/izvrsitelj/.dev.vars; postojeće sadržaje vraća na kraju.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const izvoz = process.argv[2];
 if (!izvoz) { console.error('Upotreba: node scripts/test-lokalno.mjs <mapa-s-izvozom>'); process.exit(1); }
@@ -31,6 +32,8 @@ rmSync('.wrangler-test', { recursive: true, force: true });
 sh('node', ['scripts/uvoz-piccolini.mjs', `"${izvoz}"`, 'tenants/piccolini/seed.sql']);
 sh('npx', ['wrangler', 'd1', 'migrations', 'apply', 'ploca', '--local', ...CFG, '--persist-to', DB_STATE]);
 d1('tenants/piccolini/seed.sql');
+sh('node', ['scripts/uvoz-registara.mjs', '"' + join(izvoz, '..', '..') + '"', 'tenants/piccolini/registri.sql']);
+d1('tenants/piccolini/registri.sql');
 
 // jedan poziv po agentu: ispiše token, a SQL zapiše u datoteku
 const izdaj = (agent, pepper) => {
@@ -42,7 +45,8 @@ const izdaj = (agent, pepper) => {
 };
 const tKoord = izdaj('koordinator', pepperTest);
 const tKonk = izdaj('konkurencija', pepperTest);
-const agentTokeni = { piccolini: { koordinator: izdaj('koordinator', pepperMcp), konkurencija: izdaj('konkurencija', pepperMcp) } };
+const tSeo = izdaj('seo', pepperTest);
+const agentTokeni = { piccolini: Object.fromEntries(['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno'].map((a) => [a, izdaj(a, pepperMcp)])) };
 
 const korisnik = (...a) => spawnSync('node', ['scripts/novi-korisnik.mjs', ...a], { encoding: 'utf8' }).stdout;
 writeFileSync('tenants/piccolini/token-test-korisnici.sql',
@@ -75,14 +79,14 @@ pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/i
 
 let kod = 1;
 if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localhost:8798/')) && (await cekaj('http://localhost:8790/zahtjevi'))) {
-  kod = node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk })
+  kod = node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
     || node('scripts/dashboard-test.mjs', { URL: 'http://localhost:8798' })
-    || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798' }, ['faza1']);
+    || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',
       `UPDATE tenants SET postavke_json = '{"limit_usd":0.01}' WHERE id = 'piccolini';\n`);
     d1('tenants/piccolini/token-test-limit.sql');
-    kod = node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', BROJ_ZAHTJEVA: '9' }, ['faza2']);
+    kod = node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', BROJ_ZAHTJEVA: '27' }, ['faza2']);
   }
 } else console.error('Serveri se nisu pokrenuli');
 ugasi();

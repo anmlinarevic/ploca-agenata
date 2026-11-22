@@ -9,3 +9,4 @@ tenants/*/token-*.sql
 *.log
 .wrangler-test
 tenants/*/korisnik.sql
+tenants/*/registri.sql

@@ -51,7 +51,7 @@ if (faza === 'faza1') {
   const prije = s.pokretanja.length;
   const pr = await zovi('POST', '/api/pregled', {});
   ok(pr.status === 200, 'tjedni pregled se stavlja u red');
-  const lanac = await cekaj((q) => { const novi = q.pokretanja.filter((p) => p.vrsta === 'pregled'); return novi.length >= 2 && novi.every(zavrseno) ? novi : null; });
+  const lanac = await cekaj((q) => { const novi = q.pokretanja.filter((p) => p.vrsta === 'pregled_tjedni'); return novi.length >= 2 && novi.every(zavrseno) ? novi : null; });
   ok(lanac && lanac.length === 2 && lanac.every((p) => p.status === 'uspjeh'), 'lanac: oba agenta uspješna');
   ok(lanac && lanac.some((p) => p.agent === 'koordinator'), 'koordinator se pokreće nakon konkurencije');
   s = await stanje();
@@ -59,8 +59,34 @@ if (faza === 'faza1') {
   const iz = (await zovi('GET', '/api/izvjestaj/' + s.izvjestaji.find((x) => x.agent === 'koordinator').id)).d;
   ok(iz.tijelo.includes('Za odluku'), 'cijeli tekst izvještaja se dohvaća');
 
+  // 3b. mjesečni pregled: konkurencija -> seo -> ai -> sadrzaj -> lokalno -> koordinator
+  const mj = await zovi('POST', '/api/pregled', { vrsta: 'mjesecni' });
+  ok(mj.status === 200, 'mjesečni pregled se stavlja u red');
+  const lanacMj = await cekaj((q) => { const novi = q.pokretanja.filter((p) => p.vrsta === 'pregled_mjesecni'); return novi.length >= 6 && novi.every(zavrseno) ? novi : null; }, 150000);
+  ok(lanacMj && lanacMj.length === 6 && lanacMj.every((p) => p.status === 'uspjeh'), `mjesečni lanac: svih 6 agenata uspješno (${lanacMj?.map((p) => p.agent + ':' + p.status).join(', ')})`);
+  ok(lanacMj && JSON.stringify(lanacMj.map((p) => p.agent).sort()) === JSON.stringify(['ai', 'konkurencija', 'koordinator', 'lokalno', 'sadrzaj', 'seo']), 'lanac sadrži točno ove agente (bez oglasa)');
+  s = await stanje();
+  for (const ime of ['SEO pregled (test)', 'ai (test)', 'sadrzaj (test)', 'lokalno (test)']) ok(s.izvjestaji.some((x) => x.naslov === ime), `izvještaj spremljen: ${ime}`);
+  // registar koji je SEO agent ažurirao, provjera izravno na MCP-u
+  if (process.env.MCP && process.env.TOKEN) {
+    const mcp = async (name, args) => {
+      const r = await fetch(process.env.MCP + '/mcp', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + process.env.TOKEN },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) });
+      return JSON.parse((await r.json()).result.content[0].text);
+    };
+    const reg = await mcp('dohvati_registar', { kljuc: 'kljucne-rijeci' });
+    ok(reg.verzija >= 3 && reg.tijelo.includes('Test dodatak (SEO)') && reg.tijelo.includes('test koordinator') && reg.azurirao === 'agent:seo', 'SEO agent je ažurirao registar ključnih riječi, uz zadržane ranije promjene');
+    const partneri = await mcp('dohvati_registar', { kljuc: 'partneri' });
+    ok(partneri.verzija === 1 && partneri.azurirao === 'uvoz', 'SEO nije mogao promijeniti registar partnera');
+    const zahtjevi2 = await (await fetch(FAKE + '/zahtjevi')).json();
+    const seoZadnji = zahtjevi2.filter((z) => z.agent === 'seo')[2].zadnjaPoruka.content;
+    ok(seoZadnji[0].is_error !== true && seoZadnji[1].is_error === true, 'zabranjeni registar vraća is_error agentu');
+    ok(zahtjevi2.find((z) => z.agent === 'seo').alati.includes('web_fetch') && !zahtjevi2.find((z) => z.agent === 'seo').alati.includes('web_search'), 'SEO ima samo dohvat stranica, bez pretrage');
+    ok(zahtjevi2.find((z) => z.agent === 'oglasi') === undefined, 'oglasi se ne pokreću u pregledu');
+  }
+
   // 4. agent kojeg izvršitelj još nema
-  const z2 = (await zovi('POST', '/api/zadaci', { agent: 'seo', opis: 'SEO provjera naslova (test)' })).d;
+  const z2 = (await zovi('POST', '/api/zadaci', { agent: 'materijal', opis: 'Provjera cijena materijala (test)' })).d;
   const r2 = await zovi('POST', `/api/zadaci/${z2.id}/pokreni`, {});
   ok(r2.status === 422 && r2.d.greska.includes('još nije dostupan'), 'agent bez definicije: jasna poruka, zadatak ostaje novi');
   ok((await stanje()).zadaci.find((q) => q.id === z2.id).status === 'novo', 'zadatak ostaje "novo"');

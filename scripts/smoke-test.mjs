@@ -64,6 +64,25 @@ ok((await poziv('oznaci_napredak', { faza: 'faza0', red: 4, gotovo: true })).pod
 ok((await poziv('oznaci_napredak', { faza: 'faza0', red: 99, gotovo: true })).greska, 'nepostojeća stavka se odbija');
 ok((await poziv('dodaj_aktivnost', { sto: 'Test', agent: 'seo' })).podaci?.id, 'koordinator piše aktivnost u ime agenta');
 
+// --- registri ---
+const popis = (await poziv('dohvati_registar')).podaci;
+ok(popis.length >= 5 && popis.some((r) => r.kljuc === 'kljucne-rijeci' && r.verzija === 1), `popis registara (${popis.length})`);
+const kr = (await poziv('dohvati_registar', { kljuc: 'kljucne-rijeci' })).podaci;
+ok(kr.tijelo.length > 500, 'registar se čita s cijelim tekstom');
+ok((await poziv('dohvati_registar', { kljuc: 'ne-postoji' })).greska?.includes('ne postoji'), 'nepostojeći registar');
+ok((await poziv('spremi_registar', { kljuc: 'kljucne-rijeci', tijelo: kr.tijelo + '\n- test', if_verzija: 99 })).greska?.includes('promijenjen'), 'pogrešna verzija se odbija');
+ok((await poziv('spremi_registar', { kljuc: 'kljucne-rijeci', tijelo: 'kratko', if_verzija: kr.verzija })).greska?.includes('polovice'), 'skraćivanje za više od pola se odbija');
+ok((await poziv('spremi_registar', { kljuc: 'nepoznat-registar', tijelo: 'x', if_verzija: 1 })).greska?.includes('Nepoznat'), 'nepoznat ključ se odbija');
+const nov = (await poziv('spremi_registar', { kljuc: 'kljucne-rijeci', tijelo: kr.tijelo + '\n- test koordinator', if_verzija: kr.verzija })).podaci;
+ok(nov?.verzija === kr.verzija + 1, 'ispravan zapis podiže verziju');
+ok((await poziv('spremi_registar', { kljuc: 'kljucne-rijeci', tijelo: 'x', if_verzija: 1 }, TOKEN_KONK)).greska?.includes('ne dopušta'), 'konkurencija nema alat za registre');
+if (process.env.TOKEN_SEO) {
+  const sk = (await poziv('dohvati_registar', { kljuc: 'partneri' }, process.env.TOKEN_SEO)).podaci;
+  ok((await poziv('spremi_registar', { kljuc: 'partneri', tijelo: sk.tijelo + '\n- x', if_verzija: sk.verzija }, process.env.TOKEN_SEO)).greska?.includes('ne smije'), 'SEO ne smije mijenjati registar partnera');
+}
+// Povratak na originalni tekst da kasniji testovi (SEO agent u izvršitelju) počnu od poznatog stanja neovisno o ovome:
+// verzija se ne vraća unatrag, pa izvršitelj-test računa verziju iz registra, ne iz konstante.
+
 // --- konkurent ---
 ok((await poziv('azuriraj_konkurenta', { id: 'imemojemalo', polja: { napomena: 'test' } }, TOKEN_KONK)).podaci,
   'konkurencija mijenja konkurenta');

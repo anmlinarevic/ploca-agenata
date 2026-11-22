@@ -5,6 +5,15 @@
 
 export const AGENTI = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'oglasi', 'materijal'];
 const MAX_ODLUKA_TJEDNO = 3;
+// Tko smije mijenjati koji registar (čitati smiju svi s alatom dohvati_registar)
+const REGISTRI_DOZVOLE = {
+  'kljucne-rijeci': ['seo', 'koordinator'],
+  'ai-vidljivost': ['ai', 'koordinator'],
+  'partneri': ['lokalno', 'koordinator'],
+  'dnevnik-odluka': ['seo', 'ai', 'sadrzaj', 'lokalno', 'koordinator'],
+  'sadrzaj-plan': ['sadrzaj', 'koordinator'],
+  'recenzije-predlosci': ['lokalno', 'sadrzaj', 'koordinator'],
+};
 const KONKURENT_POLJA = {
   naziv: 'text', trziste: 'text', razina: 'text', red: 'int', izvor: 'text', provjereno: 'text',
   proizvod: 'text', cijena_tekst: 'text', velicina: 'text', vrsta: 'text', mjesto: 'text', napomena: 'text',
@@ -227,6 +236,27 @@ export const PISANJE = [
         ]);
       }
       return { id: a.id, promijenjeno: kljucevi };
+    },
+  },
+  {
+    name: 'spremi_registar',
+    description: `Zamijeni cijeli tekst registra (Markdown). PRVO pročitaj registar (dohvati_registar) i vrati cijeli ažurirani tekst, ne samo promjenu. Obavezno navedi verziju koju si pročitao (if_verzija). Dopušteni ključevi i tko ih smije mijenjati: ${Object.entries(REGISTRI_DOZVOLE).map(([k, v]) => `${k} (${v.join(', ')})`).join('; ')}.`,
+    inputSchema: s({ kljuc: { type: 'string' }, tijelo: { type: 'string' }, if_verzija: { type: 'integer' } }, ['kljuc', 'tijelo', 'if_verzija']),
+    run: async (a, ctx, env) => {
+      const dozvoljeni = REGISTRI_DOZVOLE[a.kljuc];
+      if (!dozvoljeni) throw new Error(`Nepoznat registar: ${a.kljuc}`);
+      if (!dozvoljeni.includes(ctx.agent)) throw new Error(`Agent ${ctx.agent} ne smije mijenjati registar ${a.kljuc}`);
+      const tijelo = tekst(a.tijelo, 'tijelo', 80000, true);
+      const stari = await jedan(env, `SELECT verzija, naslov, LENGTH(tijelo) AS znakova FROM registri WHERE tenant_id = ? AND kljuc = ?`, ctx.tenantId, a.kljuc);
+      if (!stari) throw new Error('Registar ne postoji (stvara ga uvoz, ne agent)');
+      if (a.if_verzija !== stari.verzija) throw new Error(`Registar je u međuvremenu promijenjen (verzija ${stari.verzija}). Pročitaj ga ponovno.`);
+      if (tijelo.length < stari.znakova * 0.5) throw new Error('Novi tekst je manji od polovice starog: vjerojatno gubiš sadržaj. Vrati cijeli registar.');
+      await env.DB.batch([
+        env.DB.prepare(`UPDATE registri SET tijelo = ?, verzija = verzija + 1, azurirano = ?, azurirao = ? WHERE tenant_id = ? AND kljuc = ? AND verzija = ?`)
+          .bind(tijelo, sada(), `agent:${ctx.agent}`, ctx.tenantId, a.kljuc, stari.verzija),
+        nadzor(env, ctx, 'spremi_registar', 'registri', a.kljuc, { verzija: stari.verzija, znakova: stari.znakova }, { verzija: stari.verzija + 1, znakova: tijelo.length }),
+      ]);
+      return { kljuc: a.kljuc, verzija: stari.verzija + 1 };
     },
   },
   {

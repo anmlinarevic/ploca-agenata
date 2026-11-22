@@ -1,7 +1,7 @@
 /* Izvršitelj agenata. Nema javnu adresu: dashboard ga zove preko service bindinga (uz zajednički ključ),
  * a Cron ga budi ponedjeljkom. Posao ide u Queue (jedan po jedan), rezultat i trošak u D1.
  * Piše samo u `pokretanja`, `zadaci` (status izvođenja) i `audit_log`; sve ostalo agent radi kroz MCP. */
-import { AGENTI, TJEDNI_LANAC } from '../../../packages/agenti/index.js';
+import { AGENTI, LANCI } from '../../../packages/agenti/index.js';
 import { pokreniAgenta } from './agent.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
@@ -78,9 +78,10 @@ async function obradi(env, { pokretanje_id: id, tenant_id: tenant }) {
     if (preostalo <= 0) return await kraj('odbijeno_limit', null, `Mjesečni limit potrošnje (${post.limitUsd} USD) je dosegnut.`);
 
     const danas = sada().slice(0, 10);
+    const tip = p.vrsta === 'pregled_mjesecni' ? 'mjesečni' : 'tjedni';
     const zadatak = p.zadatak_id
       ? (await jedan(env, `SELECT opis FROM zadaci WHERE tenant_id = ? AND id = ?`, tenant, p.zadatak_id))?.opis
-      : p.opis;
+      : `Radi ${tip} pregled prema svojim uputama. (${p.opis})`;
     const r = await pokreniAgenta({ env, definicija: def, token, zadatak: `${zadatak}\n\n(Datum: ${danas}.)`, preostaloUsd: preostalo, danas, nazivZakupca: post.naziv });
     await kraj(r.status, r.rezultat, r.greska, r);
 
@@ -94,9 +95,9 @@ async function obradi(env, { pokretanje_id: id, tenant_id: tenant }) {
   }
 }
 
-async function pokreniPregled(env, tenant, opis = 'Tjedni pregled') {
-  const [prvi_, ...ostali] = TJEDNI_LANAC;
-  return stavi(env, { tenant, agent: prvi_, vrsta: 'pregled', opis: `${opis}: tjedni`, lanac: ostali });
+async function pokreniPregled(env, tenant, vrsta, izvor) {
+  const [prvi_, ...ostali] = LANCI[vrsta];
+  return stavi(env, { tenant, agent: prvi_, vrsta: `pregled_${vrsta}`, opis: `${izvor}, ${vrsta === 'mjesecni' ? 'mjesečni' : 'tjedni'} pregled`, lanac: ostali });
 }
 
 export default {
@@ -120,7 +121,8 @@ export default {
       return json({ pokretanje_id: id });
     }
     if (url.pathname === '/pregled') {
-      return json({ pokretanje_id: await pokreniPregled(env, tenant, 'Ručno pokrenuto') });
+      const vrsta = b.vrsta === 'mjesecni' ? 'mjesecni' : 'tjedni';
+      return json({ pokretanje_id: await pokreniPregled(env, tenant, vrsta, 'Ručno pokrenuto') });
     }
     return json({ greska: 'Nepoznata adresa' }, 404);
   },
@@ -131,12 +133,15 @@ export default {
     }
   },
 
-  // Cron: samo zakupci koji su uključili raspored (postavke_json.raspored = true)
-  async scheduled(_event, env) {
+  // Cron: ponedjeljkom tjedni pregled, 1. u mjesecu mjesečni. Samo zakupci s postavke_json.raspored = true.
+  // Ako 1. u mjesecu pada u ponedjeljak, radi se samo mjesečni (obuhvaća tjedni).
+  async scheduled(event, env) {
+    const mjesecni = event.cron === '0 6 1 * *';
+    if (!mjesecni && new Date(event.scheduledTime).getUTCDate() === 1) return;
     const { results } = await env.DB.prepare(`SELECT id FROM tenants`).all();
     for (const t of results) {
       const post = await postavke(env, t.id);
-      if (post?.raspored) await pokreniPregled(env, t.id, 'Raspored');
+      if (post?.raspored) await pokreniPregled(env, t.id, mjesecni ? 'mjesecni' : 'tjedni', 'Raspored');
     }
   },
 };

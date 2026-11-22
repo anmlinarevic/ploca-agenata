@@ -160,7 +160,7 @@ async function api(request, env, u, tenant, putanja) {
     return json({ ok: true, pokretanje_id: d.pokretanje_id });
   };
   if (m === 'POST' && (r = /^\/api\/zadaci\/([\w-]+)\/pokreni$/.exec(putanja))) return izvrsitelj('/zadatak', { zadatak_id: r[1] });
-  if (m === 'POST' && putanja === '/api/pregled') return izvrsitelj('/pregled', {});
+  if (m === 'POST' && putanja === '/api/pregled') return izvrsitelj('/pregled', { vrsta: body.vrsta === 'mjesecni' ? 'mjesecni' : 'tjedni' });
 
   // Cijeli tekst izvještaja
   if (m === 'GET' && (r = /^\/api\/izvjestaj\/([\w-]+)$/.exec(putanja))) {

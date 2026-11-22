@@ -26,12 +26,9 @@ export async function pokreniAgenta({ env, definicija, token, zadatak, preostalo
   const mcp = mcpKlijent(env, token);
   const mcpAlati = await mcp.alati();
   const alati = mcpAlati.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema }));
-  if (definicija.web) {
-    alati.push(
-      { type: 'web_search_20260209', name: 'web_search', max_uses: 15 },
-      { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 20 },
-    );
-  }
+  const web = definicija.web;
+  if (web === true || web === 'pretraga') alati.push({ type: 'web_search_20260209', name: 'web_search', max_uses: 15 });
+  if (web === true || web === 'dohvat') alati.push({ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 20 });
 
   const system = `${PREAMBULA}\n\n${definicija.prompt}\n\nDanas je ${danas}. Klijent: ${nazivZakupca}.`;
   const poruke = [{ role: 'user', content: zadatak }];
