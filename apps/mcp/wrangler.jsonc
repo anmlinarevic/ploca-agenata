@@ -4,6 +4,9 @@
   "main": "src/index.js",
   "compatibility_date": "2026-04-03",
   "observability": { "enabled": true },
+  // MCP treba javnu adresu (agenti nemaju preglednik); štiti ga token, ne Access.
+  "workers_dev": true,
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",
