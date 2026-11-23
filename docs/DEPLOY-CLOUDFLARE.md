@@ -164,3 +164,28 @@ stvarni iznos u ploči i na console.anthropic.com). Raspored (ponedjeljak tjedni
 **Što agenti ne mogu (po dizajnu izvršitelja):** nemaju datoteke repozitorija. Stranicu čitaju preko javnog weba, a promjene stranice
 predlažu kao tekst u izvještaju i odluci; PR-ove i dalje radi Claude Code. AI agent ne pita ChatGPT i druge asistente: obrađuje samo
 rezultate koje vlasnik upiše u registar `ai-vidljivost`.
+
+## 10. Narudžbe, kalendar i skladište (faza B)
+
+Novo: tablice `narudzbe`, `skladiste_kretanja`, `artikli` i `norme` (migracija `0005`), zasloni `/kalendar.html` i `/skladiste.html`
+te alati `dohvati_kalendar`, `dohvati_narudzbe` i `dohvati_skladiste` na MCP-u. Ne treba novi secret.
+
+```
+cd C:\Users\AnteMlinarevic\ploca-agenata
+npx wrangler d1 migrations apply ploca --remote --config apps/mcp/wrangler.jsonc
+node scripts/uvoz-artikala.mjs piccolini <put/do/Tina-Obrt>\podaci\dezeni.json tenants/piccolini/artikli.sql
+npx wrangler d1 execute ploca --remote --config apps/mcp/wrangler.jsonc --file=tenants/piccolini/artikli.sql
+npx wrangler deploy --config apps/mcp/wrangler.jsonc
+npx wrangler deploy --config apps/dashboard/wrangler.jsonc
+```
+
+`dezeni.json` mora biti iz grane na kojoj je popis tkanina (41 tkanina; 23. 11. 2026. je u grani `claude/nova-sesija-prompt-fbe1b5`,
+ne u glavnoj mapi). Kad dodaš tkaninu na stranicu, ponovi uvoz: postojeće stanje i pragovi ostaju, mijenjaju se samo naziv, boja i izvor.
+
+**Prvi koraci na ploči:**
+1. Skladište → za svaku tkaninu koju imaš „Inventura: izmjereno stanje” u m² (ili „Ulaz” u metrima s bale). Bez toga piše „Nije upisano”.
+2. Isto za špagu, traku, perle, mašnice, punilo i BoxNow kutije.
+3. Norme: slovo je 15 × 15 cm. Šav, slojevi, iskoristivost, traka po petlji, punilo i sati su procjena; ispravi ih kad izmjeriš.
+4. Kalendar → „+ Narudžba ili rezervacija”. Kad narudžbu označiš „U izradi”, materijal se sam skida sa skladišta.
+
+**Lokalni pregled s izmišljenim podacima:** `npm run demo -- <put/do/dezeni.json>`, pa otvori http://localhost:8797/kalendar.html.
