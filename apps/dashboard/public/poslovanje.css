@@ -9,21 +9,9 @@
   --danger: #a32b2b; --danger-soft: #f8eaea; --konac: #4a4450; --on-accent: #ffffff;
   --font-display: "Fraunces", Georgia, serif; --font-text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --shadow-sm: 0 1px 2px rgba(31,27,36,.05); --shadow-jastuk: 0 1px 0 rgba(31,27,36,.06), 0 6px 14px rgba(31,27,36,.12);
+  /* Uvijek svijetlo, kao na prototipu: ploča ne prati tamni način sustava. */
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --paper: #151317; --white: #201d23; --line: #38333d; --line-strong: #6f6775;
-  --ink: #eee9f0; --ink-mid: #b9b0bd; --ink-soft: #9c94a1;
-  --accent: #e4dfe8; --accent-hover: #ffffff; --accent-soft: #2a262e; --accent-line: #48424e;
-  --kadulja: #8fbea9; --kadulja-soft: #1c2a23; --kadulja-line: #2f4a3d;
-  --glina: #d99a80; --glina-soft: #33241f; --glina-line: #5a3a2e;
-  --danger: #e59a9a; --danger-soft: #362020; --konac: #4a4450; --on-accent: #151317; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --paper: #151317; --white: #201d23; --line: #38333d; --line-strong: #6f6775;
-  --ink: #eee9f0; --ink-mid: #b9b0bd; --ink-soft: #9c94a1;
-  --accent: #e4dfe8; --accent-hover: #ffffff; --accent-soft: #2a262e; --accent-line: #48424e;
-  --kadulja: #8fbea9; --kadulja-soft: #1c2a23; --kadulja-line: #2f4a3d;
-  --glina: #d99a80; --glina-soft: #33241f; --glina-line: #5a3a2e;
-  --danger: #e59a9a; --danger-soft: #362020; --konac: #4a4450; --on-accent: #151317; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-text); font-size: 15.5px; line-height: 1.6; }
