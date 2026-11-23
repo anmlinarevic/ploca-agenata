@@ -38,7 +38,7 @@ Kad je server na Cloudflareu, u repozitoriju klijenta `.mcp.json`:
 `PLOCA_TOKEN` je u okolini (ne u repozitoriju). Lokalno: `http://localhost:8787/mcp` uz `npm run dev`.
 
 ## Korak 3: dashboard
-`apps/dashboard`: Worker (`/api/*`, prijava preko Cloudflare Accessa JWT-a) + statični front-end (`public/index.html`, izgled stare ploče).
+`apps/dashboard`: Worker (`/api/*`, prijava preko Cloudflare Accessa JWT-a) + statični front-end (`public/index.html` s pogledima Pregled, Zadaci, Napredak, Brojke, Konkurencija i Agenti te `kalendar.html` i `skladiste.html`, u izgledu Piccolini Playa).
 Samo čovjek odobrava odluke, zadaje zadatke, upisuje tjedne i kvačice. Savjetnik bira zakupca (zaglavlje X-Tenant).
 Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji), pa
 `npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.

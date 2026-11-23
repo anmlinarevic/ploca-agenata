@@ -75,6 +75,35 @@ for (const [sifra, opis, stanje, dan, od, doo, opc] of [
 ]) sql.push(`INSERT INTO narudzbe (tenant_id, id, sifra, usluga, opis, stanje, termin_od, termin_do, opcija_do, dostava, stavke_json, izrada_json, kreirano, azurirano)
 VALUES ('piccolini', ${q(id())}, ${q(sifra)}, 'igraonica', ${q(opis)}, ${q(stanje)}, ${q(`${dan}T${od}`)}, ${q(`${dan}T${doo}`)}, ${q(opc)}, 'montaza', '[]', '[]', ${q(prije(4))}, ${q(prije(1))});`);
 
+// Glavna ploča: odluke, zadaci, napredak i dnevnik (izmišljeno, za pregled izgleda).
+const odluka = (agent, p, status, naslov, prijedlog, razlog, dana, extra = {}) => sql.push(`INSERT INTO odluke (id, tenant_id, naslov, agent, razlog, prijedlog, prioritet, status, kreirano, komentar, odluceno_at, rezultat)
+VALUES (${q(id())}, 'piccolini', ${q(naslov)}, ${q(agent)}, ${q(razlog)}, ${q(prijedlog)}, ${p}, ${q(status)}, ${q(prije(dana))}, ${q(extra.komentar)}, ${q(extra.odluceno ? prije(extra.odluceno) : null)}, ${q(extra.rezultat)});`);
+odluka('koordinator', 2, 'ceka', 'Odabrati konektor za Google i Meta statistiku', 'Jedan posrednik za Instagram i Google profil tvrtke. Prije spajanja provjeri cijenu.', 'Google i Meta nemaju službeni konektor. Bez plaćanja ostaje mjesečni izvoz iz Search Consolea.', 3);
+odluka('koordinator', 2, 'ceka', 'Kako pokretati agente', 'Prva 2–3 tjedna ručno, zakazani pregledi kad vidiš da su sažeci korisni.', 'Pregledi se mogu pokretati sami: ponedjeljkom tjedni, 1. u mjesecu mjesečni. Svaki pregled troši Claude API.', 3);
+odluka('sadrzaj', 1, 'ceka', 'Plan objava za prosinac', 'Pregledaj i odobri prvi tjedan; ostalo pregledavamo tjedno.', '40 objava (30 za bannere, 10 za igraonicu) s gotovim tekstom i opisom kadra.', 2);
+odluka('lokalno', 3, 'ceka', 'Predlošci poruka za Google recenzije', 'Odobri tekstove; slanje kreće kad otvoriš Google profil.', 'Poruke nakon bannera i nakon igraonice te tri odgovora na recenzije.', 2);
+odluka('seo', 3, 'ceka', 'Naslov stranice /igraonica', 'Dodati „Dugo Selo” u naslov i opis stranice.', 'Upiti s lokacijom čine većinu pretraga za igraonice u okolici.', 1);
+odluka('koordinator', 1, 'odobreno', 'Spojiti Gmail da agenti broje upite', null, null, 3, { odluceno: 2, komentar: 'Prvo dopuna politike privatnosti.' });
+odluka('sadrzaj', 2, 'odobreno', 'Savjet „objesiti izvan dohvata djeteta”', null, null, 3, { odluceno: 2, rezultat: 'Jedna rečenica ide u FAQ na /banneri i u objave o dječjoj sobi.' });
+odluka('seo', 1, 'gotovo', 'Potvrdi upute za održavanje bannera', null, null, 4, { odluceno: 3, rezultat: 'Upute na stranici i u FAQ-u ostaju kako su napisane.' });
+odluka('sadrzaj', 2, 'odbijeno', 'Rok narudžbe za Božić', null, null, 4, { odluceno: 3, komentar: 'Bez roka: ide zamjenska objava.' });
+const zadatak = (agent, status, opis, dana, rok, rezultat = null) => sql.push(`INSERT INTO zadaci (id, tenant_id, opis, agent, rok, status, kreirano, rezultat)
+VALUES (${q(id())}, 'piccolini', ${q(opis)}, ${q(agent)}, ${q(rok)}, ${q(status)}, ${q(prije(dana))}, ${q(rezultat)});`);
+zadatak('konkurencija', 'u_izradi', 'Provjeri cijene bannera kod slovenskih prodavača i javi je li se nešto promijenilo', 0.2, D(2));
+zadatak('seo', 'novo', 'Predloži 5 ključnih riječi za igraonicu u Dugom Selu i okolici', 0.5, D(4));
+zadatak('sadrzaj', 'gotovo', 'Napiši 3 objave za prvi tjedan prosinca', 2, D(0), 'Tri nacrta su u izvještaju „Objave 1. – 7. 12.”: banner za krštenje, igraonica za rođendan u stanu i „iza kulisa” šivanja.');
+for (const [fid, naziv, kad, red, stavke] of [
+  ['faza0', 'Temelji', 'studeni 2026.', 0, [['Ploča agenata na Cloudflareu', 1], ['Narudžbe, kalendar i skladište', 1], ['Google Search Console i sitemap', 0], ['Google profil tvrtke', 0]]],
+  ['faza1', 'Polazno stanje', 'prosinac 2026.', 1, [['Prvo mjerenje upita i recenzija', 0], ['Inventura tkanina', 0]]],
+]) {
+  sql.push(`INSERT INTO napredak_faze (tenant_id, id, naziv, kad, red) VALUES ('piccolini', ${q(fid)}, ${q(naziv)}, ${q(kad)}, ${red});`);
+  stavke.forEach(([t, g], i) => sql.push(`INSERT INTO napredak_stavke (tenant_id, faza_id, red, t, gotovo) VALUES ('piccolini', ${q(fid)}, ${i}, ${q(t)}, ${g});`));
+}
+for (const [agent, sto, sati] of [
+  ['koordinator', 'Tjedni pregled gotov: konkurencija, pa koordinator.', 5], ['ti', 'Odbijeno: rok narudžbe za Božić', 70], ['ti', 'Odobreno: upute za održavanje bannera', 71],
+  ['konkurencija', 'Usporedba cijena: 4 slovenska prodavača i 5 igraonica', 80], ['sadrzaj', 'Plan 40 objava i nacrt vodiča o poklonu za krštenje', 90], ['lokalno', 'Popis 12 sala i restorana, predlošci za recenzije', 92],
+]) sql.push(`INSERT INTO aktivnost (id, tenant_id, kad, agent, sto) VALUES (${q(id())}, 'piccolini', ${q(prije(sati / 24))}, ${q(agent)}, ${q(sto)});`);
+
 // Zakupac i korisnik prvi (artikli imaju strani ključ na zakupca).
 writeFileSync('.wrangler-demo/zakupac.sql', sql.splice(0, 2).join('\n') + '\n');
 writeFileSync('.wrangler-demo/demo.sql', sql.join('\n') + '\n');

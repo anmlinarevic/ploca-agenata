@@ -17,7 +17,7 @@ async function zovi(metoda, put, { korisnik = 'vlasnik@test.hr', tijelo, tenant,
 ok((await zovi('GET', '/api/stanje', { korisnik: null })).status === 401, 'bez prijave → 401');
 ok((await zovi('GET', '/api/stanje', { korisnik: 'nepoznat@test.hr' })).status === 403, 'nepoznat e-mail → 403');
 const idx = await fetch(URL_ + '/');
-ok(idx.status === 200 && (await idx.text()).includes('Upravljačka ploča'), 'statična stranica se poslužuje');
+ok(idx.status === 200 && (await idx.text()).includes('Ploča agenata'), 'statična stranica se poslužuje');
 
 // vlasnik
 const ja = await zovi('GET', '/api/ja');

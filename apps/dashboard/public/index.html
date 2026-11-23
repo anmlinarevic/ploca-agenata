@@ -3,354 +3,457 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Upravljačka ploča</title>
+<title>Ploča agenata</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Rubik:wght@800&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
 <style>
-/* Ploča za vlasnika: sažetak gore, pa odluke (glavni posao), zadaci, brojke, napredak, dnevnik.
-   Boje s piccoliniplay.hr: glina = banneri / naglasak, kadulja = igraonica / gotovo, grafit = tekst. */
-:root {
-  --bg: #f7f5f2; --surface: #ffffff; --ink: #1f1b24; --ink-mid: #57505e; --ink-soft: #7a7280; --line: #e4dfd9;
-  --glina: #8c5340; --glina-soft: #f6ece7; --kadulja: #3f6152; --kadulja-soft: #e7efea;
-  --ceka: #8a6a1c; --ceka-soft: #f8f0dc; --ne: #9b3b3b; --ne-soft: #f8e7e7; --plava: #3d5a80; --plava-soft: #e8eef6;
-  --font-display: "Fraunces", Georgia, serif; --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #151317; --surface: #201d23; --ink: #eee9f0; --ink-mid: #b9b0bd; --ink-soft: #8f8794; --line: #38333d;
-  --glina: #d99a80; --glina-soft: #33241f; --kadulja: #8fbea9; --kadulja-soft: #1c2a23;
-  --ceka: #e2c27a; --ceka-soft: #2e281a; --ne: #e59a9a; --ne-soft: #362020; --plava: #9db8de; --plava-soft: #1f2836; color-scheme: dark; } }
-:root[data-theme="dark"] {
-  --bg: #151317; --surface: #201d23; --ink: #eee9f0; --ink-mid: #b9b0bd; --ink-soft: #8f8794; --line: #38333d;
-  --glina: #d99a80; --glina-soft: #33241f; --kadulja: #8fbea9; --kadulja-soft: #1c2a23;
-  --ceka: #e2c27a; --ceka-soft: #2e281a; --ne: #e59a9a; --ne-soft: #362020; --plava: #9db8de; --plava-soft: #1f2836; color-scheme: dark; }
-
-* { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
-.omot { max-width: 1080px; margin-inline: auto; display: grid; gap: 36px; }
-h1, h2, h3 { margin: 0; text-wrap: balance; }
-h1 { font-family: var(--font-display); font-size: clamp(26px, 4vw, 34px); font-weight: 600; line-height: 1.15; }
-h2 { font-family: var(--font-display); font-size: 22px; font-weight: 600; }
-h3 { font-size: 16px; font-weight: 600; line-height: 1.35; }
-p { margin: 0; }
-a { color: var(--glina); }
-button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--glina); outline-offset: 2px; }
-.nadnaslov { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--glina); }
-.tiho { color: var(--ink-mid); }
-.sitno { font-size: 13px; color: var(--ink-soft); }
-
-.glava { display: grid; gap: 8px; }
-.veza { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-mid); }
-.veza i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-soft); display: inline-block; }
+/* Ploča agenata u izgledu Piccolini Playa: mirno sučelje (grafit), tkanina samo na "šivenim" blokovima uloga.
+   Pogledi: #pregled (uloge + odluke), #zadaci, #napredak, #brojke, #konkurencija, #agenti. */
+:root { --na-tkanini: #1f1b24; --font-slova: "Rubik", "Arial Black", system-ui, sans-serif; }
+.zaglavlje-desno { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+.trosak { display: flex; flex-direction: column; gap: 6px; min-width: 210px; }
+.trosak-red { display: flex; justify-content: space-between; gap: 12px; font-size: 13.6px; }
+.trosak-red span:first-child { color: var(--ink-mid); }
+.trosak-red span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
+.mjerac { height: 6px; background: var(--accent-soft); border-radius: 2px; overflow: hidden; border: 1px solid var(--line); }
+.mjerac i { display: block; height: 100%; background: var(--ink); }
+.mjerac.preko i { background: var(--danger); }
+.stanje-veze { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: var(--ink-soft); }
+.veza { display: inline-flex; align-items: center; gap: 7px; }
+.veza i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
 .veza.ok i { background: var(--kadulja); }
-.veza.greska i { background: var(--ne); }
-nav.skok { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; border-bottom: 1px solid var(--line); }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
-nav.skok a { text-decoration: none; color: var(--ink-mid); font-size: 14px; font-weight: 500; padding: 4px 10px; border-radius: 4px; }
-nav.skok a:hover { background: var(--surface); color: var(--ink); }
-nav.skok b { font-variant-numeric: tabular-nums; color: var(--glina); font-weight: 600; }
+.veza.greska { color: var(--danger); } .veza.greska i { background: var(--danger); }
+.stanje-veze select { padding: 3px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--white); font-size: 13px; }
+.tabovi a b { font-size: 12px; background: var(--ink); color: var(--paper); border-radius: 9px; padding: 1px 7px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tabovi a b:empty { display: none; }
+.tabovi .odvojeno { margin-left: auto; }
+section[data-pogled] { display: flex; flex-direction: column; gap: 40px; }
+.blok-naslov { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.blok-naslov > div { display: flex; flex-direction: column; gap: 4px; }
+.blok-naslov h2 { font-size: 27px; }
+.blok-naslov p { margin: 0; max-width: 64ch; }
+.dio { display: flex; flex-direction: column; gap: 18px; }
+p { margin: 0; }
 
-section { display: grid; gap: 14px; scroll-margin-top: 56px; }
-.naslov-red { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+/* Uloge kao šiveni blokovi */
+.uloge { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 28px 20px; padding-top: 10px; }
+.uloga { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; color: var(--ink); border-radius: 14px; }
+.uloga .blok { transition: transform .15s ease; }
+.uloga:hover .blok { transform: translateY(-2px); }
+.uloga[aria-pressed="true"] .blok { outline: 2px solid var(--accent); outline-offset: 4px; }
+.uloga:disabled { opacity: .55; cursor: default; }
+.uloga:disabled:hover .blok { transform: none; }
+.blok { position: relative; height: 104px; border-radius: 12px; display: grid; place-items: center; font-family: var(--font-slova); font-weight: 800; font-size: 36px; letter-spacing: .02em; color: var(--na-tkanini); box-shadow: var(--shadow-jastuk); }
+.blok::after, .agent-tocka::after, .mini-blok::after { content: ""; position: absolute; border: 1.5px dashed var(--konac); opacity: .55; pointer-events: none; }
+.blok::after { inset: 5px; border-radius: 8px; }
+.krug { position: absolute; top: -10px; right: -10px; min-width: 34px; height: 34px; padding: 0 6px; border-radius: 17px; background: var(--ink); color: var(--paper); font: 700 16px/34px var(--font-text); text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 3px var(--paper); letter-spacing: 0; }
+.krug.prazan { background: var(--white); color: var(--ink-soft); border: 1px solid var(--line); line-height: 32px; }
+.kvacica { position: absolute; top: -10px; left: -10px; width: 26px; height: 26px; border-radius: 13px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--paper); }
+.uloga-tekst { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
+.uloga-ime { font-weight: 600; font-size: 15.5px; line-height: 1.3; }
+.uloga-opis { font-size: 13.6px; color: var(--ink-soft); line-height: 1.4; }
+.uloga-brojevi { font-size: 13.6px; color: var(--ink-mid); font-weight: 500; }
 
-/* Sažetak */
-.plocice { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.plocica { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 2px; min-width: 0; }
-.plocica .br { font-family: var(--font-display); font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
-.plocica .op { font-size: 13px; color: var(--ink-mid); }
-.plocica.pozor { border-color: var(--ceka); }
-.plocica.pozor .br { color: var(--ceka); }
-.razlika { font-size: 12.5px; font-weight: 600; }
-.razlika.gore { color: var(--kadulja); } .razlika.dolje { color: var(--ne); }
+/* Odluke u tri stupca */
+.stupci { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+.stupac { background: var(--accent-soft); border-radius: 4px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.stupac-glava { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 6px; }
+.stupac-glava h3 { font-size: 19px; }
+.broj-chip { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--white); border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; color: var(--ink-mid); }
+.odluka { padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.odluka.tiha { box-shadow: none; }
+.odluka-vrh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.agent-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink-mid); }
+.agent-tocka { position: relative; width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; font: 800 10px/1 var(--font-slova); color: var(--na-tkanini); flex: none; }
+.agent-tocka::after { inset: 2px; border-width: 1px; border-radius: 4px; }
+.prio { font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 2px 7px; border-radius: 3px; border: 1px solid var(--line); color: var(--ink-mid); }
+.prio.p1 { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.prio.p2 { border-color: var(--line-strong); color: var(--ink); }
+.datum { margin-left: auto; font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.odluka h3, .nalog h3 { font-family: var(--font-text); letter-spacing: 0; font-size: 16.5px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; }
+.odluka.tiha h3 { font-size: 15.5px; }
+.prijedlog { font-size: 14.6px; color: var(--ink-mid); line-height: 1.55; }
+.razlog-blok { display: flex; flex-direction: column; gap: 10px; }
+.razlog { font-size: 14px; color: var(--ink-mid); background: var(--accent-soft); border-radius: 3px; padding: 10px 12px; line-height: 1.55; }
+.razlog-blok textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--line-strong); border-radius: 3px; background: var(--white); padding: 8px 10px; font-size: 14px; }
+.razlog-blok textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+.odluka-dno { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line); }
+.tekst-gumb { background: none; border: 0; padding: 6px 2px; font-size: 13.6px; font-weight: 600; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--accent-line); }
+.desno { margin-left: auto; display: flex; gap: 8px; }
+.oznaka-st { font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 2px 7px; border-radius: 3px; }
+.oznaka-st.gotovo { background: var(--kadulja-soft); color: var(--kadulja); }
+.oznaka-st.odbijeno { background: var(--glina-soft); color: var(--glina); }
+.oznaka-st.radi { background: var(--white); color: var(--ink-mid); border: 1px solid var(--accent-line); }
+.rezultat { font-size: 14px; color: var(--ink-mid); line-height: 1.5; }
+.stupac .prazno { text-align: center; padding: 20px 8px; }
 
-/* Kartice */
-.lista { display: grid; gap: 10px; }
-.kartica { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 10px; min-width: 0; border-left-width: 4px; }
-.kartica.st-ceka { border-left-color: var(--ceka); }
-.kartica.st-odobreno, .kartica.st-u_izradi { border-left-color: var(--plava); }
-.kartica.st-gotovo { border-left-color: var(--kadulja); }
-.kartica.st-odbijeno { border-left-color: var(--ne); }
-.kartica.st-novo { border-left-color: var(--glina); }
-.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; color: var(--ink-soft); }
-.pil { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 3px; background: var(--bg); color: var(--ink-mid); }
-.pil.agent { background: var(--glina-soft); color: var(--glina); }
-.pil.vazno { background: var(--ne-soft); color: var(--ne); }
-.pil.s-ceka, .pil.s-novo { background: var(--ceka-soft); color: var(--ceka); }
-.pil.s-odobreno, .pil.s-u_izradi { background: var(--plava-soft); color: var(--plava); }
-.pil.s-gotovo { background: var(--kadulja-soft); color: var(--kadulja); }
-.pil.s-odbijeno { background: var(--ne-soft); color: var(--ne); }
-.kartica .razlog { color: var(--ink-mid); font-size: 14.5px; }
-.prijedlog { font-size: 14.5px; background: var(--bg); border-radius: 4px; padding: 8px 10px; }
-.prijedlog b { font-weight: 600; }
-.odgovor { font-size: 14px; color: var(--ink-mid); border-top: 1px dashed var(--line); padding-top: 8px; }
-.kontrole { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
-.kontrole textarea { flex: 1 1 260px; min-width: 0; min-height: 40px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); font-size: 14px; }
-.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.btn:hover:not(:disabled) { border-color: var(--ink-soft); }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.da { background: var(--kadulja); border-color: var(--kadulja); color: var(--surface); }
-.btn.ne { color: var(--ne); }
-.btn.glavni { background: var(--glina); border-color: var(--glina); color: var(--surface); }
-.btn.mali { padding: 5px 10px; font-size: 13px; }
-.poruka { font-size: 13.5px; color: var(--ink-mid); }
-.poruka.greska { color: var(--ne); }
-.prazno { background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 18px; color: var(--ink-mid); font-size: 14.5px; }
-.filtri { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.filtri button { border: 0; background: var(--surface); padding: 5px 12px; font-size: 13px; cursor: pointer; color: var(--ink-mid); }
-.filtri button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+/* Kartice uz dno pregleda */
+.okvir { padding: 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.okvir-glava { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.okvir-glava h2, .okvir-glava h3 { font-size: 21px; }
+.faza-sazetak { display: flex; flex-direction: column; gap: 6px; }
+.faza-sazetak .red { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.faza-sazetak .red b { font-weight: 600; font-size: 15px; }
+.faza-sazetak .red span:last-child { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-mid); }
+.napredak-traka { height: 10px; background: var(--accent-soft); border-radius: 2px; overflow: hidden; border: 1px solid var(--line); }
+.napredak-traka i { display: block; height: 100%; background: var(--kadulja); }
+.dogadaji { display: flex; flex-direction: column; }
+.dogadaj { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.dogadaj:first-child { border-top: 0; }
+.dogadaj .agent-tocka { width: 34px; height: 34px; font-size: 11px; }
+.dogadaj-tekst { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14.6px; line-height: 1.45; overflow-wrap: anywhere; }
+.dogadaj-tekst .sitno { font-size: 12.8px; }
 
-/* Obrasci */
-form.obrazac { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 12px; }
-.polja { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
-.polje { display: grid; gap: 4px; min-width: 0; }
-.polje label { font-size: 13px; font-weight: 600; color: var(--ink-mid); }
-.polje input, .polje select, .polje textarea { padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); width: 100%; min-width: 0; }
-.polje textarea { min-height: 70px; resize: vertical; }
-.polje.siroko { grid-column: 1 / -1; }
-fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
-legend { font-size: 13px; font-weight: 600; color: var(--ink-mid); padding: 0; margin-bottom: 4px; }
-details.unos > summary { cursor: pointer; font-weight: 600; color: var(--glina); list-style: none; display: inline-flex; gap: 6px; align-items: center; }
-details.unos > summary::-webkit-details-marker { display: none; }
-details.unos > summary::before { content: "+"; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--glina); border-radius: 3px; font-size: 14px; line-height: 1; }
-details.unos[open] > summary::before { content: "−"; }
-details.unos[open] > form { margin-top: 10px; }
+/* Zadaci (nalozi) */
+.zadaci-raspored { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.zadaci-popis { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.zadaci-forma { flex: 1 1 360px; min-width: 0; }
+.nalog { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 18px; padding: 20px; align-items: start; }
+.mini-blok { position: relative; width: 64px; height: 64px; border-radius: 12px; display: grid; place-items: center; font: 800 17px/1 var(--font-slova); color: var(--na-tkanini); box-shadow: var(--shadow-jastuk); flex: none; }
+.mini-blok::after { inset: 4px; border-width: 1.3px; border-radius: 8px; }
+.nalog-sredina { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.nalog-agent { font-size: 13px; font-weight: 600; color: var(--ink-mid); }
+.nalog .meta { gap: 4px 14px; font-size: 13.4px; color: var(--ink-soft); }
+.put { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 6px; }
+.put-korak { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 12.5px; color: var(--ink-soft); padding-right: 6px; }
+.put-korak::before { content: ""; position: absolute; top: 6px; left: 14px; right: 0; height: 2px; background: var(--line); }
+.put-korak:last-child::before { display: none; }
+.put-korak i { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 7px; background: var(--white); border: 2px solid var(--line-strong); }
+.put-korak.prosao { color: var(--ink-mid); }
+.put-korak.prosao::before { background: var(--kadulja); }
+.put-korak.prosao i { background: var(--kadulja); border-color: var(--kadulja); }
+.put-korak.sada { color: var(--ink); font-weight: 600; }
+.put-korak.sada i { border-color: var(--ink); background: var(--ink); box-shadow: 0 0 0 4px var(--accent-soft); }
+.nalog .rezultat { margin-top: 4px; background: var(--accent-soft); border-radius: 3px; padding: 12px 14px; font-size: 14.4px; line-height: 1.55; white-space: pre-wrap; }
+.akcija { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.akcija .stanje { font-size: 13px; font-weight: 600; color: var(--ink-mid); text-align: right; }
+.forma-zadatka { overflow: hidden; display: flex; flex-direction: column; }
+.forma-glava { background: var(--accent); color: var(--on-accent); padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; }
+.forma-glava span { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
+.forma-glava h2 { font-size: 23px; color: var(--on-accent); }
+.forma-tijelo { padding: 22px; display: flex; flex-direction: column; gap: 20px; }
+.forma-tijelo fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.forma-tijelo legend { padding: 0; margin-bottom: 10px; font-size: 14.4px; font-weight: 700; }
+.izbori { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.izbor { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); cursor: pointer; color: var(--ink); font-size: 13px; font-weight: 500; text-align: center; line-height: 1.3; }
+.izbor:hover { border-color: var(--line-strong); }
+.izbor[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.izbor .mini-blok { width: 46px; height: 46px; font-size: 13px; border-radius: 10px; }
+.izbor .mini-blok::after { inset: 3px; border-radius: 7px; }
+.izbor .kv { position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 9px; background: var(--ink); color: var(--paper); display: none; place-items: center; }
+.izbor[aria-pressed="true"] .kv { display: grid; }
+.info { background: var(--accent-soft); border-radius: 3px; padding: 12px 14px; font-size: 13.8px; color: var(--ink-mid); line-height: 1.5; display: flex; flex-direction: column; gap: 4px; }
+.info strong { color: var(--ink); font-weight: 600; }
+.forma-tijelo textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
 
-/* Brojke */
-.brojke { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; }
-@media (max-width: 760px) { .brojke { grid-template-columns: minmax(0, 1fr); } }
-.okvir { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
-.graf { overflow-x: auto; }
-.graf svg { display: block; width: 100%; min-width: 420px; height: auto; color: var(--ink-soft); }
-.legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-mid); }
-.legenda span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
-.izvori { display: grid; gap: 8px; }
-.izvor { display: grid; grid-template-columns: 110px minmax(0, 1fr) 36px; gap: 8px; align-items: center; font-size: 13.5px; }
-.izvor .traka { height: 10px; background: var(--bg); border-radius: 2px; overflow: hidden; }
-.izvor .traka i { display: block; height: 100%; background: var(--glina); border-radius: 2px; }
-.izvor.ai .traka i { background: var(--plava); }
-.izvor .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-mid); }
-
-/* Konkurencija */
-.tablica { overflow-x: auto; }
-.tablica table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
-.tablica th, .tablica td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.tablica thead th { font-size: 12.5px; color: var(--ink-soft); font-weight: 600; letter-spacing: .03em; }
-.tablica thead th.mi { color: var(--glina); }
-.tablica tbody th { font-weight: 500; color: var(--ink-mid); width: 30%; }
-.tablica tbody tr:last-child th, .tablica tbody tr:last-child td { border-bottom: 0; }
-.tablica td.najbolje { background: var(--kadulja-soft); color: var(--kadulja); font-weight: 600; }
-.tablica td.mi { font-weight: 500; }
-.tablica .num { font-variant-numeric: tabular-nums; }
-.tablica td.cij { white-space: nowrap; }
-.dvije { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-ul.pr { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
-.okvir.jaci { border-top: 3px solid var(--kadulja); }
-.okvir.slabiji { border-top: 3px solid var(--ceka); }
-
-/* Napredak */
-.faze { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.faza { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
-.faza .kad { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
-.napredak { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
-.napredak i { display: block; height: 100%; background: var(--kadulja); }
-.stavke { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
-.stavke label { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: start; cursor: pointer; }
-.stavke input { margin: 3px 0 0; accent-color: var(--kadulja); }
+/* Napredak, brojke, konkurencija, agenti */
+.faze { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.faza { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.faza .kad { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+.faza h3 { font-size: 20px; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.faza h3 span { font-family: var(--font-text); font-size: 14px; color: var(--ink-mid); font-variant-numeric: tabular-nums; }
+.stavke { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14.4px; }
+.stavke label { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; cursor: pointer; }
+.stavke input { margin: 4px 0 0; accent-color: var(--kadulja); }
 .stavke .gotovo span { color: var(--ink-soft); text-decoration: line-through; }
-
-/* Dnevnik */
-.dnevnik { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
-.dnevnik li { display: grid; grid-template-columns: 92px 150px minmax(0, 1fr); gap: 4px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
-.dnevnik li:last-child { border-bottom: 0; }
-.dnevnik time { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: 13px; }
-@media (max-width: 640px) { .dnevnik li { grid-template-columns: minmax(0, 1fr); } }
-
+.plocice { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.plocica { padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.plocica .br { font-family: var(--font-display); font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.plocica .op { font-size: 13.6px; color: var(--ink-mid); }
+.brojke-red { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 800px) { .brojke-red { grid-template-columns: minmax(0, 1fr); } }
+.graf { overflow-x: auto; }
+.graf svg { display: block; width: 100%; min-width: 420px; height: auto; }
+.legenda-grafa { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-mid); }
+.legenda-grafa span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+.izvori { display: flex; flex-direction: column; gap: 10px; }
+.izvor { display: grid; grid-template-columns: 104px minmax(0, 1fr) 32px; gap: 10px; align-items: center; font-size: 14px; }
+.izvor-traka { height: 10px; background: var(--accent-soft); border-radius: 2px; overflow: hidden; }
+.izvor-traka i { display: block; height: 100%; background: var(--ink-mid); }
+.izvor .n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-mid); }
+details.unos > summary { cursor: pointer; list-style: none; display: inline-flex; }
+details.unos > summary::-webkit-details-marker { display: none; }
+details.unos[open] > summary { margin-bottom: 14px; }
+.obrazac { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+.obrazac fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.obrazac legend { font-size: 14px; font-weight: 700; padding: 0; margin-bottom: 10px; }
+.tablica td.najbolje { background: var(--kadulja-soft); color: var(--kadulja); font-weight: 600; }
+.tablica .mi { font-weight: 600; color: var(--ink); }
+.tablica tbody th { text-align: left; font-weight: 500; color: var(--ink-mid); padding: 10px 8px 10px 0; border-bottom: 1px solid var(--line); width: 28%; font-size: 14.5px; text-transform: none; letter-spacing: 0; }
+.tablica td, .tablica th { padding-left: 8px; vertical-align: top; }
+ul.pr { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14.4px; }
+.okvir.jaci { border-top: 3px solid var(--kadulja); }
+.okvir.slabiji { border-top: 3px solid var(--glina); }
+.pokretanje { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.izvjestaj summary { cursor: pointer; padding: 14px 18px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.izvjestaj summary b { font-weight: 600; }
+.izvjestaj pre { white-space: pre-wrap; font: inherit; font-size: 14.4px; margin: 0; padding: 0 18px 18px; color: var(--ink-mid); }
+.lista { display: flex; flex-direction: column; gap: 12px; }
+footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 6px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px; color: var(--ink-mid); display: grid; gap: 6px; }
+@media (max-width: 640px) {
+  .nalog { grid-template-columns: 48px minmax(0, 1fr); }
+  .nalog .mini-blok { width: 48px; height: 48px; font-size: 14px; }
+  .nalog .akcija { grid-column: 1 / -1; align-items: stretch; }
+  .tabovi .odvojeno { margin-left: 0; }
+  .izbori { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .uloga .blok { transition: none; } .uloga:hover .blok { transform: none; } }
 </style>
 
-<div class="omot">
-  <header class="glava">
-    <span class="nadnaslov" id="naziv-zakupca">Marketing</span>
-    <h1>Upravljačka ploča</h1>
-    <p class="tiho">Agenti ovdje ostavljaju odluke, rezultate i brojke. Ti odobravaš, odbijaš i zadaješ posao.</p>
-    <div class="kontrole" style="align-items:center"><label class="sitno" id="tenant-labela" for="tenant-izbor" hidden>Klijent:</label><select id="tenant-izbor" hidden></select><span class="sitno" id="korisnik"></span></div>
-    <span class="veza" id="veza"><i></i><span>Povezujem se s podacima…</span></span>
-  </header>
-
-  <nav class="skok" aria-label="Dijelovi ploče">
-    <a href="#odluke">Odluke <b id="nav-odluke"></b></a>
-    <a href="#zadaci">Zadaci <b id="nav-zadaci"></b></a>
-    <a href="#brojke">Brojke</a>
-    <a href="#konkurencija">Konkurencija</a>
-    <a href="#napredak">Napredak</a>
-    <a href="#agenti">Agenti</a>
-    <a href="#izvjestaji">Izvještaji</a>
-    <a href="#aktivnost">Dnevnik</a>
-    <a href="/kalendar.html">Kalendar →</a>
-    <a href="/skladiste.html">Skladište →</a>
-  </nav>
-
-  <section aria-label="Sažetak">
-    <div class="plocice" id="plocice">
-      <div class="plocica"><span class="br">–</span><span class="op">čeka tvoju odluku</span></div>
-      <div class="plocica"><span class="br">–</span><span class="op">zadataka u tijeku</span></div>
-      <div class="plocica"><span class="br">–</span><span class="op">upita zadnji tjedan</span></div>
-      <div class="plocica"><span class="br">–</span><span class="op">Faza 0 gotova</span></div>
-    </div>
-  </section>
-
-  <section id="odluke" aria-labelledby="h-odluke">
-    <div class="naslov-red">
-      <h2 id="h-odluke">Čeka tvoju odluku</h2>
-      <div class="filtri" role="group" aria-label="Prikaz odluka">
-        <button type="button" data-filtar="ceka" aria-pressed="true">Na čekanju</button>
-        <button type="button" data-filtar="sve" aria-pressed="false">Sve</button>
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov" id="naziv-zakupca">Marketing</span>
+        <h1>Ploča agenata</h1>
+        <span class="sitno" id="tjedan-info">Agent predlaže, ti odobravaš</span>
       </div>
-    </div>
-    <div class="lista" id="lista-odluka"><p class="prazno">Učitavam odluke…</p></div>
-  </section>
-
-  <section id="zadaci" aria-labelledby="h-zadaci">
-    <div class="naslov-red">
-      <h2 id="h-zadaci">Zadaci agentima</h2>
-      <span class="sitno" id="pokretanje-info"></span>
-    </div>
-    <details class="unos" id="novi-zadatak">
-      <summary>Novi zadatak</summary>
-      <form class="obrazac" id="forma-zadatak">
-        <div class="polja">
-          <div class="polje"><label for="z-agent">Za koga</label>
-            <select id="z-agent" required>
-              <option value="koordinator">Koordinator (sam rasporedi)</option>
-              <option value="konkurencija">Konkurencija</option>
-              <option value="seo">SEO</option>
-              <option value="ai">AI vidljivost</option>
-              <option value="sadrzaj">Sadržaj</option>
-              <option value="lokalno">Lokalno i recenzije</option>
-              <option value="oglasi">Oglasi</option>
-              <option value="materijal">Potrošni materijal</option>
-              <option value="claude">Claude (opći zadatak)</option>
-            </select></div>
-          <div class="polje"><label for="z-rok">Rok (neobavezno)</label><input id="z-rok" type="date"></div>
-          <div class="polje siroko"><label for="z-opis">Što treba napraviti</label><textarea id="z-opis" required placeholder="Npr. Provjeri cijene bannera kod slovenskih konkurenata i javi je li se nešto promijenilo."></textarea></div>
+      <div class="zaglavlje-desno">
+        <div class="trosak" id="trosak" hidden>
+          <div class="trosak-red"><span id="trosak-mjesec">Potrošnja ovaj mjesec</span><span id="trosak-iznos"></span></div>
+          <div class="mjerac" id="trosak-mjerac"><i style="width:0"></i></div>
         </div>
-        <div class="kontrole"><button class="btn glavni" type="submit">Dodaj zadatak</button><span class="poruka" id="z-poruka" aria-live="polite"></span></div>
-      </form>
-    </details>
-    <div class="lista" id="lista-zadataka"><p class="prazno">Učitavam zadatke…</p></div>
-  </section>
-
-  <section id="brojke" aria-labelledby="h-brojke">
-    <div class="naslov-red">
-      <h2 id="h-brojke">Brojke</h2>
-      <span class="sitno">Upiti i narudžbe upisuješ ti, jednom tjedno; mjesečne brojke upisuju agenti.</span>
-    </div>
-    <div class="plocice" id="kpi"></div>
-    <div class="brojke">
-      <div class="okvir">
-        <h3>Upiti i narudžbe po tjednu</h3>
-        <div class="graf" id="graf"></div>
-        <div class="legenda"><span style="--c: var(--glina)">upiti, banneri</span><span style="--c: var(--kadulja)">upiti, igraonica</span><span style="--c: var(--ink)">narudžbe bannera</span></div>
-      </div>
-      <div class="okvir">
-        <h3>Kako su saznali za nas</h3>
-        <p class="sitno">Zadnjih 8 tjedana, iz polja u obrascu upita.</p>
-        <div class="izvori" id="izvori"></div>
+        <button class="btn" type="button" id="pokreni-mjesecni" data-vrsta="mjesecni">Mjesečni pregled</button>
+        <button class="btn glavni" type="button" id="pokreni-pregled" data-vrsta="tjedni">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 5l12 7-12 7z"></path></svg>
+          Pokreni tjedni pregled
+        </button>
       </div>
     </div>
-    <details class="unos">
-      <summary>Upiši tjedan</summary>
-      <form class="obrazac" id="forma-tjedan">
-        <div class="polja">
-          <div class="polje"><label for="t-dan">Bilo koji dan u tjednu</label><input id="t-dan" type="date" required></div>
-          <div class="polje"><label for="t-ub">Upiti, banneri</label><input id="t-ub" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-          <div class="polje"><label for="t-ui">Upiti, igraonica</label><input id="t-ui" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-          <div class="polje"><label for="t-nar">Narudžbe bannera</label><input id="t-nar" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-          <div class="polje"><label for="t-rez">Rezervacije igraonice</label><input id="t-rez" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-          <div class="polje"><label for="t-rec">Google recenzije (ukupno)</label><input id="t-rec" type="number" min="0" step="1" inputmode="numeric"></div>
-        </div>
-        <fieldset>
-          <legend>Kako su saznali za nas (broj upita)</legend>
-          <div class="polja">
-            <div class="polje"><label for="t-i-instagram">Instagram</label><input id="t-i-instagram" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-            <div class="polje"><label for="t-i-facebook">Facebook</label><input id="t-i-facebook" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-            <div class="polje"><label for="t-i-google">Google</label><input id="t-i-google" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-            <div class="polje"><label for="t-i-ai">AI asistent</label><input id="t-i-ai" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-            <div class="polje"><label for="t-i-preporuka">Preporuka</label><input id="t-i-preporuka" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-            <div class="polje"><label for="t-i-ostalo">Ostalo / nije odgovoreno</label><input id="t-i-ostalo" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
-          </div>
-        </fieldset>
-        <div class="kontrole"><button class="btn glavni" type="submit">Spremi tjedan</button><span class="poruka" id="t-poruka" aria-live="polite"></span></div>
-      </form>
-    </details>
-  </section>
-
-  <section id="konkurencija" aria-labelledby="h-konk">
-    <div class="naslov-red"><h2 id="h-konk">Konkurencija</h2><span class="sitno" id="konk-info">Ažurira agent Konkurencija.</span></div>
-    <div class="okvir">
-      <h3>Banner s imenom: mi i izravni konkurenti</h3>
-      <p class="sitno">Zeleno je najbolja vrijednost u retku.</p>
-      <div class="tablica" id="konk-tablica"><p class="tiho">Učitavam…</p></div>
-    </div>
-    <div class="dvije" id="konk-prednosti"></div>
-    <div class="okvir">
-      <h3>Slovenija: što se ondje prodaje</h3>
-      <p class="sitno">Slovenski prodavači uglavnom nude jednu zastavicu s cijelim imenom, a ne girlandu slovo po slovo, pa cijene nisu izravno usporedive.</p>
-      <div class="tablica" id="konk-si"></div>
-    </div>
-    <div class="okvir">
-      <h3>Igraonica: Dugo Selo i okolica</h3>
-      <div class="tablica" id="konk-lok"></div>
-    </div>
-  </section>
-
-  <section id="napredak" aria-labelledby="h-napredak">
-    <div class="naslov-red"><h2 id="h-napredak">Napredak po fazama</h2><span class="sitno">Kvačice možeš mijenjati i ti.</span></div>
-    <div class="faze" id="faze"><p class="prazno">Učitavam faze…</p></div>
-  </section>
-
-  <section id="agenti" aria-labelledby="h-agenti">
-    <div class="naslov-red">
-      <h2 id="h-agenti">Agenti: pokretanja i trošak</h2>
-      <span class="sitno" id="potrosnja"></span>
-    </div>
-    <div class="kontrole">
-      <button class="btn glavni" type="button" id="pokreni-pregled" data-vrsta="tjedni">Pokreni tjedni pregled sada</button>
-      <button class="btn" type="button" id="pokreni-mjesecni" data-vrsta="mjesecni">Pokreni mjesečni pregled sada</button>
+    <div class="stanje-veze">
+      <span class="veza" id="veza"><i></i><span>Povezujem se s podacima…</span></span>
+      <span id="korisnik"></span>
+      <label for="tenant-izbor" id="tenant-labela" hidden>Klijent:</label><select id="tenant-izbor" hidden></select>
       <span class="poruka" id="pregled-poruka" aria-live="polite"></span>
     </div>
-    <div class="lista" id="lista-pokretanja"><p class="prazno">Učitavam…</p></div>
+    <nav class="tabovi" aria-label="Dijelovi ploče">
+      <a href="#pregled" data-tab="pregled">Pregled<b id="nav-odluke"></b></a>
+      <a href="#zadaci" data-tab="zadaci">Zadaci agentima<b id="nav-zadaci"></b></a>
+      <a href="#napredak" data-tab="napredak">Napredak</a>
+      <a href="#brojke" data-tab="brojke">Brojke</a>
+      <a href="#konkurencija" data-tab="konkurencija">Konkurencija</a>
+      <a href="#agenti" data-tab="agenti">Agenti i izvještaji</a>
+      <a href="/kalendar.html" class="odvojeno">Kalendar</a>
+      <a href="/skladiste.html">Skladište</a>
+    </nav>
+  </div>
+</header>
+
+<main class="omot">
+
+  <!-- ── Pregled ── -->
+  <section data-pogled="pregled" aria-label="Pregled">
+    <div class="dio" aria-labelledby="h-uloge">
+      <div class="blok-naslov">
+        <div>
+          <h2 id="h-uloge">Tko od tebe nešto čeka</h2>
+          <p class="sitno">Broj u krugu je broj odluka koje čekaju tebe. Klik na ulogu prikazuje samo njezine kartice.</p>
+        </div>
+        <button class="btn malo" type="button" id="ponisti-ulogu" hidden>Prikaži sve uloge</button>
+      </div>
+      <div class="uloge" id="uloge"></div>
+    </div>
+
+    <div class="dio" aria-labelledby="h-odluke">
+      <div class="blok-naslov" style="justify-content:flex-start">
+        <h2 id="h-odluke">Odluke</h2>
+        <span class="sitno" id="opis-filtra">Sve uloge · najhitnije prvo</span>
+      </div>
+      <div class="stupci">
+        <div class="stupac">
+          <div class="stupac-glava"><h3>Čeka tvoju odluku</h3><span class="broj-chip" id="br-ceka">0</span></div>
+          <div class="lista" id="stupac-ceka"><p class="prazno">Učitavam odluke…</p></div>
+        </div>
+        <div class="stupac">
+          <div class="stupac-glava"><h3>Odobreno, agent radi</h3><span class="broj-chip" id="br-radi">0</span></div>
+          <div class="lista" id="stupac-radi"></div>
+        </div>
+        <div class="stupac">
+          <div class="stupac-glava"><h3>Riješeno</h3><span class="broj-chip" id="br-gotovo">0</span></div>
+          <div class="lista" id="stupac-gotovo"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dvije">
+      <div class="kartica okvir" aria-labelledby="h-faze-s">
+        <div class="okvir-glava"><h2 id="h-faze-s">Napredak po fazama</h2><a href="#napredak" style="font-size:13.6px">Sve stavke</a></div>
+        <div id="faze-sazetak" style="display:flex;flex-direction:column;gap:18px"><p class="prazno">Učitavam…</p></div>
+      </div>
+      <div class="kartica okvir" aria-labelledby="h-aktivnost">
+        <div class="okvir-glava"><h2 id="h-aktivnost">Što se radilo</h2><span class="sitno" id="aktivnost-opis">zadnji zapisi</span></div>
+        <div class="dogadaji" id="aktivnost"><p class="prazno">Učitavam…</p></div>
+      </div>
+    </div>
   </section>
 
-  <section id="izvjestaji" aria-labelledby="h-izvjestaji">
-    <h2 id="h-izvjestaji">Izvještaji agenata</h2>
-    <div class="lista" id="lista-izvjestaja"><p class="prazno">Učitavam…</p></div>
+  <!-- ── Zadaci ── -->
+  <section data-pogled="zadaci" aria-label="Zadaci agentima" hidden>
+    <div class="zadaci-raspored">
+      <div class="zadaci-popis">
+        <div class="blok-naslov">
+          <div>
+            <h2>Zadaci koje si dao agentima</h2>
+            <p class="sitno">Zadatak je nalog od tebe agentu. Odluke su obrnuto: prijedlozi agenata koje ti odobravaš na Pregledu.</p>
+          </div>
+        </div>
+        <div class="filtri" role="group" aria-label="Filtar zadataka" id="filtri-zadataka"></div>
+        <div class="lista" id="nalozi"><p class="prazno">Učitavam zadatke…</p></div>
+      </div>
+      <aside class="zadaci-forma" aria-labelledby="h-novi">
+        <form class="kartica forma-zadatka" id="forma-zadatak" novalidate>
+          <div class="forma-glava"><span>Nalog agentu</span><h2 id="h-novi">Novi zadatak</h2></div>
+          <div class="forma-tijelo">
+            <fieldset>
+              <legend>1. Kome</legend>
+              <div class="izbori" id="izbor-agenta"></div>
+            </fieldset>
+            <div class="info" id="agent-info" aria-live="polite"></div>
+            <div class="polje">
+              <label for="z-opis">2. Što treba napraviti</label>
+              <textarea id="z-opis" placeholder="Npr. Provjeri cijene bannera kod slovenskih prodavača i javi je li se nešto promijenilo."></textarea>
+              <span class="sitno" style="font-size:13px">Jedan zadatak, jedan cilj. Agent ne objavljuje, ne šalje i ne mijenja cijene: rezultat dolazi kao izvještaj ili odluka za tebe.</span>
+            </div>
+            <div class="polje">
+              <label for="z-rok">3. Rok <span style="font-weight:400;color:var(--ink-soft)">(neobavezno)</span></label>
+              <input id="z-rok" type="date">
+            </div>
+            <p class="poruka" id="z-poruka" aria-live="polite"></p>
+            <div class="kontrole">
+              <button class="btn glavni" type="submit" style="flex:1 1 auto">Dodaj zadatak</button>
+              <button class="btn" type="button" id="dodaj-pokreni" style="flex:1 1 auto">Dodaj i pokreni</button>
+            </div>
+          </div>
+        </form>
+      </aside>
+    </div>
   </section>
 
-  <section id="aktivnost" aria-labelledby="h-aktivnost">
-    <h2 id="h-aktivnost">Što se radilo</h2>
-    <ul class="dnevnik" id="dnevnik"><li><span class="tiho">Učitavam dnevnik…</span></li></ul>
+  <!-- ── Napredak ── -->
+  <section data-pogled="napredak" aria-label="Napredak" hidden>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Napredak po fazama</h2><p class="sitno">Kvačice upisuju agenti, a možeš i ti.</p></div></div>
+      <div class="faze" id="faze"><p class="prazno">Učitavam faze…</p></div>
+    </div>
   </section>
 
-  <footer>
-    <p>Agenti pišu na ploču pri tjednom i mjesečnom pregledu (<code>/marketing-pregled</code>). Odluku koju odobriš izvršavaju u idućem pregledu ili odmah, ako zadatak pokreneš gumbom.</p>
-    <p>Pravila: agenti ništa ne objavljuju, ne troše novac i ne mijenjaju cijene. Promjene stranice uvijek idu kao PR koji ti spajaš.</p>
-  </footer>
-</div>
+  <!-- ── Brojke ── -->
+  <section data-pogled="brojke" aria-label="Brojke" hidden>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Brojke</h2><p class="sitno">Upite i narudžbe upisuješ ti, jednom tjedno; mjesečne brojke upisuju agenti.</p></div></div>
+      <div class="plocice" id="kpi"></div>
+      <div class="brojke-red">
+        <div class="kartica okvir">
+          <div class="okvir-glava"><h3>Upiti i narudžbe po tjednu</h3></div>
+          <div class="graf" id="graf"></div>
+          <div class="legenda-grafa"><span style="--c: var(--glina)">upiti, banneri</span><span style="--c: var(--kadulja)">upiti, igraonica</span><span style="--c: var(--ink)">narudžbe bannera</span></div>
+        </div>
+        <div class="kartica okvir">
+          <div class="okvir-glava"><h3>Kako su saznali za nas</h3></div>
+          <p class="sitno">Zadnjih 8 tjedana, iz polja u obrascu upita.</p>
+          <div class="izvori" id="izvori"></div>
+        </div>
+      </div>
+      <details class="unos">
+        <summary class="btn">Upiši tjedan</summary>
+        <form class="kartica obrazac" id="forma-tjedan">
+          <div class="mreza-polja">
+            <div class="polje"><label for="t-dan">Bilo koji dan u tjednu</label><input id="t-dan" type="date" required></div>
+            <div class="polje"><label for="t-ub">Upiti, banneri</label><input id="t-ub" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+            <div class="polje"><label for="t-ui">Upiti, igraonica</label><input id="t-ui" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+            <div class="polje"><label for="t-nar">Narudžbe bannera</label><input id="t-nar" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+            <div class="polje"><label for="t-rez">Rezervacije igraonice</label><input id="t-rez" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+            <div class="polje"><label for="t-rec">Google recenzije (ukupno)</label><input id="t-rec" type="number" min="0" step="1" inputmode="numeric"></div>
+          </div>
+          <fieldset>
+            <legend>Kako su saznali za nas (broj upita)</legend>
+            <div class="mreza-polja">
+              <div class="polje"><label for="t-i-instagram">Instagram</label><input id="t-i-instagram" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+              <div class="polje"><label for="t-i-facebook">Facebook</label><input id="t-i-facebook" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+              <div class="polje"><label for="t-i-google">Google</label><input id="t-i-google" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+              <div class="polje"><label for="t-i-ai">AI asistent</label><input id="t-i-ai" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+              <div class="polje"><label for="t-i-preporuka">Preporuka</label><input id="t-i-preporuka" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+              <div class="polje"><label for="t-i-ostalo">Ostalo / nije odgovoreno</label><input id="t-i-ostalo" type="number" min="0" step="1" inputmode="numeric" value="0"></div>
+            </div>
+          </fieldset>
+          <div class="kontrole"><button class="btn glavni" type="submit">Spremi tjedan</button><span class="poruka" id="t-poruka" aria-live="polite"></span></div>
+        </form>
+      </details>
+    </div>
+  </section>
+
+  <!-- ── Konkurencija ── -->
+  <section data-pogled="konkurencija" aria-label="Konkurencija" hidden>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Konkurencija</h2><p class="sitno" id="konk-info">Ažurira agent Konkurencija.</p></div></div>
+      <div class="kartica okvir">
+        <div class="okvir-glava"><h3>Banner s imenom: mi i izravni konkurenti</h3></div>
+        <p class="sitno">Zeleno je najbolja vrijednost u retku.</p>
+        <div class="okvir-tablice" id="konk-tablica"><p class="prazno">Učitavam…</p></div>
+      </div>
+      <div class="dvije" id="konk-prednosti"></div>
+      <div class="kartica okvir">
+        <div class="okvir-glava"><h3>Slovenija: što se ondje prodaje</h3></div>
+        <p class="sitno">Slovenski prodavači uglavnom nude jednu zastavicu s cijelim imenom, a ne girlandu slovo po slovo, pa cijene nisu izravno usporedive.</p>
+        <div class="okvir-tablice" id="konk-si"></div>
+      </div>
+      <div class="kartica okvir">
+        <div class="okvir-glava"><h3>Igraonica: Dugo Selo i okolica</h3></div>
+        <div class="okvir-tablice" id="konk-lok"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Agenti ── -->
+  <section data-pogled="agenti" aria-label="Agenti i izvještaji" hidden>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Pokretanja i trošak</h2><p class="sitno" id="potrosnja"></p></div></div>
+      <div class="lista" id="lista-pokretanja"><p class="prazno">Učitavam…</p></div>
+    </div>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Izvještaji agenata</h2><p class="sitno">Klik otvara cijeli izvještaj.</p></div></div>
+      <div class="lista" id="lista-izvjestaja"><p class="prazno">Učitavam…</p></div>
+    </div>
+    <div class="dio">
+      <div class="blok-naslov"><div><h2>Dnevnik</h2><p class="sitno">Sve što su agenti i ti radili, najnovije prvo.</p></div></div>
+      <div class="kartica okvir" style="padding-block:10px"><div class="dogadaji" id="dnevnik"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer class="omot">
+  <p>Agenti pišu na ploču pri tjednom i mjesečnom pregledu. Odluku koju odobriš izvršavaju u idućem pregledu ili odmah, ako zadatak pokreneš gumbom.</p>
+  <p>Pravila: agenti ništa ne objavljuju, ne šalju, ne troše novac i ne mijenjaju cijene. Promjene stranice uvijek idu kao PR koji ti spajaš.</p>
+</footer>
 
 <script>
 (function () {
   'use strict';
-  var AGENTI = { koordinator: 'Koordinator', konkurencija: 'Konkurencija', seo: 'SEO', ai: 'AI vidljivost', sadrzaj: 'Sadržaj', lokalno: 'Lokalno i recenzije', oglasi: 'Oglasi', materijal: 'Materijal', claude: 'Claude', ti: 'Ti' };
-  var STATUSI = { ceka: 'čeka', odobreno: 'odobreno', odbijeno: 'odbijeno', u_izradi: 'u izradi', gotovo: 'gotovo', novo: 'novo' };
+  /* Uloge: kod i "tkanina" bloka (svijetli pasteli s piccoliniplay.hr), opis, što agent smije i okvirni trošak jednog zadatka. */
+  var AG = {
+    koordinator: { kod: 'KO', ime: 'Koordinator', uloga: 'Sažima tjedan, pazi na rokove', tkanina: '#f2cfc8', alat: 'Bez weba', moze: 'Čita ploču, izvještaje i registre. Ne pretražuje web.', trosak: 'oko 0,03 USD' },
+    konkurencija: { kod: 'KN', ime: 'Konkurencija', uloga: 'Cijene i ponuda drugih', tkanina: '#cfe5d6', alat: 'Web pretraga', moze: 'Pretražuje web i čita stranice konkurenata.', trosak: 'oko 0,05–0,10 USD' },
+    seo: { kod: 'SEO', ime: 'SEO', uloga: 'Ključne riječi i Google', tkanina: '#f5eee2', alat: 'Čita stranice', moze: 'Čita javne stranice (bez pretrage) i registar ključnih riječi.', trosak: 'oko 0,03–0,06 USD' },
+    ai: { kod: 'AI', ime: 'AI vidljivost', uloga: 'Spominju li nas asistenti', tkanina: '#f2cfc8', alat: 'Web pretraga', moze: 'Pretražuje web. Rezultate testova u asistentima upisuješ ti.', trosak: 'oko 0,05–0,10 USD' },
+    sadrzaj: { kod: 'SA', ime: 'Sadržaj', uloga: 'Objave, vodiči, tekstovi', tkanina: '#cfe5d6', alat: 'Čita stranice', moze: 'Čita stranice i plan objava, piše nacrte.', trosak: 'oko 0,03–0,06 USD' },
+    lokalno: { kod: 'LO', ime: 'Lokalno', uloga: 'Recenzije i partneri', tkanina: '#f5eee2', alat: 'Web pretraga', moze: 'Pretražuje web: sale, restorani, recenzije u okolici.', trosak: 'oko 0,05–0,10 USD' },
+    materijal: { kod: 'MA', ime: 'Materijal', uloga: 'Potrošni materijal i cijene', tkanina: '#cfe5d6', alat: 'Preko koordinatora', moze: 'Još nema vlastitog izvršitelja: zadatak preuzima koordinator u idućem pregledu.', trosak: 'kao koordinator' },
+    oglasi: { kod: 'OG', ime: 'Oglasi', uloga: 'Uključuje se u ožujku 2027.', tkanina: '#f5eee2', alat: 'Bez weba', moze: 'Bez weba. Ima smisla kad krenu plaćeni oglasi (faza Oglasi).', trosak: 'oko 0,03 USD', kasnije: 'od ožujka 2027.' },
+    claude: { kod: 'CL', ime: 'Claude', uloga: 'Opći zadatak', tkanina: '#ffffff', alat: 'Preko koordinatora', moze: 'Opći zadatak: pokreće ga koordinator, a promjene stranice radi Claude Code kao PR.', trosak: 'oko 0,03 USD' },
+    ti: { kod: 'TI', ime: 'Ti', tkanina: '#ffffff' }
+  };
+  var ULOGE = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'materijal', 'oglasi'];
+  var IZBOR = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'materijal', 'oglasi', 'claude'];
+  var PRIO = { 1: 'Hitno', 2: 'Ovaj tjedan', 3: 'Može čekati' };
+  var KORACI = ['Zadano', 'U redu', 'Agent radi', 'Gotovo'];
   var IZVORI = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['ai', 'AI asistent'], ['preporuka', 'Preporuka'], ['ostalo', 'Ostalo']];
-
-  var mozePisati = true, mozePokrenuti = true;
-  var S = { odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, filtar: 'ceka' };
-  /* Retci usporedbe bannera: ključ u konkurenti/{id}.usporedba, naziv, što je bolje (niže/više/ništa) */
+  var MJESECI = ['siječnju', 'veljači', 'ožujku', 'travnju', 'svibnju', 'lipnju', 'srpnju', 'kolovozu', 'rujnu', 'listopadu', 'studenom', 'prosincu'];
+  var POGLEDI = ['pregled', 'zadaci', 'napredak', 'brojke', 'konkurencija', 'agenti'];
+  var STARI = { odluke: 'pregled', aktivnost: 'agenti', izvjestaji: 'agenti' };
+  /* Retci usporedbe bannera: ključ u usporedba, naziv, što je bolje (niže/više/ništa) */
   var ATRIBUTI = [
     ['c3', 'Cijena, 3 slova', 'nize'], ['c5', 'Cijena, 5 slova', 'nize'], ['c8', 'Cijena, 8 slova', 'nize'], ['cDod', 'Svako dodatno slovo', 'nize'],
     ['motiv', 'Ukrasni motivi, par', 'nize'], ['dostava', 'Dostava', 'nize'], ['rok', 'Rok izrade (radni dani)', 'nize'],
@@ -358,14 +461,21 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     ['materijal', 'Materijal', null], ['narucivanje', 'Naručivanje', null], ['dodaci', 'Dodaci', null], ['trziste', 'Gdje šalju', null]
   ];
 
+  var mozePisati = true;
+  var S = { odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, pokretanja: null, izvjestaji: null, potrosnja: null };
+  var U = { uloga: null, otvorene: {}, sviRijeseni: false, filtarZ: 'aktivni', otvoreniZ: {}, agent: 'konkurencija' };
+
   function $(s) { return document.querySelector(s); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function sigurnaVeza(u) { return /^https:\/\//.test(String(u || '')) ? String(u) : ''; }
-  function datum(iso) { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return ''; return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + '.'; }
-  function datumKratko(iso) { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return ''; return d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
-  function sada() { return new Date().toISOString(); }
+  function datumKratko(iso) { if (!iso) return ''; var d = new Date(String(iso).length === 10 ? iso + 'T12:00:00' : iso); if (isNaN(d)) return ''; return d.getDate() + '. ' + (d.getMonth() + 1) + '.'; }
+  function datumSat(iso) { var d = new Date(iso); if (isNaN(d)) return ''; return datumKratko(iso) + ' ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
   function broj(v) { var n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; }
+  function usd(n) { return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' USD'; }
+  function ag(id) { return AG[id] || { kod: String(id || '?').slice(0, 2).toUpperCase(), ime: id || 'Nepoznato', tkanina: '#ffffff', uloga: '' }; }
+  function tocka(id) { var a = ag(id); return '<span class="agent-tocka" style="background:' + a.tkanina + '" aria-hidden="true">' + esc(a.kod) + '</span>'; }
   function veza(stanje, tekst) { var el = $('#veza'); el.className = 'veza ' + (stanje || ''); el.querySelector('span').textContent = tekst; }
+  function poruka(el, tekst, vrsta) { if (!el) return; el.textContent = tekst || ''; el.className = 'poruka' + (vrsta ? ' ' + vrsta : ''); }
 
   /* ISO tjedan: "2026-W48" i ponedjeljak tog tjedna */
   function isoTjedan(d) {
@@ -376,94 +486,209 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     var w = Math.ceil(((t - poc) / 86400000 + 1) / 7);
     var pon = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
     pon.setUTCDate(pon.getUTCDate() - ((pon.getUTCDay() || 7) - 1));
-    return { id: g + '-W' + (w < 10 ? '0' + w : w), od: pon.toISOString().slice(0, 10) };
+    return { id: g + '-W' + (w < 10 ? '0' + w : w), od: pon.toISOString().slice(0, 10), broj: w };
+  }
+  (function () {
+    var w = isoTjedan(new Date()), pon = new Date(w.od + 'T12:00:00Z'), ned = new Date(pon); ned.setUTCDate(ned.getUTCDate() + 6);
+    var od = pon.getUTCDate() + '.' + (pon.getUTCMonth() !== ned.getUTCMonth() ? ' ' + (pon.getUTCMonth() + 1) + '.' : '');
+    $('#tjedan-info').textContent = 'Tjedan ' + w.broj + ' · ' + od + ' – ' + ned.getUTCDate() + '. ' + (ned.getUTCMonth() + 1) + '. ' + ned.getUTCFullYear() + '. · agent predlaže, ti odobravaš';
+  })();
+
+  /* ── Pogledi (hash) ── */
+  function pokaziPogled(skrol) {
+    var h = location.hash.slice(1); h = STARI[h] || h;
+    var p = POGLEDI.indexOf(h) >= 0 ? h : 'pregled';
+    document.querySelectorAll('[data-pogled]').forEach(function (s) { s.hidden = s.dataset.pogled !== p; });
+    document.querySelectorAll('[data-tab]').forEach(function (a) { if (a.dataset.tab === p) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    if (skrol) window.scrollTo(0, 0);
+  }
+  window.addEventListener('hashchange', function () { pokaziPogled(true); });
+  pokaziPogled(false);
+
+  /* ── Zaglavlje: trošak i brojke u tabovima ── */
+  function renderZaglavlje() {
+    var P = S.potrosnja;
+    if (P) {
+      var m = Number(String(P.mjesec || '').slice(5, 7));
+      $('#trosak').hidden = false;
+      $('#trosak-mjesec').textContent = 'Potrošnja u ' + (MJESECI[m - 1] || 'ovom mjesecu');
+      $('#trosak-iznos').textContent = usd(P.potroseno).replace(' USD', '') + ' / ' + usd(P.limit);
+      var posto = P.limit ? Math.min(100, P.potroseno / P.limit * 100) : 0;
+      $('#trosak-mjerac').className = 'mjerac' + (posto >= 90 ? ' preko' : '');
+      $('#trosak-mjerac i').style.width = Math.max(posto, P.potroseno > 0 ? 1 : 0) + '%';
+      $('#potrosnja').textContent = 'Ovaj mjesec: ' + usd(P.potroseno) + ' od ' + usd(P.limit) + (P.raspored ? ' · pregledi se pokreću sami (ponedjeljkom tjedni, 1. u mjesecu mjesečni)' : ' · raspored je isključen, preglede pokrećeš gumbom');
+    }
+    var ceka = S.odluke ? S.odluke.filter(function (o) { return o.status === 'ceka'; }).length : 0;
+    var tijek = S.zadaci ? S.zadaci.filter(function (z) { return z.status === 'novo' || z.status === 'u_izradi'; }).length : 0;
+    $('#nav-odluke').textContent = ceka || '';
+    $('#nav-zadaci').textContent = tijek || '';
   }
 
-  /* ── Sažetak ── */
-  function renderSazetak() {
-    var ceka = S.odluke ? S.odluke.filter(function (o) { return o.status === 'ceka'; }).length : null;
-    var tijek = S.zadaci ? S.zadaci.filter(function (z) { return z.status === 'novo' || z.status === 'u_izradi'; }).length : null;
-    var tj = (S.tjedni || []).slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; });
-    var zadnji = tj[tj.length - 1], prije = tj[tj.length - 2];
-    var upiti = zadnji ? broj(zadnji.upitiBanner) + broj(zadnji.upitiIgraonica) : null;
-    var f0 = (S.napredak || []).filter(function (f) { return f.id === 'faza0'; })[0];
-    var f0t = f0 ? (f0.stavke || []).length : 0, f0g = f0 ? (f0.stavke || []).filter(function (x) { return x.gotovo; }).length : 0;
-    var razl = '';
-    if (zadnji && prije) {
-      var p = broj(prije.upitiBanner) + broj(prije.upitiIgraonica), r = upiti - p;
-      razl = r === 0 ? '<span class="razlika">kao prošli tjedan</span>' : '<span class="razlika ' + (r > 0 ? 'gore' : 'dolje') + '">' + (r > 0 ? '+' : '') + r + ' u odnosu na prošli</span>';
-    }
-    $('#plocice').innerHTML =
-      '<a class="plocica' + (ceka ? ' pozor' : '') + '" href="#odluke" style="text-decoration:none;color:inherit"><span class="br">' + (ceka == null ? '–' : ceka) + '</span><span class="op">' + (ceka === 1 ? 'odluka čeka tebe' : 'odluka čeka tebe') + '</span></a>' +
-      '<a class="plocica" href="#zadaci" style="text-decoration:none;color:inherit"><span class="br">' + (tijek == null ? '–' : tijek) + '</span><span class="op">zadataka u tijeku</span></a>' +
-      '<a class="plocica" href="#brojke" style="text-decoration:none;color:inherit"><span class="br">' + (upiti == null ? '–' : upiti) + '</span><span class="op">' + (zadnji ? 'upita, tjedan od ' + datumKratko(zadnji.od) : 'upita: još nema upisa') + '</span>' + razl + '</a>' +
-      '<a class="plocica" href="#napredak" style="text-decoration:none;color:inherit"><span class="br">' + (f0 ? f0g + '/' + f0t : '–') + '</span><span class="op">Faza 0: temelji</span></a>';
-    $('#nav-odluke').textContent = ceka ? ceka : '';
-    $('#nav-zadaci').textContent = tijek ? tijek : '';
+  /* ── Uloge ── */
+  function uRadu(id) {
+    var o = (S.odluke || []).filter(function (x) { return x.agent === id && (x.status === 'odobreno' || x.status === 'u_izradi'); }).length;
+    var z = (S.zadaci || []).filter(function (x) { return x.agent === id && (x.status === 'novo' || x.status === 'u_izradi'); }).length;
+    return o + z;
+  }
+  function renderUloge() {
+    if (!S.odluke) return;
+    $('#uloge').innerHTML = ULOGE.map(function (id) {
+      var a = AG[id];
+      var n = S.odluke.filter(function (o) { return o.agent === id && o.status === 'ceka'; }).length;
+      var r = uRadu(id), odabrana = U.uloga === id;
+      var ugasena = !!a.kasnije && !n && !r && !odabrana;
+      return '<button class="uloga" type="button" data-uloga="' + id + '" aria-pressed="' + odabrana + '"' + (ugasena ? ' disabled' : '') +
+        ' aria-label="' + esc(a.ime + ': ' + n + ' čeka tvoju odluku, ' + r + ' u radu') + '">' +
+        '<span class="blok" style="background:' + a.tkanina + '">' + esc(a.kod) +
+        '<span class="krug' + (n ? '' : ' prazan') + '" aria-hidden="true">' + n + '</span>' +
+        (odabrana ? '<span class="kvacica" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>' : '') +
+        '</span><span class="uloga-tekst"><span class="uloga-ime">' + esc(a.ime) + '</span><span class="uloga-opis">' + esc(a.uloga) + '</span>' +
+        '<span class="uloga-brojevi">' + (ugasena ? esc(a.kasnije) : (n ? n + ' čeka' : 'ništa ne čeka') + ' · ' + r + ' u radu') + '</span></span></button>';
+    }).join('');
+    $('#ponisti-ulogu').hidden = !U.uloga;
+    $('#opis-filtra').textContent = U.uloga ? 'Prikazano samo: ' + ag(U.uloga).ime : 'Sve uloge · najhitnije prvo';
   }
 
   /* ── Odluke ── */
-  var RED = { ceka: 0, odobreno: 1, u_izradi: 2, gotovo: 3, odbijeno: 4 };
+  function vrhKartice(o, desno) {
+    return '<div class="odluka-vrh"><span class="agent-chip">' + tocka(o.agent) + esc(ag(o.agent).ime) + '</span>' + desno + '<span class="datum">' + esc(datumKratko(o.odlucenoAt || o.kreirano)) + '</span></div>';
+  }
   function renderOdluke() {
-    var el = $('#lista-odluka');
     if (!S.odluke) return;
-    var lista = S.odluke.filter(function (o) { return S.filtar === 'sve' || o.status === 'ceka'; });
-    lista.sort(function (a, b) { return (RED[a.status] - RED[b.status]) || ((a.prioritet || 3) - (b.prioritet || 3)) || String(b.kreirano || '').localeCompare(String(a.kreirano || '')); });
-    if (!lista.length) {
-      el.innerHTML = '<p class="prazno">' + (S.filtar === 'ceka' ? 'Ništa ne čeka tvoju odluku. Nove odluke agenti dodaju pri tjednom pregledu.' : 'Još nema odluka.') + '</p>';
-      return;
-    }
-    el.innerHTML = lista.map(function (o) {
-      var link = sigurnaVeza(o.poveznica);
-      var h = '<article class="kartica st-' + esc(o.status) + '" data-id="' + esc(o.id) + '">';
-      h += '<div class="meta"><span class="pil agent">' + esc(AGENTI[o.agent] || o.agent) + '</span>' + (o.prioritet === 1 && o.status === 'ceka' ? '<span class="pil vazno">važno</span>' : '') + '<span class="pil s-' + esc(o.status) + '">' + esc(STATUSI[o.status] || o.status) + '</span><span>' + esc(datum(o.kreirano)) + '</span></div>';
-      h += '<h3>' + esc(o.naslov) + '</h3>';
-      if (o.razlog) h += '<p class="razlog">' + esc(o.razlog) + '</p>';
-      if (o.prijedlog) h += '<p class="prijedlog"><b>Prijedlog:</b> ' + esc(o.prijedlog) + '</p>';
-      if (link) h += '<p><a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(o.poveznicaTekst || 'Otvori') + ' ↗</a></p>';
-      if (o.status === 'ceka') {
-        h += '<div class="kontrole"><textarea id="kom-' + esc(o.id) + '" aria-label="Komentar uz odluku" placeholder="Komentar ili uputa (neobavezno)"' + (mozePisati ? '' : ' disabled') + '></textarea>' +
-             '<button class="btn da" type="button" data-odluka="odobreno"' + (mozePisati ? '' : ' disabled') + '>Odobri</button>' +
-             '<button class="btn ne" type="button" data-odluka="odbijeno"' + (mozePisati ? '' : ' disabled') + '>Odbij</button></div><p class="poruka" aria-live="polite"></p>';
-      } else {
-        var odg = [];
-        if (o.odlucenoAt) odg.push((o.status === 'odbijeno' ? 'Odbijeno ' : 'Odlučeno ') + datum(o.odlucenoAt));
-        if (o.komentar) odg.push('Tvoj komentar: „' + o.komentar + '”');
-        if (o.rezultat) odg.push('Rezultat: ' + o.rezultat);
-        if (odg.length) h += '<p class="odgovor">' + odg.map(esc).join(' · ') + '</p>';
-      }
-      return h + '</article>';
+    var vid = S.odluke.filter(function (o) { return !U.uloga || o.agent === U.uloga; });
+    var po = function (a, b) { return String(b.odlucenoAt || b.kreirano || '').localeCompare(String(a.odlucenoAt || a.kreirano || '')); };
+    var ceka = vid.filter(function (o) { return o.status === 'ceka'; }).sort(function (a, b) { return ((a.prioritet || 3) - (b.prioritet || 3)) || String(a.kreirano || '').localeCompare(String(b.kreirano || '')); });
+    var radi = vid.filter(function (o) { return o.status === 'odobreno' || o.status === 'u_izradi'; }).sort(po);
+    var gotovo = vid.filter(function (o) { return o.status === 'gotovo' || o.status === 'odbijeno'; }).sort(po);
+    $('#br-ceka').textContent = ceka.length; $('#br-radi').textContent = radi.length; $('#br-gotovo').textContent = gotovo.length;
+
+    $('#stupac-ceka').innerHTML = ceka.length ? ceka.map(function (o) {
+      var p = o.prioritet || 3, otvoren = !!U.otvorene[o.id], link = sigurnaVeza(o.poveznica);
+      var glavno = o.prijedlog || o.razlog || '';
+      var razlog = o.prijedlog ? o.razlog : '';
+      return '<article class="kartica odluka" data-id="' + esc(o.id) + '">' + vrhKartice(o, '<span class="prio p' + p + '">' + esc(PRIO[p] || PRIO[3]) + '</span>') +
+        '<h3>' + esc(o.naslov) + '</h3>' + (glavno ? '<p class="prijedlog">' + esc(glavno) + '</p>' : '') +
+        '<div class="razlog-blok"' + (otvoren ? '' : ' hidden') + '>' + (razlog ? '<p class="razlog">' + esc(razlog) + '</p>' : '') +
+        (link ? '<a href="' + esc(link) + '" target="_blank" rel="noopener" style="font-size:13.6px">' + esc(o.poveznicaTekst || 'Otvori') + ' ↗</a>' : '') +
+        '<textarea aria-label="Komentar uz odluku" placeholder="Komentar ili uputa agentu (neobavezno)"' + (mozePisati ? '' : ' disabled') + '></textarea></div>' +
+        '<div class="odluka-dno"><button class="tekst-gumb" type="button" data-zasto aria-expanded="' + otvoren + '">' + (otvoren ? 'Sakrij' : (razlog ? 'Zašto? · komentar' : 'Komentar')) + '</button>' +
+        '<div class="desno"><button class="btn malo" type="button" data-odluka="odbijeno"' + (mozePisati ? '' : ' disabled') + '>Odbij</button>' +
+        '<button class="btn malo glavni" type="button" data-odluka="odobreno"' + (mozePisati ? '' : ' disabled') + '>Odobri</button></div></div>' +
+        '<p class="poruka" aria-live="polite"></p></article>';
+    }).join('') : '<p class="prazno">' + (U.uloga ? 'Ništa ne čeka. Sve odluke ove uloge su riješene.' : 'Ništa ne čeka tvoju odluku. Nove odluke agenti dodaju pri pregledu.') + '</p>';
+
+    $('#stupac-radi').innerHTML = radi.length ? radi.map(function (o) {
+      var rez = o.rezultat || (o.komentar ? 'Tvoja uputa: „' + o.komentar + '”' : 'Agent to preuzima u idućem pregledu.');
+      return '<article class="kartica odluka">' + vrhKartice(o, '<span class="oznaka-st radi">U izradi</span>') + '<h3>' + esc(o.naslov) + '</h3><p class="rezultat">' + esc(rez) + '</p></article>';
+    }).join('') : '<p class="prazno">Ništa nije u izradi.</p>';
+
+    var prikaz = U.sviRijeseni ? gotovo : gotovo.slice(0, 6);
+    $('#stupac-gotovo').innerHTML = (gotovo.length ? prikaz.map(function (o) {
+      var odb = o.status === 'odbijeno';
+      var rez = o.rezultat || (o.komentar ? 'Tvoj komentar: „' + o.komentar + '”' : '');
+      return '<article class="kartica odluka tiha">' + vrhKartice(o, '<span class="oznaka-st ' + (odb ? 'odbijeno' : 'gotovo') + '">' + (odb ? 'Odbijeno' : 'Gotovo') + '</span>') +
+        '<h3>' + esc(o.naslov) + '</h3>' + (rez ? '<p class="rezultat">' + esc(rez) + '</p>' : '') + '</article>';
+    }).join('') : '<p class="prazno">Još ništa riješeno.</p>') +
+      (gotovo.length > 6 ? '<button class="tekst-gumb" type="button" id="svi-rijeseni" style="align-self:center">' + (U.sviRijeseni ? 'Prikaži manje' : 'Prikaži sve (' + gotovo.length + ')') + '</button>' : '');
+  }
+
+  /* ── Napredak ── */
+  function fazeSortirane() { return (S.napredak || []).slice().sort(function (a, b) { return (a.red || 0) - (b.red || 0); }); }
+  function renderNapredak() {
+    if (!S.napredak) return;
+    var f = fazeSortirane();
+    if (!f.length) { $('#faze').innerHTML = $('#faze-sazetak').innerHTML = '<p class="prazno">Faze još nisu upisane.</p>'; return; }
+    $('#faze-sazetak').innerHTML = f.map(function (fz) {
+      var st = fz.stavke || [], g = st.filter(function (x) { return x.gotovo; }).length;
+      var sljedece = st.filter(function (x) { return !x.gotovo; })[0];
+      return '<div class="faza-sazetak"><div class="red"><span><b>' + esc(fz.naziv) + '</b>' + (fz.kad ? ' <span class="sitno">· ' + esc(fz.kad) + '</span>' : '') + '</span><span>' + g + ' / ' + st.length + '</span></div>' +
+        '<div class="napredak-traka" role="progressbar" aria-label="' + esc(fz.naziv) + '" aria-valuemin="0" aria-valuemax="' + st.length + '" aria-valuenow="' + g + '"><i style="width:' + (st.length ? g / st.length * 100 : 0) + '%"></i></div>' +
+        '<span class="sitno" style="font-size:13.6px">' + (sljedece ? 'Sljedeće: ' + esc(sljedece.t) : 'Sve stavke su gotove.') + '</span></div>';
+    }).join('');
+    $('#faze').innerHTML = f.map(function (fz) {
+      var st = fz.stavke || [], g = st.filter(function (x) { return x.gotovo; }).length;
+      return '<article class="kartica faza" data-id="' + esc(fz.id) + '"><span class="kad">' + esc(fz.kad || '') + '</span><h3>' + esc(fz.naziv) + ' <span>' + g + ' / ' + st.length + '</span></h3>' +
+        '<div class="napredak-traka"><i style="width:' + (st.length ? g / st.length * 100 : 0) + '%"></i></div>' +
+        '<ul class="stavke">' + st.map(function (x, i) {
+          return '<li class="' + (x.gotovo ? 'gotovo' : '') + '"><label><input type="checkbox" data-stavka="' + i + '"' + (x.gotovo ? ' checked' : '') + (mozePisati ? '' : ' disabled') + '><span>' + esc(x.t) + (x.tko ? ' <span class="sitno">(' + esc(x.tko) + ')</span>' : '') + '</span></label></li>';
+        }).join('') + '</ul></article>';
     }).join('');
   }
 
+  /* ── Aktivnost ── */
+  function dogadaj(a) {
+    var link = sigurnaVeza(a.poveznica);
+    return '<div class="dogadaj">' + tocka(a.agent) + '<div class="dogadaj-tekst"><span>' + esc(a.sto) + (link ? ' <a href="' + esc(link) + '" target="_blank" rel="noopener">↗</a>' : '') + '</span>' +
+      '<span class="sitno">' + esc(ag(a.agent).ime) + ' · ' + esc(datumSat(a.kad)) + '</span></div></div>';
+  }
+  function renderAktivnost() {
+    if (!S.aktivnost) return;
+    var l = S.aktivnost.filter(function (a) { return !U.uloga || a.agent === U.uloga; }).slice(0, 8);
+    $('#aktivnost').innerHTML = l.length ? l.map(dogadaj).join('') : '<p class="prazno">Još nema zapisa' + (U.uloga ? ' za ovu ulogu' : '') + '.</p>';
+    $('#aktivnost-opis').textContent = U.uloga ? ag(U.uloga).ime : 'zadnji zapisi';
+    $('#dnevnik').innerHTML = S.aktivnost.length ? S.aktivnost.map(dogadaj).join('') : '<p class="prazno">Još nema zapisa.</p>';
+  }
 
   /* ── Zadaci ── */
-  var REDZ = { novo: 0, u_izradi: 1, gotovo: 2, odbijeno: 3 };
+  function stanjeZadatka(z) {
+    var pok = (S.pokretanja || []).filter(function (p) { return p.zadatakId === z.id; });
+    var zadnje = pok[0] || null, trosak = pok.reduce(function (s, p) { return s + (Number(p.trosak) || 0); }, 0);
+    var korak = 0, tekst = '', napomena = '';
+    if (z.status === 'gotovo') korak = 3;
+    else if (z.status === 'odbijeno') korak = -1;
+    else if (zadnje && zadnje.status === 'u_redu') { korak = 1; tekst = 'U redu čekanja'; }
+    else if (zadnje && zadnje.status === 'radi') { korak = 2; tekst = 'Agent radi'; }
+    else if (zadnje && zadnje.status === 'uspjeh') { korak = 2; tekst = 'Agent je završio'; napomena = 'Rezultat je u izvještaju; označi zadatak gotovim kad ga pogledaš.'; }
+    else if (zadnje) { korak = z.status === 'u_izradi' ? 1 : 0; napomena = 'Zadnje pokretanje nije uspjelo' + (zadnje.greska ? ': ' + zadnje.greska : '.'); }
+    else if (z.status === 'u_izradi') { korak = 2; tekst = 'Preuzeto'; }
+    return { korak: korak, tekst: tekst, napomena: napomena, trosak: trosak };
+  }
   function renderZadaci() {
-    var el = $('#lista-zadataka');
     if (!S.zadaci) return;
-    var lista = S.zadaci.slice().sort(function (a, b) { return (REDZ[a.status] - REDZ[b.status]) || String(b.kreirano || '').localeCompare(String(a.kreirano || '')); });
-    if (!lista.length) { el.innerHTML = '<p class="prazno">Nema zadataka. Klikni „Novi zadatak”, napiši što treba i odaberi agenta. Zadatak preuzima koordinator u idućem pregledu ili ga pokreneš odmah.</p>'; return; }
-    el.innerHTML = lista.map(function (z) {
-      var h = '<article class="kartica st-' + esc(z.status) + '" data-id="' + esc(z.id) + '">';
-      h += '<div class="meta"><span class="pil agent">' + esc(AGENTI[z.agent] || z.agent) + '</span><span class="pil s-' + esc(z.status) + '">' + esc(STATUSI[z.status] || z.status) + '</span><span>zadano ' + esc(datum(z.kreirano)) + '</span>' + (z.rok ? '<span>rok ' + esc(datum(z.rok)) + '</span>' : '') + '</div>';
-      h += '<p>' + esc(z.opis) + '</p>';
+    var svi = S.zadaci.slice().sort(function (a, b) { return String(b.kreirano || '').localeCompare(String(a.kreirano || '')); });
+    var aktivni = svi.filter(function (z) { return z.status === 'novo' || z.status === 'u_izradi'; });
+    var zatvoreni = svi.filter(function (z) { return z.status === 'gotovo' || z.status === 'odbijeno'; });
+    var prikaz = U.filtarZ === 'aktivni' ? aktivni : U.filtarZ === 'gotovi' ? zatvoreni : svi;
+    $('#filtri-zadataka').innerHTML = [['aktivni', 'U tijeku', aktivni.length], ['gotovi', 'Zatvoreni', zatvoreni.length], ['svi', 'Svi', svi.length]].map(function (f) {
+      return '<button class="filtar" type="button" data-filtar-z="' + f[0] + '" aria-pressed="' + (U.filtarZ === f[0]) + '">' + f[1] + ' <b>' + f[2] + '</b></button>';
+    }).join('');
+    if (!prikaz.length) {
+      $('#nalozi').innerHTML = '<p class="prazno" style="padding:24px 0">' + (svi.length ? 'Nema zadataka u ovom prikazu.' : 'Još nema zadataka. Odaberi agenta desno, napiši što treba i dodaj zadatak.') + '</p>';
+      return;
+    }
+    $('#nalozi').innerHTML = prikaz.map(function (z) {
+      var a = ag(z.agent), st = stanjeZadatka(z), otvoren = !!U.otvoreniZ[z.id];
       var sesija = z.sesija && sigurnaVeza(z.sesija.url), link = sigurnaVeza(z.poveznica);
-      var dno = [];
-      if (sesija) dno.push('<a href="' + esc(sesija) + '" target="_blank" rel="noopener">Sesija agenta ↗</a>');
-      if (link) dno.push('<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(z.poveznicaTekst || 'Rezultat') + ' ↗</a>');
-      if (z.rezultat) h += '<p class="odgovor">' + esc(z.rezultat) + '</p>';
-      if (dno.length) h += '<p class="meta">' + dno.join(' · ') + '</p>';
-      if (z.status === 'novo' || z.status === 'u_izradi') {
-        h += '<div class="kontrole">';
-        if (z.status === 'novo' && mozePokrenuti) h += '<button class="btn glavni mali" type="button" data-pokreni' + (mozePisati ? '' : ' disabled') + '>Pokreni sada</button>';
-        h += '<button class="btn mali" type="button" data-gotovo' + (mozePisati ? '' : ' disabled') + '>Označi gotovim</button>';
-        h += '<button class="btn ne mali" type="button" data-otkazi' + (mozePisati ? '' : ' disabled') + '>Otkaži</button></div><p class="poruka" aria-live="polite"></p>';
-      }
-      return h + '</article>';
+      var put = st.korak < 0 ? '<span class="oznaka-st odbijeno" style="align-self:flex-start">Otkazano</span>' :
+        '<div class="put" aria-label="Stanje: ' + KORACI[st.korak] + '">' + KORACI.map(function (t, i) {
+          return '<span class="put-korak' + (i < st.korak ? ' prosao' : i === st.korak ? ' sada' : '') + '"><i aria-hidden="true"></i>' + t + '</span>';
+        }).join('') + '</div>';
+      var veze = [];
+      if (sesija) veze.push('<a href="' + esc(sesija) + '" target="_blank" rel="noopener">Sesija agenta ↗</a>');
+      if (link) veze.push('<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(z.poveznicaTekst || 'Rezultat') + ' ↗</a>');
+      var akcija = '';
+      if (z.status === 'novo') akcija = '<button class="btn malo glavni" type="button" data-pokreni' + (mozePisati ? '' : ' disabled') + '>Pokreni sada</button><button class="tekst-gumb" type="button" data-otkazi' + (mozePisati ? '' : ' disabled') + '>Otkaži</button>';
+      else if (z.status === 'u_izradi') akcija = (st.tekst ? '<span class="stanje">' + esc(st.tekst) + '</span>' : '') + '<button class="btn malo" type="button" data-gotovo' + (mozePisati ? '' : ' disabled') + '>Označi gotovim</button><button class="tekst-gumb" type="button" data-otkazi' + (mozePisati ? '' : ' disabled') + '>Otkaži</button>';
+      else if (z.rezultat) akcija = '<button class="btn malo" type="button" data-rezultat aria-expanded="' + otvoren + '">' + (otvoren ? 'Sakrij rezultat' : 'Pogledaj rezultat') + '</button>';
+      return '<article class="kartica nalog" data-id="' + esc(z.id) + '"><span class="mini-blok" style="background:' + a.tkanina + '" aria-hidden="true">' + esc(a.kod) + '</span>' +
+        '<div class="nalog-sredina"><div style="display:flex;flex-direction:column;gap:4px"><span class="nalog-agent">' + esc(a.ime) + '</span><h3>' + esc(z.opis) + '</h3></div>' +
+        '<div class="meta"><span>Zadano ' + esc(datumKratko(z.kreirano)) + '</span><span>' + (z.rok ? 'Rok ' + esc(datumKratko(z.rok)) : 'Bez roka') + '</span>' + (a.alat ? '<span>' + esc(a.alat) + '</span>' : '') +
+        '<span>' + (st.trosak ? usd(st.trosak) : 'još bez troška') + '</span></div>' + put +
+        (st.napomena ? '<p class="sitno" style="font-size:13.6px">' + esc(st.napomena) + '</p>' : '') +
+        (z.rezultat && (otvoren || z.status !== 'gotovo' && z.status !== 'odbijeno') ? '<p class="rezultat">' + esc(z.rezultat) + '</p>' : '') +
+        (veze.length ? '<p class="meta">' + veze.join(' · ') + '</p>' : '') + '</div>' +
+        '<div class="akcija">' + akcija + '<p class="poruka" aria-live="polite"></p></div></article>';
     }).join('');
   }
-
+  function renderIzborAgenta() {
+    $('#izbor-agenta').innerHTML = IZBOR.map(function (id) {
+      var a = AG[id];
+      return '<button class="izbor" type="button" data-agent="' + id + '" aria-pressed="' + (U.agent === id) + '"><span class="mini-blok" style="background:' + a.tkanina + '" aria-hidden="true">' + esc(a.kod) + '</span>' + esc(a.ime) +
+        '<span class="kv" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button>';
+    }).join('');
+    var a = AG[U.agent];
+    $('#agent-info').innerHTML = '<strong>' + esc(a.ime) + '</strong><span>' + esc(a.moze) + '</span><span>Procjena troška: ' + esc(a.trosak) + '</span>';
+  }
 
   /* ── Brojke ── */
   function renderBrojke() {
@@ -472,19 +697,21 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     var zadnjih = tj.slice(-12);
     var mj = (S.mjesecno || []).slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     var zmj = mj[mj.length - 1];
-    var cetiri = tj.slice(-4), upB = 0, nar = 0;
+    var cetiri = tj.slice(-4), upB = 0, nar = 0, upiti = 0;
     cetiri.forEach(function (t) { upB += broj(t.upitiBanner); nar += broj(t.narudzbe); });
+    var zadnji = tj[tj.length - 1]; if (zadnji) upiti = broj(zadnji.upitiBanner) + broj(zadnji.upitiIgraonica);
     var recZ = null; for (var i = tj.length - 1; i >= 0; i--) { if (tj[i].recenzije != null && tj[i].recenzije !== '') { recZ = tj[i].recenzije; break; } }
     $('#kpi').innerHTML = [
+      [zadnji ? 'Upita u tjednu od ' + datumKratko(zadnji.od) : 'Upita: još nema upisa', zadnji ? upiti : '–'],
       ['Narudžbe bannera, zadnja 4 tjedna', cetiri.length ? nar : '–'],
       ['Upit → narudžba (banneri, 4 tj.)', upB ? Math.round(nar / upB * 100) + ' %' : '–'],
       ['Google recenzije', recZ == null ? '–' : recZ],
       ['AI asistenti nas spominju', zmj && zmj.aiPitanja ? zmj.aiSpominjanja + ' / ' + zmj.aiPitanja : '–']
-    ].map(function (k) { return '<div class="plocica"><span class="br">' + esc(k[1]) + '</span><span class="op">' + esc(k[0]) + '</span></div>'; }).join('');
+    ].map(function (k) { return '<div class="kartica plocica"><span class="br">' + esc(k[1]) + '</span><span class="op">' + esc(k[0]) + '</span></div>'; }).join('');
 
     var g = $('#graf');
     if (!zadnjih.length) {
-      g.innerHTML = '<p class="prazno">Još nema upisanih tjedana. Otvori „Upiši tjedan” ispod i upiši broj upita i narudžbi za ovaj tjedan; graf se crta sam.</p>';
+      g.innerHTML = '<p class="prazno">Još nema upisanih tjedana. Otvori „Upiši tjedan” i upiši broj upita i narudžbi za ovaj tjedan; graf se crta sam.</p>';
     } else {
       var W = 640, H = 240, L = 34, R = 10, T = 12, B = 34, n = zadnjih.length;
       var max = 1; zadnjih.forEach(function (t) { max = Math.max(max, broj(t.upitiBanner) + broj(t.upitiIgraonica), broj(t.narudzbe)); });
@@ -502,18 +729,18 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
         tocke.push([cx, y(broj(t.narudzbe)), broj(t.narudzbe), t.id]);
       });
       if (tocke.length > 1) s += '<polyline points="' + tocke.map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '" fill="none" stroke="var(--ink)" stroke-width="1.6"/>';
-      tocke.forEach(function (p) { s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6"><title>' + esc(p[3]) + ': ' + p[2] + ' narudžbi</title></circle>'; });
+      tocke.forEach(function (p) { s += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="var(--white)" stroke="var(--ink)" stroke-width="1.6"><title>' + esc(p[3]) + ': ' + p[2] + ' narudžbi</title></circle>'; });
       g.innerHTML = s + '</svg>';
     }
 
     var zbroj = {}, ukupno = 0;
     tj.slice(-8).forEach(function (t) { var iz = t.izvori || {}; IZVORI.forEach(function (x) { var k = broj(iz[x[0]]); zbroj[x[0]] = (zbroj[x[0]] || 0) + k; ukupno += k; }); });
-    if (!ukupno) { $('#izvori').innerHTML = '<p class="sitno">Još nema podataka. Odgovori iz polja „Kako ste saznali za nas?” stižu u e-mailu uz svaki upit.</p>'; }
+    if (!ukupno) { $('#izvori').innerHTML = '<p class="prazno">Još nema podataka. Odgovori iz polja „Kako ste saznali za nas?” stižu u e-mailu uz svaki upit.</p>'; }
     else {
       var maxI = Math.max.apply(null, IZVORI.map(function (x) { return zbroj[x[0]] || 0; }).concat([1]));
       $('#izvori').innerHTML = IZVORI.slice().sort(function (a, b) { return (zbroj[b[0]] || 0) - (zbroj[a[0]] || 0); }).map(function (x) {
         var k = zbroj[x[0]] || 0;
-        return '<div class="izvor' + (x[0] === 'ai' ? ' ai' : '') + '"><span>' + esc(x[1]) + '</span><span class="traka"><i style="width:' + (k / maxI * 100) + '%"></i></span><span class="n">' + k + '</span></div>';
+        return '<div class="izvor"><span>' + esc(x[1]) + '</span><span class="izvor-traka"><i style="width:' + (k / maxI * 100) + '%"></i></span><span class="n">' + k + '</span></div>';
       }).join('');
     }
   }
@@ -523,13 +750,13 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     if (!S.konkurenti) return;
     var k = S.konkurenti.slice().sort(function (a, b) { return (b.mi ? 1 : 0) - (a.mi ? 1 : 0) || (a.red || 9) - (b.red || 9); });
     var zadnja = k.map(function (x) { return x.provjereno || ''; }).sort().pop();
-    $('#konk-info').textContent = zadnja ? 'Zadnja provjera: ' + datum(zadnja) + ' Ažurira agent Konkurencija.' : 'Ažurira agent Konkurencija.';
+    $('#konk-info').textContent = (zadnja ? 'Zadnja provjera: ' + datumKratko(zadnja) + ' · ' : '') + 'Ažurira agent Konkurencija.';
     function naziv(x) { var u = sigurnaVeza(x.izvor); return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(x.naziv) + '</a>' : esc(x.naziv); }
 
     var stupci = k.filter(function (x) { return x.usporedba; });
     if (!stupci.length) { $('#konk-tablica').innerHTML = '<p class="prazno">Još nema podataka za usporedbu.</p>'; }
     else {
-      var h = '<table><thead><tr><th scope="col"><span class="sr">Svojstvo</span></th>' + stupci.map(function (x) { return '<th scope="col"' + (x.mi ? ' class="mi"' : '') + '>' + naziv(x) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      var h = '<table class="tablica" style="min-width:560px"><thead><tr><th scope="col"><span class="sr">Svojstvo</span></th>' + stupci.map(function (x) { return '<th scope="col"' + (x.mi ? ' class="mi"' : '') + '>' + naziv(x) + '</th>'; }).join('') + '</tr></thead><tbody>';
       ATRIBUTI.forEach(function (a) {
         var vr = stupci.map(function (x) { return (x.usporedba || {})[a[0]] || null; });
         if (vr.every(function (v) { return !v; })) return;
@@ -543,83 +770,50 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
           var kl = [];
           if (stupci[i].mi) kl.push('mi');
           if (naj !== null && v && v.n === naj) kl.push('najbolje');
-          return '<td class="num ' + kl.join(' ') + '">' + (v ? esc(v.t != null ? v.t : v.n) : '–') + '</td>';
+          return '<td class="' + kl.join(' ') + '">' + (v ? esc(v.t != null ? v.t : v.n) : '–') + '</td>';
         }).join('') + '</tr>';
       });
       $('#konk-tablica').innerHTML = h + '</tbody></table>';
     }
 
     $('#konk-prednosti').innerHTML = stupci.filter(function (x) { return (x.prednosti || []).length; }).map(function (x) {
-      return '<div class="okvir ' + (x.mi ? 'jaci' : 'slabiji') + '"><h3>' + (x.mi ? 'Gdje smo jači' : 'Gdje je jači ' + esc(x.naziv)) + '</h3><ul class="pr">' + x.prednosti.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
+      return '<div class="kartica okvir ' + (x.mi ? 'jaci' : 'slabiji') + '"><h3 style="font-size:19px">' + (x.mi ? 'Gdje smo jači' : 'Gdje je jači ' + esc(x.naziv)) + '</h3><ul class="pr">' + x.prednosti.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
     }).join('');
 
     var si = k.filter(function (x) { return x.trziste === 'SI'; });
-    $('#konk-si').innerHTML = si.length ? '<table><thead><tr><th scope="col">Prodavač</th><th scope="col">Proizvod</th><th scope="col">Cijena</th><th scope="col">Veličina</th><th scope="col">Napomena</th></tr></thead><tbody>' +
-      si.map(function (x) { return '<tr><td>' + naziv(x) + '</td><td>' + esc(x.proizvod) + '</td><td class="num cij">' + esc(x.cijenaTekst) + '</td><td>' + esc(x.velicina || '–') + '</td><td class="sitno">' + esc(x.napomena || '') + '</td></tr>'; }).join('') + '</tbody></table>'
+    $('#konk-si').innerHTML = si.length ? '<table class="tablica" style="min-width:560px"><thead><tr><th scope="col">Prodavač</th><th scope="col">Proizvod</th><th scope="col">Cijena</th><th scope="col">Veličina</th><th scope="col">Napomena</th></tr></thead><tbody>' +
+      si.map(function (x) { return '<tr><td>' + naziv(x) + '</td><td>' + esc(x.proizvod) + '</td><td style="white-space:nowrap">' + esc(x.cijenaTekst) + '</td><td>' + esc(x.velicina || '–') + '</td><td class="sitno">' + esc(x.napomena || '') + '</td></tr>'; }).join('') + '</tbody></table>'
       : '<p class="prazno">Još nema slovenskih konkurenata u registru.</p>';
 
     var lok = k.filter(function (x) { return x.trziste === 'lokalno'; });
-    $('#konk-lok').innerHTML = lok.length ? '<table><thead><tr><th scope="col">Tko</th><th scope="col">Što nudi</th><th scope="col">Gdje</th><th scope="col">Napomena</th></tr></thead><tbody>' +
+    $('#konk-lok').innerHTML = lok.length ? '<table class="tablica" style="min-width:520px"><thead><tr><th scope="col">Tko</th><th scope="col">Što nudi</th><th scope="col">Gdje</th><th scope="col">Napomena</th></tr></thead><tbody>' +
       lok.map(function (x) { return '<tr><td' + (x.mi ? ' class="mi"' : '') + '>' + naziv(x) + '</td><td>' + esc(x.vrsta || x.proizvod || '') + '</td><td>' + esc(x.mjesto || '') + '</td><td class="sitno">' + esc(x.napomena || '') + '</td></tr>'; }).join('') + '</tbody></table>'
       : '<p class="prazno">Još nema lokalnih konkurenata u registru.</p>';
   }
 
-  /* ── Napredak ── */
-  function renderNapredak() {
-    var el = $('#faze');
-    if (!S.napredak) return;
-    var f = S.napredak.slice().sort(function (a, b) { return (a.red || 0) - (b.red || 0); });
-    if (!f.length) { el.innerHTML = '<p class="prazno">Faze još nisu upisane.</p>'; return; }
-    el.innerHTML = f.map(function (fz) {
-      var st = fz.stavke || [], g = st.filter(function (x) { return x.gotovo; }).length;
-      return '<article class="faza" data-id="' + esc(fz.id) + '"><span class="kad">' + esc(fz.kad || '') + '</span><h3>' + esc(fz.naziv) + ' <span class="sitno">' + g + '/' + st.length + '</span></h3>' +
-        '<div class="napredak" role="progressbar" aria-valuemin="0" aria-valuemax="' + st.length + '" aria-valuenow="' + g + '" aria-label="' + esc(fz.naziv) + '"><i style="width:' + (st.length ? g / st.length * 100 : 0) + '%"></i></div>' +
-        '<ul class="stavke">' + st.map(function (x, i) {
-          return '<li class="' + (x.gotovo ? 'gotovo' : '') + '"><label><input type="checkbox" data-stavka="' + i + '"' + (x.gotovo ? ' checked' : '') + (mozePisati ? '' : ' disabled') + '><span>' + esc(x.t) + (x.tko ? ' <span class="sitno">(' + esc(x.tko) + ')</span>' : '') + '</span></label></li>';
-        }).join('') + '</ul></article>';
-    }).join('');
-  }
-
-  /* ── Dnevnik ── */
-  function renderAktivnost() {
-    var el = $('#dnevnik');
-    if (!S.aktivnost) return;
-    if (!S.aktivnost.length) { el.innerHTML = '<li><span class="tiho">Još nema zapisa.</span></li>'; return; }
-    el.innerHTML = S.aktivnost.map(function (a) {
-      var link = sigurnaVeza(a.poveznica);
-      return '<li><time datetime="' + esc(a.kad) + '">' + esc(datum(a.kad)) + '</time><span class="pil agent" style="justify-self:start">' + esc(AGENTI[a.agent] || a.agent) + '</span><span>' + esc(a.sto) + (link ? ' <a href="' + esc(link) + '" target="_blank" rel="noopener">↗</a>' : '') + '</span></li>';
-    }).join('');
-  }
-
   /* ── Agenti: pokretanja i izvještaji ── */
-  var STATUS_POKRETANJA = { u_redu: 'u redu', radi: 'radi', uspjeh: 'gotovo', greska: 'greška', odbijeno_limit: 'limit', prekinuto_limit: 'prekinuto (limit)', prekinuto_vrijeme: 'prekinuto (vrijeme)' };
-  var KLASA_POKRETANJA = { u_redu: 'novo', radi: 'u_izradi', uspjeh: 'gotovo', greska: 'odbijeno', odbijeno_limit: 'odbijeno', prekinuto_limit: 'odbijeno', prekinuto_vrijeme: 'odbijeno' };
-  function usdTekst(n) { return (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).replace('.', ',') + ' USD'; }
+  var STATUS_POK = { u_redu: ['U redu', 'radi'], radi: ['Radi', 'radi'], uspjeh: ['Gotovo', 'gotovo'], greska: ['Greška', 'odbijeno'], odbijeno_limit: ['Limit', 'odbijeno'], prekinuto_limit: ['Prekinuto (limit)', 'odbijeno'], prekinuto_vrijeme: ['Prekinuto (vrijeme)', 'odbijeno'] };
   function aktivnaPokretanja() { return (S.pokretanja || []).some(function (p) { return p.status === 'u_redu' || p.status === 'radi'; }); }
-
   function renderAgenti() {
-    var P = S.potrosnja;
-    if (P) $('#potrosnja').textContent = 'Ovaj mjesec: ' + usdTekst(P.potroseno) + ' od ' + usdTekst(P.limit) + (P.raspored ? ' · ponedjeljkom se pokreće sam' : ' · raspored je isključen');
-    var el = $('#lista-pokretanja');
     if (!S.pokretanja) return;
-    if (!S.pokretanja.length) { el.innerHTML = '<p class="prazno">Još nijedan agent nije pokrenut. Klikni „Pokreni tjedni pregled sada” ili „Pokreni sada” na zadatku.</p>'; return; }
-    el.innerHTML = S.pokretanja.map(function (p) {
-      var h = '<article class="kartica st-' + esc(KLASA_POKRETANJA[p.status] || 'novo') + '"><div class="meta"><span class="pil agent">' + esc(AGENTI[p.agent] || p.agent) + '</span><span class="pil s-' + esc(KLASA_POKRETANJA[p.status] || 'novo') + '">' + esc(STATUS_POKRETANJA[p.status] || p.status) + '</span><span>' + esc(datum(p.kreirano)) + '</span>' +
-        (p.trosak ? '<span>' + esc(usdTekst(p.trosak)) + '</span>' : '') + (p.pretrage ? '<span>' + p.pretrage + ' pretraga</span>' : '') + '</div>';
-      if (p.opis) h += '<p>' + esc(p.opis) + '</p>';
-      if (p.greska) h += '<p class="poruka greska">' + esc(p.greska) + '</p>';
-      else if (p.rezultat) h += '<p class="odgovor">' + esc(p.rezultat) + '</p>';
-      return h + '</article>';
+    var el = $('#lista-pokretanja');
+    if (!S.pokretanja.length) { el.innerHTML = '<p class="prazno">Još nijedan agent nije pokrenut. Klikni „Pokreni tjedni pregled” gore ili „Pokreni sada” na zadatku.</p>'; }
+    else el.innerHTML = S.pokretanja.map(function (p) {
+      var s = STATUS_POK[p.status] || [p.status, 'radi'];
+      return '<article class="kartica pokretanje"><div class="odluka-vrh"><span class="agent-chip">' + tocka(p.agent) + esc(ag(p.agent).ime) + '</span><span class="oznaka-st ' + s[1] + '">' + esc(s[0]) + '</span>' +
+        '<span class="datum">' + esc(datumSat(p.kreirano)) + (p.trosak ? ' · ' + esc(usd(p.trosak)) : '') + (p.pretrage ? ' · ' + p.pretrage + ' pretraga' : '') + '</span></div>' +
+        (p.opis ? '<p>' + esc(p.opis) + '</p>' : '') +
+        (p.greska ? '<p class="poruka greska">' + esc(p.greska) + '</p>' : p.rezultat ? '<p class="rezultat">' + esc(p.rezultat) + '</p>' : '') + '</article>';
     }).join('');
+    renderIzvjestaji();
   }
-
   function renderIzvjestaji() {
     var el = $('#lista-izvjestaja');
     if (!S.izvjestaji) return;
     if (!S.izvjestaji.length) { el.innerHTML = '<p class="prazno">Još nema izvještaja. Pojavit će se kad agenti završe prvi pregled.</p>'; return; }
     var otvoreni = {}; el.querySelectorAll('details[open]').forEach(function (d) { otvoreni[d.dataset.id] = true; });
     el.innerHTML = S.izvjestaji.map(function (x) {
-      return '<details class="kartica" data-id="' + esc(x.id) + '"' + (otvoreni[x.id] ? ' open' : '') + '><summary><b>' + esc(x.naslov) + '</b> <span class="sitno">' + esc(AGENTI[x.agent] || x.agent) + ' · ' + esc(datum(x.kad)) + '</span></summary><pre class="izvjestaj" style="white-space:pre-wrap;font:inherit;margin:10px 0 0">Učitavam…</pre></details>';
+      return '<details class="kartica izvjestaj" data-id="' + esc(x.id) + '"' + (otvoreni[x.id] ? ' open' : '') + '><summary>' + tocka(x.agent) + '<b>' + esc(x.naslov) + '</b><span class="sitno">' + esc(ag(x.agent).ime) + ' · ' + esc(datumKratko(x.kad)) + '</span></summary><pre>Učitavam…</pre></details>';
     }).join('');
     el.querySelectorAll('details[open]').forEach(ucitajIzvjestaj);
   }
@@ -630,7 +824,8 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
       .catch(function () { pre.textContent = 'Izvještaj se ne može učitati.'; });
   }
 
-  function renderSve() { renderSazetak(); renderOdluke(); renderZadaci(); renderAgenti(); renderIzvjestaji(); renderBrojke(); renderKonkurencija(); renderNapredak(); renderAktivnost(); }
+  function renderPregled() { renderUloge(); renderOdluke(); renderAktivnost(); }
+  function renderSve() { renderZaglavlje(); renderPregled(); renderNapredak(); renderZadaci(); renderBrojke(); renderKonkurencija(); renderAgenti(); }
 
   /* ── Podaci i radnje (API) ── */
   var TENANT = null;
@@ -665,32 +860,75 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     });
   }
 
+  function onemoguci(el, da) { el.querySelectorAll('button, textarea').forEach(function (b) { b.disabled = da || !mozePisati; }); }
+
   document.addEventListener('click', function (e) {
-    var f = e.target.closest('[data-filtar]');
-    if (f) { S.filtar = f.dataset.filtar; document.querySelectorAll('[data-filtar]').forEach(function (b) { b.setAttribute('aria-pressed', String(b === f)); }); renderOdluke(); return; }
-    var od = e.target.closest('[data-odluka]');
+    var t = e.target;
+    var ul = t.closest('[data-uloga]');
+    if (ul) { U.uloga = U.uloga === ul.dataset.uloga ? null : ul.dataset.uloga; renderPregled(); return; }
+    if (t.closest('#ponisti-ulogu')) { U.uloga = null; renderPregled(); return; }
+    if (t.closest('#svi-rijeseni')) { U.sviRijeseni = !U.sviRijeseni; renderOdluke(); return; }
+
+    var zs = t.closest('[data-zasto]');
+    if (zs) {
+      var k0 = zs.closest('.odluka'), id0 = k0.dataset.id;
+      U.otvorene[id0] = !U.otvorene[id0];
+      var blok = k0.querySelector('.razlog-blok'); blok.hidden = !U.otvorene[id0];
+      zs.setAttribute('aria-expanded', String(!!U.otvorene[id0]));
+      zs.textContent = U.otvorene[id0] ? 'Sakrij' : (k0.querySelector('.razlog') ? 'Zašto? · komentar' : 'Komentar');
+      if (U.otvorene[id0]) { var ta0 = blok.querySelector('textarea'); if (ta0 && !k0.querySelector('.razlog')) ta0.focus(); }
+      return;
+    }
+    var od = t.closest('[data-odluka]');
     if (od) {
-      var kart = od.closest('.kartica'), por = kart.querySelector('.poruka');
+      var kart = od.closest('.odluka'), por = kart.querySelector('.poruka');
       var kom = (kart.querySelector('textarea') || {}).value || '';
-      kart.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+      onemoguci(kart, true);
       api('POST', '/api/odluke/' + encodeURIComponent(kart.dataset.id) + '/odluka', { status: od.dataset.odluka, komentar: kom.trim().slice(0, 2000) })
-        .then(function () { return ucitaj(); })
+        .then(function () { delete U.otvorene[kart.dataset.id]; return ucitaj(); })
         .catch(function (err) {
-          if (por) { por.className = 'poruka greska'; por.textContent = porukaGreske(err, 'Odluka nije spremljena. Pokušaj ponovno.'); }
-          kart.querySelectorAll('button').forEach(function (b) { b.disabled = !mozePisati; });
+          poruka(por, porukaGreske(err, 'Odluka nije spremljena. Pokušaj ponovno.'), 'greska');
+          onemoguci(kart, false);
           if (err && err.status === 409) ucitaj();
         });
       return;
     }
-    var zk = e.target.closest('#lista-zadataka .kartica');
-    if (!zk) return;
-    var novi = e.target.closest('[data-gotovo]') ? 'gotovo' : e.target.closest('[data-otkazi]') ? 'odbijeno' : null;
-    if (novi) {
-      zk.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
-      api('POST', '/api/zadaci/' + encodeURIComponent(zk.dataset.id) + '/status', { status: novi }).then(function () { return ucitaj(); }).catch(function (err) {
-        var p = zk.querySelector('.poruka'); if (p) { p.className = 'poruka greska'; p.textContent = porukaGreske(err, 'Nije spremljeno. Pokušaj ponovno.'); }
-        zk.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
-      });
+
+    var fz = t.closest('[data-filtar-z]');
+    if (fz) { U.filtarZ = fz.dataset.filtarZ; renderZadaci(); return; }
+    var ia = t.closest('[data-agent]');
+    if (ia) { U.agent = ia.dataset.agent; renderIzborAgenta(); poruka($('#z-poruka'), ''); return; }
+
+    var nalog = t.closest('.nalog');
+    if (nalog) {
+      var pz = nalog.querySelector('.poruka'), zid = encodeURIComponent(nalog.dataset.id);
+      if (t.closest('[data-rezultat]')) { U.otvoreniZ[nalog.dataset.id] = !U.otvoreniZ[nalog.dataset.id]; renderZadaci(); return; }
+      if (t.closest('[data-pokreni]')) {
+        onemoguci(nalog, true); poruka(pz, 'Pokrećem agenta…');
+        api('POST', '/api/zadaci/' + zid + '/pokreni', {}).then(function () { return ucitaj(); }).catch(function (err) {
+          poruka(pz, porukaGreske(err, 'Agent nije pokrenut.'), 'greska'); onemoguci(nalog, false);
+        });
+        return;
+      }
+      var novi = t.closest('[data-gotovo]') ? 'gotovo' : t.closest('[data-otkazi]') ? 'odbijeno' : null;
+      if (novi) {
+        onemoguci(nalog, true);
+        api('POST', '/api/zadaci/' + zid + '/status', { status: novi }).then(function () { return ucitaj(); }).catch(function (err) {
+          poruka(pz, porukaGreske(err, 'Nije spremljeno. Pokušaj ponovno.'), 'greska'); onemoguci(nalog, false);
+        });
+      }
+      return;
+    }
+
+    var pg = t.closest('#pokreni-pregled, #pokreni-mjesecni');
+    if (pg) {
+      var p2 = $('#pregled-poruka');
+      pg.disabled = true; poruka(p2, 'Pokrećem…');
+      api('POST', '/api/pregled', { vrsta: pg.dataset.vrsta }).then(function () {
+        poruka(p2, (pg.dataset.vrsta === 'mjesecni' ? 'Mjesečni' : 'Tjedni') + ' pregled je u redu čekanja. Agenti rade jedan za drugim; stanje je pod „Agenti i izvještaji”.', 'ok');
+        return ucitaj();
+      }).catch(function (err) { poruka(p2, porukaGreske(err, 'Pregled nije pokrenut.'), 'greska'); })
+        .then(function () { pg.disabled = false; });
     }
   });
 
@@ -704,23 +942,27 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
       .then(function () { cb.disabled = !mozePisati; });
   });
 
-  $('#forma-zadatak').addEventListener('submit', function (e) {
-    e.preventDefault();
+  function dodajZadatak(pokreni) {
     var opis = $('#z-opis').value.trim(), por = $('#z-poruka');
-    if (opis.length < 5) { por.className = 'poruka greska'; por.textContent = 'Opiši zadatak u barem jednoj rečenici.'; $('#z-opis').focus(); return; }
-    var gumb = e.target.querySelector('button[type="submit"]'); gumb.disabled = true;
-    api('POST', '/api/zadaci', { opis: opis.slice(0, 2000), agent: $('#z-agent').value, rok: $('#z-rok').value || '' }).then(function () {
-      por.className = 'poruka'; por.textContent = 'Zadatak je dodan; koordinator ga preuzima u idućem pregledu.';
-      $('#z-opis').value = ''; $('#z-rok').value = '';
-      return ucitaj();
-    }).catch(function (err) { por.className = 'poruka greska'; por.textContent = porukaGreske(err, 'Zadatak nije spremljen. Pokušaj ponovno.'); })
-      .then(function () { gumb.disabled = !mozePisati; });
-  });
+    if (opis.length < 5) { poruka(por, 'Opiši zadatak u barem jednoj rečenici.', 'greska'); $('#z-opis').focus(); return; }
+    var gumbi = $('#forma-zadatak').querySelectorAll('button'); gumbi.forEach(function (b) { b.disabled = true; });
+    api('POST', '/api/zadaci', { opis: opis.slice(0, 2000), agent: U.agent, rok: $('#z-rok').value || '' }).then(function (d) {
+      $('#z-opis').value = ''; $('#z-rok').value = ''; U.filtarZ = 'aktivni';
+      if (!pokreni) { poruka(por, 'Zadatak je dodan na vrh popisa. Koordinator ga preuzima u idućem pregledu, ili ga pokreni odmah.', 'ok'); return ucitaj(); }
+      return api('POST', '/api/zadaci/' + encodeURIComponent(d.id) + '/pokreni', {})
+        .then(function () { poruka(por, 'Zadatak je dodan i agent je pokrenut.', 'ok'); })
+        .catch(function (err) { poruka(por, 'Zadatak je dodan, ali agent nije pokrenut: ' + porukaGreske(err, 'pokušaj „Pokreni sada” na zadatku.'), 'greska'); })
+        .then(function () { return ucitaj(); });
+    }).catch(function (err) { poruka(por, porukaGreske(err, 'Zadatak nije spremljen. Pokušaj ponovno.'), 'greska'); })
+      .then(function () { gumbi.forEach(function (b) { b.disabled = !mozePisati; }); });
+  }
+  $('#forma-zadatak').addEventListener('submit', function (e) { e.preventDefault(); dodajZadatak(false); });
+  $('#dodaj-pokreni').addEventListener('click', function () { dodajZadatak(true); });
 
   $('#forma-tjedan').addEventListener('submit', function (e) {
     e.preventDefault();
     var por = $('#t-poruka'), dan = $('#t-dan').value;
-    if (!dan) { por.className = 'poruka greska'; por.textContent = 'Odaberi dan u tjednu.'; $('#t-dan').focus(); return; }
+    if (!dan) { poruka(por, 'Odaberi dan u tjednu.', 'greska'); $('#t-dan').focus(); return; }
     var p = dan.split('-'), w = isoTjedan(new Date(+p[0], +p[1] - 1, +p[2]));
     var izvori = {}; IZVORI.forEach(function (x) { izvori[x[0]] = broj($('#t-i-' + x[0]).value); });
     var rec = $('#t-rec').value;
@@ -728,14 +970,16 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
     if (rec !== '') doc.recenzije = broj(rec);
     var gumb = e.target.querySelector('button[type="submit"]'); gumb.disabled = true;
     api('PUT', '/api/tjedni/' + w.id, doc).then(function () {
-      por.className = 'poruka'; por.textContent = 'Spremljeno za tjedan od ' + datumKratko(w.od) + '. Ponovni upis za isti tjedan zamjenjuje brojke.';
+      poruka(por, 'Spremljeno za tjedan od ' + datumKratko(w.od) + '. Ponovni upis za isti tjedan zamjenjuje brojke.', 'ok');
       return ucitaj();
-    }).catch(function (err) { por.className = 'poruka greska'; por.textContent = porukaGreske(err, 'Nije spremljeno. Pokušaj ponovno.'); })
+    }).catch(function (err) { poruka(por, porukaGreske(err, 'Nije spremljeno. Pokušaj ponovno.'), 'greska'); })
       .then(function () { gumb.disabled = !mozePisati; });
   });
 
-  /* ── Pokretanje: tko je prijavljen, koji zakupac ── */
-  $('#pokretanje-info').textContent = 'Zadatke preuzima koordinator u idućem pregledu.';
+  document.addEventListener('toggle', function (e) { if (e.target.matches && e.target.matches('#lista-izvjestaja details') && e.target.open) ucitajIzvjestaj(e.target); }, true);
+
+  /* ── Tko je prijavljen, koji zakupac ── */
+  renderIzborAgenta();
   api('GET', '/api/ja').then(function (ja) {
     var izbor = $('#tenant-izbor');
     if (ja.tenanti.length > 1) {
@@ -744,34 +988,10 @@ footer { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px
       izbor.hidden = false; $('#tenant-labela').hidden = false;
       izbor.addEventListener('change', function () { TENANT = izbor.value; try { localStorage.setItem('tenant', TENANT); } catch (e) {} ucitaj(); });
     } else { TENANT = null; }
-    if (ja.tenanti.length) { var n = ja.tenanti.filter(function (t) { return t.id === (TENANT || ja.tenanti[0].id); })[0]; if (n) $('#naziv-zakupca').textContent = 'Marketing · ' + n.naziv; }
+    if (ja.tenanti.length) { var n = ja.tenanti.filter(function (t) { return t.id === (TENANT || ja.tenanti[0].id); })[0]; if (n) $('#naziv-zakupca').textContent = n.naziv + ' · marketing'; }
     $('#korisnik').textContent = ja.email + ' · ' + ja.uloga;
     return ucitaj();
   }).catch(function (e) { veza('greska', porukaGreske(e, 'Prijava nije uspjela. Osvježi stranicu.')); });
-
-  /* Pokreni agenta za zadatak / tjedni pregled; izvještaji se učitavaju kad ih se otvori */
-  document.addEventListener('click', function (e) {
-    var pk = e.target.closest('[data-pokreni]');
-    if (pk) {
-      var kart = pk.closest('.kartica'), por = kart.querySelector('.poruka');
-      kart.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
-      if (por) { por.className = 'poruka'; por.textContent = 'Pokrećem agenta…'; }
-      api('POST', '/api/zadaci/' + encodeURIComponent(kart.dataset.id) + '/pokreni', {}).then(function () { return ucitaj(); }).catch(function (err) {
-        if (por) { por.className = 'poruka greska'; por.textContent = porukaGreske(err, 'Agent nije pokrenut.'); }
-        kart.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
-      });
-      return;
-    }
-    var pg = e.target.closest('#pokreni-pregled, #pokreni-mjesecni');
-    if (pg) {
-      var gumb = pg, p2 = $('#pregled-poruka');
-      gumb.disabled = true; p2.className = 'poruka'; p2.textContent = 'Pokrećem…';
-      api('POST', '/api/pregled', { vrsta: pg.dataset.vrsta }).then(function () { p2.textContent = 'Pregled je u redu čekanja. Agenti rade jedan za drugim; izvještaji se pojavljuju ispod.'; return ucitaj(); })
-        .catch(function (err) { p2.className = 'poruka greska'; p2.textContent = porukaGreske(err, 'Pregled nije pokrenut.'); })
-        .then(function () { gumb.disabled = false; });
-    }
-  });
-  document.addEventListener('toggle', function (e) { if (e.target.matches && e.target.matches('#lista-izvjestaja details') && e.target.open) ucitajIzvjestaj(e.target); }, true);
 
   setInterval(function () { if (!document.hidden) ucitaj(true); }, 60000);
   setInterval(function () { if (!document.hidden && aktivnaPokretanja()) ucitaj(true); }, 8000);
