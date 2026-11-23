@@ -37,6 +37,48 @@ section[data-pogled] { display: flex; flex-direction: column; gap: 40px; }
 .dio { display: flex; flex-direction: column; gap: 18px; }
 p { margin: 0; }
 
+/* Podizbornik marketinga */
+.podizbornik { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-block: 14px 0; }
+.podizbornik span { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); margin-right: 6px; }
+.podizbornik a { font-size: 14px; font-weight: 500; color: var(--ink-mid); text-decoration: none; padding: 5px 12px; border-radius: 3px; border: 1px solid var(--line); background: var(--white); }
+.podizbornik a:hover { border-color: var(--line-strong); color: var(--ink); }
+.podizbornik a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* Poslovno: ovaj tjedan, odjeli, danas */
+.kpi-red { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.kpi { padding: 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; text-decoration: none; color: var(--ink); }
+a.kpi:hover { border-color: var(--line-strong); color: var(--ink); }
+.kpi .naziv { font-size: 12.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.kpi .broj { font-family: var(--font-display); font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi .opis { font-size: 13.6px; color: var(--ink-mid); line-height: 1.45; }
+.kpi.pozor .broj { color: var(--danger); }
+.odjeli { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+@media (max-width: 400px) { .odjeli { grid-template-columns: minmax(0, 1fr); } }
+.odjel { padding: 20px; display: flex; flex-direction: column; gap: 14px; text-decoration: none; color: var(--ink); position: relative; min-width: 0; }
+.odjel:hover { border-color: var(--line-strong); color: var(--ink); }
+.odjel h3 { font-size: 21px; }
+.odjel-glava { display: flex; flex-direction: column; gap: 2px; padding-right: 44px; }
+.odjel .krug { top: 16px; right: 16px; min-width: 32px; height: 32px; border-radius: 16px; font-size: 15px; line-height: 32px; box-shadow: none; }
+.odjel .krug.prazan { line-height: 30px; }
+.agenti-odjela { display: flex; flex-wrap: wrap; gap: 8px; }
+.mb { position: relative; width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font: 800 12px/1 var(--font-slova); color: var(--na-tkanini); box-shadow: var(--shadow-jastuk); }
+.mb::after { content: ""; position: absolute; inset: 3px; border: 1.2px dashed var(--konac); border-radius: 7px; opacity: .55; pointer-events: none; }
+.mb.planiran { box-shadow: none; background: var(--white) !important; border: 1.5px dashed var(--line-strong); color: var(--ink-soft); }
+.mb.planiran::after { display: none; }
+.vijest { font-size: 14.4px; color: var(--ink-mid); line-height: 1.5; }
+.faza-odjela { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.danas-red { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.danas-red:first-child { border-top: 0; }
+.danas-red > span:nth-child(2) { font-size: 14.6px; line-height: 1.45; overflow-wrap: anywhere; }
+.oznaka-odjela { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 3px; background: var(--accent-soft); color: var(--ink-mid); white-space: nowrap; }
+.lanac { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+.karika { flex: 1 1 150px; padding: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--white); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.karika.planirana { border-style: dashed; border-color: var(--line-strong); }
+.karika b { font-size: 14.4px; }
+.karika span { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.strelica { display: grid; place-items: center; color: var(--ink-soft); }
+@media (max-width: 640px) { .danas-red { grid-template-columns: minmax(0, 1fr); justify-items: start; } .strelica { display: none; } }
+
 /* Uloge kao šiveni blokovi */
 .uloge { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 28px 20px; padding-top: 10px; }
 .uloga { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; color: var(--ink); border-radius: 14px; }
@@ -207,11 +249,11 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
   <div class="omot">
     <div class="red-zaglavlja">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <span class="nadnaslov" id="naziv-zakupca">Marketing</span>
-        <h1>Ploča agenata</h1>
+        <span class="nadnaslov" id="nadnaslov">Poslovna ploča</span>
+        <h1 id="naslov">Poslovna ploča</h1>
         <span class="sitno" id="tjedan-info">Agent predlaže, ti odobravaš</span>
       </div>
-      <div class="zaglavlje-desno">
+      <div class="zaglavlje-desno" id="zaglavlje-agenti">
         <div class="trosak" id="trosak" hidden>
           <div class="trosak-red"><span id="trosak-mjesec">Potrošnja ovaj mjesec</span><span id="trosak-iznos"></span></div>
           <div class="mjerac" id="trosak-mjerac"><i style="width:0"></i></div>
@@ -230,22 +272,64 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
       <span class="poruka" id="pregled-poruka" aria-live="polite"></span>
     </div>
     <nav class="tabovi" aria-label="Dijelovi ploče">
-      <a href="#pregled" data-tab="pregled">Pregled<b id="nav-odluke"></b></a>
-      <a href="#zadaci" data-tab="zadaci">Zadaci agentima<b id="nav-zadaci"></b></a>
-      <a href="#napredak" data-tab="napredak">Napredak</a>
-      <a href="#brojke" data-tab="brojke">Brojke</a>
-      <a href="#konkurencija" data-tab="konkurencija">Konkurencija</a>
-      <a href="#agenti" data-tab="agenti">Agenti i izvještaji</a>
-      <a href="/kalendar.html" class="odvojeno">Kalendar</a>
+      <a href="#poslovno" data-tab="poslovno">Poslovno</a>
+      <a href="#odluke" data-tab="odluke">Odluke<b id="nav-odluke"></b></a>
+      <a href="#zadaci" data-tab="zadaci">Zadaci<b id="nav-zadaci"></b></a>
+      <a href="/kalendar.html">Kalendar</a>
       <a href="/skladiste.html">Skladište</a>
+      <a href="/mreze.html">Mreže</a>
     </nav>
   </div>
 </header>
+<nav class="podizbornik omot" id="podizbornik" aria-label="Marketing" hidden>
+  <span>Marketing</span>
+  <a href="#odluke" data-tab="odluke">Uloge i odluke</a>
+  <a href="#napredak" data-tab="napredak">Napredak</a>
+  <a href="#brojke" data-tab="brojke">Brojke</a>
+  <a href="#konkurencija" data-tab="konkurencija">Konkurencija</a>
+  <a href="#agenti" data-tab="agenti">Agenti i izvještaji</a>
+</nav>
 
 <main class="omot">
 
-  <!-- ── Pregled ── -->
-  <section data-pogled="pregled" aria-label="Pregled">
+  <!-- ── Poslovno: odjeli ── -->
+  <section data-pogled="poslovno" aria-label="Poslovno">
+    <div class="dio" aria-labelledby="h-tjedan">
+      <h2 id="h-tjedan" style="font-size:27px">Ovaj tjedan u obrtu</h2>
+      <div class="kpi-red" id="kpi-obrt"><p class="prazno">Učitavam…</p></div>
+    </div>
+    <div class="dio" aria-labelledby="h-odjeli">
+      <div class="blok-naslov"><div>
+        <h2 id="h-odjeli">Odjeli</h2>
+        <p class="sitno">Broj u krugu je broj stvari koje čekaju tebe. Iscrtkani agenti još ne rade; ispod piše u kojoj fazi dolaze.</p>
+      </div></div>
+      <div class="odjeli" id="odjeli"></div>
+    </div>
+    <div class="dvije">
+      <div class="kartica okvir" aria-labelledby="h-danas" style="gap:8px">
+        <h2 id="h-danas" style="font-size:21px">Danas od tebe treba</h2>
+        <div id="danas"><p class="prazno">Učitavam…</p></div>
+      </div>
+      <div class="kartica okvir" aria-labelledby="h-lanac">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <h2 id="h-lanac" style="font-size:21px">Kako se odjeli spajaju</h2>
+          <p class="sitno">Jedna potvrđena narudžba pokreće cijeli lanac, bez dodatnog upisivanja. Primjer jedne narudžbe:</p>
+        </div>
+        <div class="lanac">
+          <div class="karika"><b>Narudžba potvrđena</b><span>Banner LUCIJA, 6 slova, ruža i menta</span></div>
+          <span class="strelica" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+          <div class="karika"><b>Kalendar</b><span>dani izrade i isporuke, sati šivanja po danu</span></div>
+          <span class="strelica" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+          <div class="karika"><b>Skladište</b><span>tkanina rezervirana; kod „U izradi” sama se skida sa stanja</span></div>
+          <span class="strelica" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+          <div class="karika planirana"><b>Nabava</b><span>tkanina ispod praga: prijedlog narudžbe kao odluka (dolazi kasnije)</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Odluke (uloge marketinga) ── -->
+  <section data-pogled="odluke" aria-label="Odluke" hidden>
     <div class="dio" aria-labelledby="h-uloge">
       <div class="blok-naslov">
         <div>
@@ -451,8 +535,33 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
   var KORACI = ['Zadano', 'U redu', 'Agent radi', 'Gotovo'];
   var IZVORI = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['ai', 'AI asistent'], ['preporuka', 'Preporuka'], ['ostalo', 'Ostalo']];
   var MJESECI = ['siječnju', 'veljači', 'ožujku', 'travnju', 'svibnju', 'lipnju', 'srpnju', 'kolovozu', 'rujnu', 'listopadu', 'studenom', 'prosincu'];
-  var POGLEDI = ['pregled', 'zadaci', 'napredak', 'brojke', 'konkurencija', 'agenti'];
-  var STARI = { odluke: 'pregled', aktivnost: 'agenti', izvjestaji: 'agenti' };
+  var POGLEDI = ['poslovno', 'odluke', 'zadaci', 'napredak', 'brojke', 'konkurencija', 'agenti'];
+  var STARI = { pregled: 'odluke', aktivnost: 'agenti', izvjestaji: 'agenti' };
+  var MARKETING = ['odluke', 'napredak', 'brojke', 'konkurencija', 'agenti'];
+  /* Zaglavlje po pogledu: [dio iza imena zakupca, naslov] */
+  var ZAGLAVLJA = { poslovno: ['obrt', 'Poslovna ploča'], odluke: ['marketing', 'Odluke'], zadaci: ['agenti', 'Zadaci agentima'], napredak: ['marketing', 'Napredak'], brojke: ['marketing', 'Brojke'], konkurencija: ['marketing', 'Konkurencija'], agenti: ['agenti', 'Agenti i izvještaji'] };
+  var ZAKUPAC = '';
+  var TJEDAN = { kratko: '', dugo: '' };
+  var DANI_DUGO = ['Nedjelja', 'Ponedjeljak', 'Utorak', 'Srijeda', 'Četvrtak', 'Petak', 'Subota'];
+  var DANI_KRATKO = ['ned', 'pon', 'uto', 'sri', 'čet', 'pet', 'sub'];
+  /* Odjeli: agenti (kod, ime, tkanina, radi li već), u kojoj fazi dolazi ostatak, kamo vodi klik. */
+  var R_ = '#f2cfc8', M_ = '#cfe5d6', K_ = '#f5eee2';
+  var ODJELI = [
+    { id: 'uprava', naziv: 'Uprava', opis: 'Sažetak tjedna, rokovi, financije', link: '#odluke', uloga: 'koordinator', faza: 'Voditelj radi · Financije u fazi F',
+      agenti: [['VO', 'Voditelj (Koordinator)', R_, 1], ['FI', 'Financije', K_, 0]] },
+    { id: 'prodaja', naziv: 'Prodaja', opis: 'Upiti i narudžbe', link: '/kalendar.html', faza: 'Planer radi · Upiti u fazi D',
+      agenti: [['UP', 'Upiti', M_, 0], ['PL', 'Planer narudžbi', R_, 1]] },
+    { id: 'proizvodnja', naziv: 'Proizvodnja', opis: 'Skladište i nabava', link: '/skladiste.html', faza: 'Skladište radi · Nabava čeka popis dobavljača',
+      agenti: [['SK', 'Skladište', K_, 1], ['NA', 'Nabava', M_, 0]] },
+    { id: 'mreze', naziv: 'Društvene mreže', opis: 'Instagram, Facebook, TikTok', link: '/mreze.html', faza: 'Faza C (analitika) i E (video)',
+      agenti: [['AN', 'Analitičar mreža', R_, 0], ['TR', 'Trendovi', M_, 0], ['KR', 'Kreator sadržaja', K_, 0]] },
+    { id: 'marketing', naziv: 'Marketing', opis: 'SEO, AI, lokalno, sadržaj, konkurencija', link: '#odluke', faza: 'Radi · Oglasi od ožujka 2027.',
+      agenti: [['KN', 'Konkurencija', M_, 1], ['SEO', 'SEO', K_, 1], ['AI', 'AI vidljivost', R_, 1], ['SA', 'Sadržaj', M_, 1], ['LO', 'Lokalno', K_, 1], ['OG', 'Oglasi', K_, 0]] },
+    { id: 'web', naziv: 'Web', opis: 'Stranica i konfigurator', link: '#zadaci', faza: 'Faza F',
+      agenti: [['WEB', 'Razvoj stranice', R_, 0]] }
+  ];
+  var AGENTI_MARKETINGA = ['konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'oglasi'];
+  var VRSTA_ODJEL = { opcija: 'prodaja', termin: 'prodaja', rok: 'prodaja', plan: 'prodaja', sukob: 'prodaja', kapacitet: 'proizvodnja', skladiste: 'proizvodnja', inventura: 'proizvodnja' };
   /* Retci usporedbe bannera: ključ u usporedba, naziv, što je bolje (niže/više/ništa) */
   var ATRIBUTI = [
     ['c3', 'Cijena, 3 slova', 'nize'], ['c5', 'Cijena, 5 slova', 'nize'], ['c8', 'Cijena, 8 slova', 'nize'], ['cDod', 'Svako dodatno slovo', 'nize'],
@@ -462,7 +571,7 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
   ];
 
   var mozePisati = true;
-  var S = { odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, pokretanja: null, izvjestaji: null, potrosnja: null };
+  var S = { odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, pokretanja: null, izvjestaji: null, potrosnja: null, posl: null, poslGreska: false };
   var U = { uloga: null, otvorene: {}, sviRijeseni: false, filtarZ: 'aktivni', otvoreniZ: {}, agent: 'konkurencija' };
 
   function $(s) { return document.querySelector(s); }
@@ -489,17 +598,29 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
     return { id: g + '-W' + (w < 10 ? '0' + w : w), od: pon.toISOString().slice(0, 10), broj: w };
   }
   (function () {
-    var w = isoTjedan(new Date()), pon = new Date(w.od + 'T12:00:00Z'), ned = new Date(pon); ned.setUTCDate(ned.getUTCDate() + 6);
+    var d = new Date(), w = isoTjedan(d), pon = new Date(w.od + 'T12:00:00Z'), ned = new Date(pon); ned.setUTCDate(ned.getUTCDate() + 6);
     var od = pon.getUTCDate() + '.' + (pon.getUTCMonth() !== ned.getUTCMonth() ? ' ' + (pon.getUTCMonth() + 1) + '.' : '');
-    $('#tjedan-info').textContent = 'Tjedan ' + w.broj + ' · ' + od + ' – ' + ned.getUTCDate() + '. ' + (ned.getUTCMonth() + 1) + '. ' + ned.getUTCFullYear() + '. · agent predlaže, ti odobravaš';
+    TJEDAN.kratko = 'Tjedan ' + w.broj + ' · ' + od + ' – ' + ned.getUTCDate() + '. ' + (ned.getUTCMonth() + 1) + '. ' + ned.getUTCFullYear() + '. · agent predlaže, ti odobravaš';
+    TJEDAN.dugo = DANI_DUGO[d.getDay()] + ', ' + d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear() + '. · tjedan ' + w.broj;
   })();
 
   /* ── Pogledi (hash) ── */
+  var POGLED = 'poslovno';
   function pokaziPogled(skrol) {
     var h = location.hash.slice(1); h = STARI[h] || h;
-    var p = POGLEDI.indexOf(h) >= 0 ? h : 'pregled';
+    var p = POGLEDI.indexOf(h) >= 0 ? h : 'poslovno';
+    POGLED = p;
     document.querySelectorAll('[data-pogled]').forEach(function (s) { s.hidden = s.dataset.pogled !== p; });
-    document.querySelectorAll('[data-tab]').forEach(function (a) { if (a.dataset.tab === p) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    var mkt = MARKETING.indexOf(p) >= 0;
+    document.querySelectorAll('.tabovi [data-tab]').forEach(function (a) { if (a.dataset.tab === p || (mkt && a.dataset.tab === 'odluke')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    document.querySelectorAll('#podizbornik [data-tab]').forEach(function (a) { if (a.dataset.tab === p) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    $('#podizbornik').hidden = !mkt;
+    $('#zaglavlje-agenti').hidden = p === 'poslovno';
+    var z = ZAGLAVLJA[p];
+    $('#nadnaslov').textContent = (ZAKUPAC ? ZAKUPAC + ' · ' : '') + z[0];
+    $('#naslov').textContent = z[1];
+    $('#tjedan-info').textContent = p === 'poslovno' ? TJEDAN.dugo : TJEDAN.kratko;
+    document.title = z[1] + (ZAKUPAC ? ' · ' + ZAKUPAC : '');
     if (skrol) window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', function () { pokaziPogled(true); });
@@ -824,8 +945,102 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
       .catch(function () { pre.textContent = 'Izvještaj se ne može učitati.'; });
   }
 
+  /* ── Poslovno: stvarne brojke iz narudžbi, kalendara, skladišta i odluka ── */
+  function hrDan(d) { var x = new Date(d + 'T12:00:00Z'); return DANI_KRATKO[x.getUTCDay()] + ' ' + x.getUTCDate() + '. ' + (x.getUTCMonth() + 1) + '.'; }
+  function decimalno(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
+  function najmanjeTkanine(P) {
+    var poznate = P.skladiste.filter(function (a) { return a.kategorija === 'tkanina' && a.status !== 'nepoznato'; });
+    var trazene = poznate.filter(function (a) { return a.tempoTjedno > 0 || a.rezervirano > 0; });
+    var l = (trazene.length ? trazene : poznate).slice().sort(function (a, b) { return a.slova - b.slova; });
+    return { a: l[0] || null, poznatih: poznate.length };
+  }
+  /* 1 odluka čeka, 2–4 odluke čekaju, 5+ odluka čeka (11–14 kao 5+) */
+  function odlukaCeka(n) {
+    var j = n % 10, d = n % 100;
+    return n + (j === 1 && d !== 11 ? ' odluka čeka' : j >= 2 && j <= 4 && (d < 12 || d > 14) ? ' odluke čekaju' : ' odluka čeka');
+  }
+  function cekaOd(agenti) { return (S.odluke || []).filter(function (o) { return o.status === 'ceka' && agenti.indexOf(o.agent) >= 0; }); }
+  function renderPoslovno() {
+    var P = S.posl, kpi = [];
+    var upoz = P ? P.upozorenja.filter(function (u) { return u.razina <= 2; }) : [];
+    var poOdjelu = function (id) { return upoz.filter(function (u) { return VRSTA_ODJEL[u.vrsta] === id; }); };
+    var naj = P ? najmanjeTkanine(P) : { a: null, poznatih: 0 };
+
+    if (P) {
+      var danas = P.danas, ned = P.kalendar.do;
+      var siv = P.narudzbe.filter(function (n) { return n.usluga === 'sivanje'; });
+      var isp = siv.filter(function (n) { return ['potvrdjeno', 'u_izradi', 'gotovo'].indexOf(n.stanje) >= 0 && n.rok && n.rok >= danas && n.rok <= ned; }).sort(function (a, b) { return a.rok < b.rok ? -1 : 1; });
+      var kasni = siv.filter(function (n) { return ['potvrdjeno', 'u_izradi', 'gotovo'].indexOf(n.stanje) >= 0 && n.rok && n.rok < danas; }).length;
+      kpi.push({ naziv: 'Za isporuku', broj: isp.length, link: '/kalendar.html', pozor: kasni > 0,
+        opis: (isp.length ? (isp.length === 1 ? 'narudžba' : 'narudžbe') + ' do nedjelje, prva ' + hrDan(isp[0].rok) : 'nema isporuka do nedjelje') + (kasni ? ' · ' + kasni + ' kasni' : '') });
+      var akt = siv.filter(function (n) { return n.stanje === 'potvrdjeno' || n.stanje === 'u_izradi'; });
+      var sati = akt.reduce(function (s, n) { return s + (Number(n.sati_procjena) || (n.potrosnja && n.potrosnja.sati) || 0); }, 0);
+      var preko = P.kalendar.dani.filter(function (d) { return d.preko; }).map(function (d) { return DANI_DUGO[new Date(d.datum + 'T12:00:00Z').getUTCDay()].toLowerCase(); });
+      kpi.push({ naziv: 'Šivanje u izradi', broj: akt.length, link: '/kalendar.html', pozor: preko.length > 0,
+        opis: 'potvrđeno ili u izradi · oko ' + decimalno(sati) + ' h posla' + (preko.length ? ', ' + preko.join(' i ') + ' preko kapaciteta' : '') });
+      var igr = [].concat.apply([], P.kalendar.dani.map(function (d) { return d.igraonica; }));
+      var potv = igr.filter(function (x) { return x.stanje === 'potvrdjeno' || x.stanje === 'odradjeno'; }).length;
+      var opc = igr.filter(function (x) { return x.stanje === 'opcija'; });
+      var prva = opc.map(function (x) { return x.opcijaDo; }).filter(Boolean).sort()[0];
+      var sat = prva ? Math.round((new Date(prva) - Date.now()) / 3600000) : null;
+      kpi.push({ naziv: 'Igraonica', broj: opc.length ? potv + ' + ' + opc.length : potv, link: '/kalendar.html', pozor: sat != null && sat < 0,
+        opis: opc.length ? 'potvrđeno + ' + (opc.length === 1 ? 'opcija' : 'opcije') + (sat == null ? '' : sat < 0 ? ' (istekla)' : sat < 48 ? ' koja ističe za ' + sat + ' h' : '') : (potv ? 'potvrđeno ovaj tjedan' : 'ovaj tjedan nema termina') });
+    }
+    var tj = (S.tjedni || []).slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; }), zt = tj[tj.length - 1];
+    kpi.push({ naziv: 'Upiti, zadnji tjedan', broj: zt ? broj(zt.upitiBanner) + broj(zt.upitiIgraonica) : '–', link: '#brojke',
+      opis: zt ? 'tjedan od ' + datumKratko(zt.od) + ' · upisano ručno, Gmail u fazi D' : 'upisuješ u Brojkama dok se ne spoji Gmail (faza D)' });
+    if (P) kpi.push({ naziv: 'Najmanje tkanine', broj: naj.a ? '≈ ' + naj.a.slova : '–', link: '/skladiste.html', pozor: !!(naj.a && naj.a.status === 'kriticno'),
+      opis: naj.a ? 'slova iz „' + naj.a.naziv + '”' + (naj.a.tjedana != null ? ', nestaje za ~' + Math.max(1, Math.round(naj.a.tjedana)) + ' tj.' : '') : 'stanje tkanina još nije upisano' });
+    $('#kpi-obrt').innerHTML = kpi.map(function (k) {
+      return '<a class="kartica kpi' + (k.pozor ? ' pozor' : '') + '" href="' + k.link + '"><span class="naziv">' + esc(k.naziv) + '</span><span class="broj">' + esc(k.broj) + '</span><span class="opis">' + esc(k.opis) + '</span></a>';
+    }).join('') + (S.poslGreska ? '<p class="prazno" style="grid-column:1/-1">Narudžbe i skladište se ne mogu učitati, pa ovdje nema brojki za šivanje, igraonicu i tkanine.</p>' : '');
+
+    var ceka = { uprava: cekaOd(['koordinator', 'claude']), proizvodnja: cekaOd(['materijal']), marketing: cekaOd(AGENTI_MARKETINGA) };
+    var prvi = function (l, zadano) { return l.length ? l[0].tekst : zadano; };
+    var izvKo = (S.izvjestaji || []).filter(function (x) { return x.agent === 'koordinator'; })[0];
+    var vijesti = {
+      uprava: ceka.uprava.length ? odlukaCeka(ceka.uprava.length) + ': ' + ceka.uprava.slice(0, 2).map(function (o) { return o.naslov; }).join('; ') + (ceka.uprava.length > 2 ? ' …' : '.')
+        : izvKo ? 'Zadnji sažetak: „' + izvKo.naslov + '” (' + datumKratko(izvKo.kad) + ').' : 'Tjedni sažetak stiže nakon prvog pregleda agenata.',
+      prodaja: P ? prvi(poOdjelu('prodaja'), 'Nema upozorenja za narudžbe i termine igraonice.') : 'Kalendar se trenutno ne može učitati.',
+      proizvodnja: P ? prvi(poOdjelu('proizvodnja'), naj.a ? '„' + naj.a.naziv + '” je dovoljna za oko ' + naj.a.slova + ' slova' + (naj.a.tjedana != null ? '; pri sadašnjem tempu nestaje za oko ' + Math.max(1, Math.round(naj.a.tjedana)) + ' tj.' : '.') : 'Stanje tkanina još nije upisano: kreni od inventure.') : 'Skladište se trenutno ne može učitati.',
+      mreze: 'Brojke stižu kad se spoje Instagram i Facebook. Do tada zaslon Mreže pokazuje samo označeni primjer.',
+      marketing: ceka.marketing.length ? odlukaCeka(ceka.marketing.length) + ': ' + ceka.marketing.slice(0, 3).map(function (o) { return o.naslov; }).join('; ') + (ceka.marketing.length > 3 ? ' …' : '.') : 'Ništa ne čeka tebe. Nove odluke dolaze s tjednim pregledom.',
+      web: 'Predlaže izmjene kao pull request. Ništa ne ide na stranicu dok ga ti ne spojiš.'
+    };
+    var brojevi = { uprava: ceka.uprava.length, prodaja: poOdjelu('prodaja').length, proizvodnja: poOdjelu('proizvodnja').length + ceka.proizvodnja.length, mreze: 0, marketing: ceka.marketing.length, web: 0 };
+    $('#odjeli').innerHTML = ODJELI.map(function (o) {
+      var n = brojevi[o.id];
+      return '<a class="kartica odjel" href="' + o.link + '" data-odjel="' + o.id + '"' + (o.uloga ? ' data-filtar-uloge="' + o.uloga + '"' : '') + ' aria-label="' + esc(o.naziv + ': ' + n + ' čeka tebe') + '">' +
+        '<span class="krug' + (n ? '' : ' prazan') + '" aria-hidden="true">' + n + '</span>' +
+        '<div class="odjel-glava"><h3>' + esc(o.naziv) + '</h3><span class="sitno" style="font-size:13.6px">' + esc(o.opis) + '</span></div>' +
+        '<div class="agenti-odjela">' + o.agenti.map(function (a) {
+          return '<span class="mb' + (a[3] ? '' : ' planiran') + '" style="background:' + a[2] + '" title="' + esc(a[1] + (a[3] ? '' : ' (još ne radi)')) + '">' + esc(a[0]) + '</span>';
+        }).join('') + '</div><p class="vijest">' + esc(vijesti[o.id]) + '</p><span class="faza-odjela">' + esc(o.faza) + '</span></a>';
+    }).join('');
+
+    var danasL = [];
+    upoz.forEach(function (u) {
+      var od = VRSTA_ODJEL[u.vrsta] === 'proizvodnja' ? 'Proizvodnja' : 'Prodaja', skl = u.vrsta === 'skladiste';
+      danasL.push({ odjel: od, sto: u.tekst, gumb: skl ? 'Skladište' : 'Kalendar', link: skl ? '/skladiste.html' : '/kalendar.html' });
+    });
+    if (P && !naj.poznatih) danasL.push({ odjel: 'Proizvodnja', sto: 'Upiši inventuru tkanina: stanje još nije upisano, pa skladište ne zna koliko slova možeš.', gumb: 'Skladište', link: '/skladiste.html' });
+    if (ceka.uprava.length) danasL.push({ odjel: 'Uprava', sto: ceka.uprava.length === 1 ? 'Odluka „' + ceka.uprava[0].naslov + '” čeka tebe.' : odlukaCeka(ceka.uprava.length) + ' koordinatora: ' + ceka.uprava[0].naslov + ' …', gumb: 'Odluke', link: '#odluke', uloga: 'koordinator' });
+    if (ceka.marketing.length) {
+      var hitne = ceka.marketing.filter(function (o) { return o.prioritet === 1; }).length;
+      danasL.push({ odjel: 'Marketing', sto: odlukaCeka(ceka.marketing.length) + ' tvoje odobrenje' + (hitne ? ', od toga ' + hitne + ' hitno' : '') + '.', gumb: 'Odluke', link: '#odluke' });
+    }
+    (S.zadaci || []).forEach(function (z) {
+      if (z.status === 'u_izradi' && stanjeZadatka(z).tekst === 'Agent je završio') danasL.push({ odjel: 'Zadaci', sto: 'Agent je završio: ' + z.opis, gumb: 'Zadaci', link: '#zadaci' });
+    });
+    var visak = danasL.length - 7;
+    $('#danas').innerHTML = danasL.length ? danasL.slice(0, 7).map(function (d) {
+      return '<div class="danas-red"><span class="oznaka-odjela">' + esc(d.odjel) + '</span><span>' + esc(d.sto) + '</span><a class="btn malo" href="' + d.link + '"' + (d.uloga ? ' data-filtar-uloge="' + d.uloga + '"' : '') + '>' + esc(d.gumb) + '</a></div>';
+    }).join('') + (visak > 0 ? '<p class="sitno" style="padding-top:8px">I još ' + visak + ' u kalendaru i skladištu.</p>' : '')
+      : '<p class="prazno">Danas ništa ne čeka tebe.</p>';
+  }
+
   function renderPregled() { renderUloge(); renderOdluke(); renderAktivnost(); }
-  function renderSve() { renderZaglavlje(); renderPregled(); renderNapredak(); renderZadaci(); renderBrojke(); renderKonkurencija(); renderAgenti(); }
+  function renderSve() { renderZaglavlje(); renderPregled(); renderNapredak(); renderZadaci(); renderBrojke(); renderKonkurencija(); renderAgenti(); renderPoslovno(); }
 
   /* ── Podaci i radnje (API) ── */
   var TENANT = null;
@@ -850,7 +1065,9 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
   function zauzet() { var a = document.activeElement; return a && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName); }
 
   function ucitaj(tiho) {
-    return api('GET', '/api/stanje').then(function (d) {
+    var posl = api('GET', '/api/poslovanje').then(function (d) { S.posl = d; S.poslGreska = false; }).catch(function () { S.poslGreska = true; });
+    return Promise.all([api('GET', '/api/stanje'), posl]).then(function (r) {
+      var d = r[0];
       ['odluke', 'zadaci', 'tjedni', 'mjesecno', 'napredak', 'aktivnost', 'konkurenti', 'pokretanja', 'izvjestaji', 'potrosnja'].forEach(function (k) { S[k] = d[k]; });
       var t = new Date();
       veza('ok', 'Podaci su ažurni · ' + t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes());
@@ -864,6 +1081,8 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
 
   document.addEventListener('click', function (e) {
     var t = e.target;
+    var fu = t.closest('[data-filtar-uloge], [data-odjel="marketing"]');
+    if (fu) { U.uloga = fu.dataset.filtarUloge || null; renderPregled(); return; }
     var ul = t.closest('[data-uloga]');
     if (ul) { U.uloga = U.uloga === ul.dataset.uloga ? null : ul.dataset.uloga; renderPregled(); return; }
     if (t.closest('#ponisti-ulogu')) { U.uloga = null; renderPregled(); return; }
@@ -988,7 +1207,7 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
       izbor.hidden = false; $('#tenant-labela').hidden = false;
       izbor.addEventListener('change', function () { TENANT = izbor.value; try { localStorage.setItem('tenant', TENANT); } catch (e) {} ucitaj(); });
     } else { TENANT = null; }
-    if (ja.tenanti.length) { var n = ja.tenanti.filter(function (t) { return t.id === (TENANT || ja.tenanti[0].id); })[0]; if (n) $('#naziv-zakupca').textContent = n.naziv + ' · marketing'; }
+    if (ja.tenanti.length) { var n = ja.tenanti.filter(function (t) { return t.id === (TENANT || ja.tenanti[0].id); })[0]; if (n) { ZAKUPAC = n.naziv; pokaziPogled(false); } }
     $('#korisnik').textContent = ja.email + ' · ' + ja.uloga;
     return ucitaj();
   }).catch(function (e) { veza('greska', porukaGreske(e, 'Prijava nije uspjela. Osvježi stranicu.')); });
