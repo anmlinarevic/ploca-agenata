@@ -8,5 +8,7 @@ tenants/*/seed.sql
 tenants/*/token-*.sql
 *.log
 .wrangler-test
+.wrangler-demo
 tenants/*/korisnik.sql
 tenants/*/registri.sql
+tenants/*/artikli.sql

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="hr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Skladište</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Rubik:wght@800&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
+
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov">Proizvodnja · <span id="zakupac">skladište</span></span>
+        <h1>Skladište</h1>
+        <span class="sitno">Potrošnja se knjiži sama kad narudžba prijeđe u „U izradi”. Inventura ispravlja izračun.</span>
+      </div>
+      <span class="poruka" id="status" aria-live="polite"></span>
+    </div>
+    <nav class="tabovi" aria-label="Dijelovi ploče">
+      <a href="/">Ploča</a>
+      <a href="/kalendar.html">Kalendar</a>
+      <a href="/skladiste.html" aria-current="page">Skladište</a>
+    </nav>
+  </div>
+</header>
+
+<main class="omot">
+  <section class="kartica" style="padding:18px 22px" aria-labelledby="h-upoz">
+    <h2 id="h-upoz" style="font-size:20px">Skladište javlja</h2>
+    <div class="upozorenja" id="upozorenja"><p class="prazno">Učitavam…</p></div>
+  </section>
+
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+    <section aria-labelledby="h-tkanine" style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <h2 id="h-tkanine" style="font-size:26px">Tkanine: koliko slova još može</h2>
+        <p class="sitno" style="margin:0" id="opis-slova"></p>
+      </div>
+      <div class="filtri" role="group" aria-label="Prikaz tkanina" id="filtri"></div>
+      <div class="tkanine" id="tkanine"></div>
+
+      <div class="kartica" style="padding:18px 22px;margin-top:8px">
+        <h2 style="font-size:20px;margin-bottom:6px">Ostali materijal</h2>
+        <div style="overflow-x:auto"><table class="tablica" id="ostalo"></table></div>
+      </div>
+    </section>
+
+    <aside style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:18px">
+      <section class="kartica" style="padding:20px;display:flex;flex-direction:column;gap:12px" aria-labelledby="h-unos">
+        <h2 id="h-unos" style="font-size:20px">Upiši na skladište</h2>
+        <div class="polje"><label for="u-artikl">Artikl</label><select id="u-artikl"></select></div>
+        <div id="u-info" class="sitno"></div>
+        <div class="polje"><label for="u-vrsta">Što se dogodilo</label>
+          <select id="u-vrsta">
+            <option value="ulaz">Ulaz: kupljeno</option>
+            <option value="inventura">Inventura: izmjereno stanje</option>
+            <option value="otpis">Otpis: oštećeno ili izgubljeno</option>
+            <option value="povrat">Povrat: vraćeno na skladište</option>
+            <option value="potrosnja">Potrošnja izvan narudžbe</option>
+          </select></div>
+        <div class="mreza-polja" id="u-metri">
+          <div class="polje"><label for="u-m">Metara s bale</label><input id="u-m" type="number" min="0" step="0.05" inputmode="decimal"></div>
+          <div class="polje"><label for="u-sirina">Širina bale (cm)</label><input id="u-sirina" type="number" min="50" max="400" value="150"></div>
+        </div>
+        <div class="polje"><label for="u-kol" id="u-kol-oznaka">Količina</label><input id="u-kol" type="number" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="polje"><label for="u-nap">Napomena</label><input id="u-nap" maxlength="300" placeholder="Npr. Liupka, račun 123"></div>
+        <div class="kontrole"><button class="btn glavni" type="button" id="u-spremi">Spremi</button><span class="poruka" id="u-poruka" aria-live="polite"></span></div>
+        <div class="polje" style="border-top:1px solid var(--line);padding-top:12px"><label for="u-prag">Prag za narudžbu</label>
+          <div class="kontrole"><input id="u-prag" type="number" min="0" step="0.05" style="flex:1;border:1px solid var(--line-strong);border-radius:3px;padding:10px 12px;background:var(--white)"><button class="btn" type="button" id="u-prag-spremi">Spremi prag</button></div></div>
+      </section>
+
+      <section class="kartica" style="padding:20px;display:flex;flex-direction:column;gap:12px" aria-labelledby="h-racun">
+        <h2 id="h-racun" style="font-size:20px">Može li ovo ime?</h2>
+        <div class="mreza-polja">
+          <div class="polje"><label for="r-tekst">Tekst</label><input id="r-tekst" maxlength="40" value="LUCIJA" style="text-transform:uppercase"></div>
+          <div class="polje"><label for="r-dezeni">Tkanine</label><input id="r-dezeni" placeholder="D12, D21"></div>
+        </div>
+        <div class="izracun" id="r-izlaz" aria-live="polite"></div>
+      </section>
+
+      <section class="kartica" style="padding:20px;display:flex;flex-direction:column;gap:10px" aria-labelledby="h-norme">
+        <h2 id="h-norme" style="font-size:20px">Norme potrošnje</h2>
+        <p class="sitno" style="margin:0">Slovo je 15 × 15 cm. Ostalo je procjena: ispravi kad izmjeriš.</p>
+        <form id="norme" style="display:flex;flex-direction:column;gap:10px"></form>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="zajednicko.js"></script>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var P = window.P, esc = P.esc;
+  var st = { d: null, filtar: 'paznja', odabran: null };
+  var STATUS = { ok: 'Dovoljno', uskoro: 'Naruči uskoro', kriticno: 'Kritično', nepoznato: 'Nije upisano' };
+  var BOJA = { ok: 'var(--kadulja)', uskoro: 'var(--glina)', kriticno: 'var(--danger)', nepoznato: 'var(--line-strong)' };
+  // Fotografije tkanina sa stranice; ako se ne učitaju, ostaje boja.
+  var SLIKA = 'https://piccoliniplay.hr/slike/dezeni/';
+
+  function ucitaj() {
+    return P.api('GET', '/api/poslovanje').then(function (d) { st.d = d; if (!st.odabran) st.odabran = (d.skladiste[0] || {}).id; render(); })
+      .catch(function (e) { P.poruka($('#status'), e.message, 'greska'); });
+  }
+  function artikl(id) { return st.d.skladiste.filter(function (a) { return a.id === id; })[0]; }
+
+  function render() {
+    var d = st.d, n = d.norme;
+    var up = d.upozorenja.filter(function (u) { return u.vrsta === 'skladiste' || u.vrsta === 'inventura'; });
+    $('#upozorenja').innerHTML = up.length ? up.map(function (u) {
+      return '<div class="upozorenje"><span class="razina r' + u.razina + '">' + (u.razina === 1 ? 'Hitno' : u.razina === 2 ? 'Pazi' : 'Info') + '</span><span>' + esc(u.tekst) + '</span></div>';
+    }).join('') : '<p class="prazno">Ništa hitno. Tkanine bez upisanog stanja vidiš pod „Nije upisano”.</p>';
+
+    var ps = (n.slovo_sirina_cm + 2 * n.sav_cm) * (n.slovo_visina_cm + 2 * n.sav_cm) * n.slojevi / n.iskoristivost / 10000;
+    $('#opis-slova').textContent = 'Jedno slovo ' + P.broj(n.slovo_sirina_cm) + ' × ' + P.broj(n.slovo_visina_cm) + ' cm troši oko ' + P.broj(ps, 3) +
+      ' m² (s dodatkom za šav, ' + P.broj(n.slojevi) + ' sloja, iskoristivost ' + Math.round(n.iskoristivost * 100) + ' %). Okomita crta je prag.';
+
+    var tk = d.skladiste.filter(function (a) { return a.kategorija === 'tkanina'; });
+    var paznja = tk.filter(function (a) { return a.status === 'uskoro' || a.status === 'kriticno'; });
+    var upisane = tk.filter(function (a) { return a.status !== 'nepoznato'; });
+    var filtri = [['paznja', 'Treba pažnju', paznja.length], ['upisane', 'Upisane', upisane.length], ['sve', 'Sve', tk.length]];
+    if (st.filtar === 'paznja' && !paznja.length) st.filtar = upisane.length ? 'upisane' : 'sve';
+    $('#filtri').innerHTML = filtri.map(function (f) { return '<button type="button" class="filtar" data-filtar="' + f[0] + '" aria-pressed="' + (st.filtar === f[0]) + '">' + f[1] + ' <b>' + f[2] + '</b></button>'; }).join('');
+    var prikaz = st.filtar === 'paznja' ? paznja : st.filtar === 'upisane' ? upisane : tk;
+    var max = Math.max(2, Math.max.apply(null, tk.map(function (a) { return Math.max(a.raspolozivo, a.prag || 0); })));
+    $('#tkanine').innerHTML = prikaz.map(function (a) {
+      var posto = Math.max(0, Math.min(100, a.raspolozivo / max * 100)), prag = Math.min(100, (a.prag || 0) / max * 100);
+      var meta = a.status === 'nepoznato' ? '<span>Upiši inventuru ili ulaz</span>' :
+        '<span>Raspoloživo ' + P.kolicina(a.raspolozivo, 'm2') + '</span>' + (a.rezervirano ? '<span>rezervirano ' + P.kolicina(a.rezervirano, 'm2') + '</span>' : '') +
+        (a.tempoTjedno ? '<span>' + P.kolicina(a.tempoTjedno, 'm2') + ' tjedno</span>' : '') + (a.tjedana != null ? '<span>oko ' + Math.round(a.tjedana) + ' tj.</span>' : '');
+      return '<button type="button" class="tkanina" data-artikl="' + esc(a.id) + '" aria-pressed="' + (st.odabran === a.id) + '">' +
+        '<span class="uzorak" style="background-color:' + esc(a.boja || '#eee') + ';background-image:url(\'' + SLIKA + esc(a.id) + '.webp\')" aria-hidden="true"></span>' +
+        '<span style="display:flex;flex-direction:column;gap:6px;min-width:0">' +
+        '<span style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><span class="tkanina-naziv">' + esc(a.naziv) + '<br><span class="sitno" style="font-size:12.5px;font-weight:400">' + esc(a.id) + '</span></span>' +
+        '<span style="text-align:right"><span class="slova">' + (a.status === 'nepoznato' ? '–' : '≈ ' + a.slova) + '</span><br><span class="sitno" style="font-size:12px">slova</span></span></span>' +
+        '<span class="traka" aria-hidden="true"><i style="width:' + posto + '%;background:' + BOJA[a.status] + '"></i>' + (a.prag ? '<span class="prag" style="left:' + prag + '%"></span>' : '') + '</span>' +
+        '<span style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="meta">' + meta + '</span><span class="chip ' + a.status + '">' + STATUS[a.status] + '</span></span>' +
+        '</span></button>';
+    }).join('') || '<p class="prazno">Nema tkanina u ovom prikazu.</p>';
+
+    var ostalo = d.skladiste.filter(function (a) { return a.kategorija !== 'tkanina'; });
+    $('#ostalo').innerHTML = '<thead><tr><th>Materijal</th><th>Raspoloživo</th><th>Rezervirano</th><th>Tjedno</th><th>Stanje</th></tr></thead><tbody>' + ostalo.map(function (a) {
+      return '<tr><td><button type="button" class="tekst-gumb" data-artikl="' + esc(a.id) + '" style="background:none;border:0;padding:0;font-weight:600;cursor:pointer;text-align:left;color:var(--ink);text-decoration:underline;text-underline-offset:3px">' + esc(a.naziv) + '</button></td>' +
+        '<td>' + (a.status === 'nepoznato' ? '–' : P.kolicina(a.raspolozivo, a.jedinica)) + '</td><td>' + (a.rezervirano ? P.kolicina(a.rezervirano, a.jedinica) : '–') + '</td>' +
+        '<td>' + (a.tempoTjedno ? P.kolicina(a.tempoTjedno, a.jedinica) : '–') + '</td><td><span class="chip ' + a.status + '">' + STATUS[a.status] + '</span></td></tr>';
+    }).join('') + '</tbody>';
+
+    // obrazac za unos
+    var sel = $('#u-artikl'), prije = st.odabran;
+    sel.innerHTML = d.skladiste.map(function (a) { return '<option value="' + esc(a.id) + '">' + esc((a.kategorija === 'tkanina' ? a.id + ' · ' : '') + a.naziv) + '</option>'; }).join('');
+    sel.value = prije; promjenaArtikla();
+
+    if (!$('#norme').dataset.gotovo) {
+      $('#norme').innerHTML = Object.keys(d.opisNormi).map(function (k) {
+        return '<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:10px;align-items:center"><label for="n-' + k + '" style="font-size:14px">' + esc(d.opisNormi[k]) + '</label>' +
+          '<input id="n-' + k + '" data-norma="' + k + '" type="number" step="any" min="0" value="' + n[k] + '" style="border:1px solid var(--line-strong);border-radius:3px;padding:8px 10px;background:var(--white);width:100%"></div>';
+      }).join('') + '<div class="kontrole"><button class="btn" type="submit">Spremi norme</button><span class="poruka" id="n-poruka" aria-live="polite"></span></div>';
+      $('#norme').dataset.gotovo = '1';
+    }
+    racun();
+  }
+
+  function promjenaArtikla() {
+    var a = artikl($('#u-artikl').value); if (!a) return;
+    st.odabran = a.id;
+    var tk = a.jedinica === 'm2', vrsta = $('#u-vrsta').value;
+    $('#u-metri').hidden = !(tk && vrsta === 'ulaz');
+    $('#u-kol-oznaka').textContent = (vrsta === 'inventura' ? 'Izmjereno stanje' : 'Količina') + ' (' + (tk ? 'm²' : a.jedinica) + ')' + (tk && vrsta === 'ulaz' ? ', ili metri lijevo' : '');
+    $('#u-info').textContent = a.status === 'nepoznato' ? 'Za ovaj artikl još nema upisa. Kreni inventurom.' :
+      'Na stanju ' + P.kolicina(a.stanje, a.jedinica) + (a.inventura ? ', zadnja inventura ' + P.datum(a.inventura) : ', bez inventure') + '.';
+    $('#u-prag').value = a.prag == null ? '' : a.prag;
+    document.querySelectorAll('[data-artikl]').forEach(function (b) { if (b.classList.contains('tkanina')) b.setAttribute('aria-pressed', String(b.dataset.artikl === a.id)); });
+  }
+  $('#u-artikl').onchange = promjenaArtikla;
+  $('#u-vrsta').onchange = promjenaArtikla;
+
+  document.addEventListener('click', function (e) {
+    var f = e.target.closest('[data-filtar]'); if (f) { st.filtar = f.dataset.filtar; render(); return; }
+    var a = e.target.closest('[data-artikl]'); if (a) { st.odabran = a.dataset.artikl; $('#u-artikl').value = st.odabran; promjenaArtikla(); $('#u-kol').focus(); }
+  });
+
+  $('#u-spremi').onclick = function () {
+    var a = artikl($('#u-artikl').value), b = { artikl: a.id, vrsta: $('#u-vrsta').value, napomena: $('#u-nap').value.trim() || null };
+    if ($('#u-kol').value !== '') b.kolicina = +$('#u-kol').value;
+    else if (!$('#u-metri').hidden && $('#u-m').value !== '') { b.metri = +$('#u-m').value; b.sirina_cm = +$('#u-sirina').value || 150; }
+    P.api('POST', '/api/skladiste/kretanja', b).then(function (r) {
+      $('#u-kol').value = ''; $('#u-m').value = ''; $('#u-nap').value = '';
+      return ucitaj().then(function () { P.poruka($('#u-poruka'), 'Spremljeno: ' + P.kolicina(r.kolicina, a.jedinica) + '.', 'ok'); });
+    }).catch(function (e) { P.poruka($('#u-poruka'), e.message, 'greska'); });
+  };
+  $('#u-prag-spremi').onclick = function () {
+    var id = $('#u-artikl').value;
+    P.api('PUT', '/api/artikli/' + id, { prag: $('#u-prag').value === '' ? null : +$('#u-prag').value })
+      .then(function () { return ucitaj().then(function () { P.poruka($('#u-poruka'), 'Prag spremljen.', 'ok'); }); })
+      .catch(function (e) { P.poruka($('#u-poruka'), e.message, 'greska'); });
+  };
+  $('#norme').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var b = {}; document.querySelectorAll('[data-norma]').forEach(function (i) { if (i.value !== '' && +i.value !== st.d.norme[i.dataset.norma]) b[i.dataset.norma] = +i.value; });
+    if (!Object.keys(b).length) { P.poruka($('#n-poruka'), 'Nema promjena.', ''); return; }
+    P.api('PUT', '/api/norme', b).then(function () { $('#norme').dataset.gotovo = ''; return ucitaj(); })
+      .then(function () { P.poruka($('#n-poruka'), 'Norme spremljene, izračun je osvježen.', 'ok'); })
+      .catch(function (err) { P.poruka($('#n-poruka'), err.message, 'greska'); });
+  });
+
+  var cek;
+  function racun() {
+    clearTimeout(cek);
+    cek = setTimeout(function () {
+      var tekst = $('#r-tekst').value.trim(), dez = $('#r-dezeni').value.split(/[\s,;]+/).filter(Boolean);
+      if (!dez.length && st.odabran && (artikl(st.odabran) || {}).kategorija === 'tkanina') dez = [st.odabran];
+      if (!tekst || !dez.length) { $('#r-izlaz').innerHTML = '<span class="sitno">Upiši tekst i tkaninu (ili klikni tkaninu lijevo).</span>'; return; }
+      P.api('POST', '/api/izracun', { stavke: [{ proizvod: 'banner', tekst: tekst, dezeni: dez }] }).then(function (r) {
+        var tkanine = r.stavke.filter(function (x) { return x.jedinica === 'm2'; });
+        $('#r-izlaz').innerHTML = '<strong>' + r.slova + ' slova · ' + P.broj(r.sati) + ' h</strong><table>' + tkanine.map(function (x) {
+          return '<tr><td>' + esc(x.naziv) + '</td><td class="broj">' + P.kolicina(x.kolicina, 'm2') + '</td><td class="broj' + (x.poznato && !x.dovoljno ? ' nedovoljno' : '') + '">' +
+            (!x.poznato ? 'stanje nije upisano' : x.dovoljno ? 'ostaje ' + P.kolicina(x.nakon, 'm2') : 'nema dovoljno') + '</td></tr>';
+        }).join('') + '</table>';
+      }).catch(function (e) { $('#r-izlaz').innerHTML = '<span class="nedovoljno">' + esc(e.message) + '</span>'; });
+    }, 300);
+  }
+  $('#r-tekst').oninput = racun; $('#r-dezeni').oninput = racun;
+
+  ucitaj();
+})();
+</script>
+</html>

@@ -1,4 +1,5 @@
 /* Alati za čitanje (korak 1). Svaki upit ima tenant_id iz tokena kao prvi uvjet. */
+import { pregled } from '../../../packages/poslovanje/baza.js';
 
 const ograniči = (n, def, max) => Math.min(Math.max(parseInt(n ?? def, 10) || def, 1), max);
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
@@ -143,6 +144,34 @@ TOOLS.push({
     return r;
   },
 });
+
+// Faza B: narudžbe, kalendar i skladište (samo čitanje; piše čovjek na ploči).
+TOOLS.push(
+  {
+    name: 'dohvati_kalendar',
+    description: 'Tjedan od ponedjeljka: izrada po danima (sati), isporuke, termini igraonice, opterećenje i upozorenja planera. `od` je bilo koji dan tjedna (YYYY-MM-DD), zadano ovaj tjedan.',
+    inputSchema: { type: 'object', properties: { od: { type: 'string' } }, additionalProperties: false },
+    run: async (a, { tenantId }, env) => {
+      const p = await pregled(env, tenantId, a.od);
+      return { danas: p.danas, kalendar: p.kalendar, upozorenja: p.upozorenja.filter((x) => x.vrsta !== 'skladiste' && x.vrsta !== 'inventura') };
+    },
+  },
+  {
+    name: 'dohvati_narudzbe',
+    description: 'Aktivne narudžbe (šivanje i igraonica) i one završene u zadnjih 120 dana: šifra, opis, stanje, rok ili termin, planirana izrada, potrošnja materijala. Bez osobnih podataka kupaca.',
+    inputSchema: prazno,
+    run: async (_a, { tenantId }, env) => (await pregled(env, tenantId)).narudzbe,
+  },
+  {
+    name: 'dohvati_skladiste',
+    description: 'Stanje skladišta: po artiklu stanje, rezervirano za potvrđene narudžbe, raspoloživo, tempo potrošnje tjedno, tjedana do kraja, za tkanine broj slova koja još mogu; status ok | uskoro | kriticno | nepoznato. Uz to norme potrošnje i upozorenja skladišta.',
+    inputSchema: prazno,
+    run: async (_a, { tenantId }, env) => {
+      const p = await pregled(env, tenantId);
+      return { norme: p.norme, skladiste: p.skladiste, upozorenja: p.upozorenja.filter((x) => x.vrsta === 'skladiste' || x.vrsta === 'inventura') };
+    },
+  },
+);
 
 export async function pozoviAlat(alat, args, ctx, env) {
   return alat.run(args, ctx, env);

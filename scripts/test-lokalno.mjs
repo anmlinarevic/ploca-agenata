@@ -34,6 +34,9 @@ sh('npx', ['wrangler', 'd1', 'migrations', 'apply', 'ploca', '--local', ...CFG, 
 d1('tenants/piccolini/seed.sql');
 sh('node', ['scripts/uvoz-registara.mjs', '"' + join(izvoz, '..', '..') + '"', 'tenants/piccolini/registri.sql']);
 d1('tenants/piccolini/registri.sql');
+// Tkanine sa stranice (repozitorij Tina-Obrt: <izvoz>/../../../../podaci/dezeni.json)
+sh('node', ['scripts/uvoz-artikala.mjs', 'piccolini', '"' + join(izvoz, '..', '..', '..', '..', 'podaci', 'dezeni.json') + '"', 'tenants/piccolini/artikli.sql']);
+d1('tenants/piccolini/artikli.sql');
 
 // jedan poziv po agentu: ispiše token, a SQL zapiše u datoteku
 const izdaj = (agent, pepper) => {
@@ -79,8 +82,10 @@ pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/i
 
 let kod = 1;
 if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localhost:8798/')) && (await cekaj('http://localhost:8790/zahtjevi'))) {
-  kod = node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
+  kod = node('scripts/poslovanje-test.mjs')
+    || node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
     || node('scripts/dashboard-test.mjs', { URL: 'http://localhost:8798' })
+    || node('scripts/poslovanje-api-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord })
     || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',

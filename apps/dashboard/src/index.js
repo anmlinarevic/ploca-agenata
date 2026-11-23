@@ -1,6 +1,7 @@
 /* Dashboard: statični front-end (public/) + API (/api/*) iznad iste D1 baze kao MCP.
  * Čovjek je jedini koji odobrava odluke, upisuje tjedne i zadaje zadatke; to je ovdje, ne u MCP-u. */
 import { korisnik } from './auth.js';
+import { apiPoslovanje } from './poslovanje.js';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -97,6 +98,10 @@ async function api(request, env, u, tenant, putanja) {
   if (m === 'GET' && putanja === '/api/stanje') return json({ tenant, ...(await stanje(env, tenant)) });
 
   const body = m === 'GET' ? {} : await request.json().catch(() => ({}));
+
+  // Narudžbe, kalendar, skladište i norme (faza B)
+  const posl = await apiPoslovanje(request, env, u, tenant, putanja, body, { json, greska, audit, dnevnik, novi, sada });
+  if (posl) return posl;
 
   // Odobri / odbij odluku
   if (m === 'POST' && (r = /^\/api\/odluke\/([\w-]+)\/odluka$/.exec(putanja))) {
