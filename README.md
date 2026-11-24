@@ -44,6 +44,14 @@ Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji)
 `npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.
 Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i Access: `docs/DEPLOY-CLOUDFLARE.md`.
 
+### Parra (ponude → kalendar)
+Dashboard svakih 30 minuta (cron) i na gumb „Osvježi iz Parre” čita ponude i uplate iz Parre (`packages/poslovanje/parra.js`, API v1.1, samo GET).
+Datum isporuke ponude ide u kalendar: poslana → prihvaćena (datum rezerviran) → račun izdan → plaćeno. Odbijene i istekle se ne prikazuju.
+Na ploču ne ulaze ime kupca, OIB, adresa, kontakt ni opisi stavki. Tablice: `parra_ponude`, `parra_sinkronizacija` (migracija 0006).
+Ključ i id poslovnog subjekta su tajne; upisuje ih vlasnik u svom terminalu (vrijednost se ne vidi ni u repozitoriju ni u nadzornoj ploči):
+`npx wrangler secret put PARRA_API_KLJUC --config apps/dashboard/wrangler.jsonc` i `npx wrangler secret put PARRA_SUBJEKT --config apps/dashboard/wrangler.jsonc`.
+Lokalni test: lažni Parra u `scripts/fake-parra.mjs` (ključ `test-parra`, subjekt 123), testovi u `scripts/parra-test.mjs`.
+
 ## Korak 4: izvršitelj
 `apps/izvrsitelj`: Queue (jedan posao istodobno, bez automatskog ponavljanja) + Cron + petlja agenta nad Claude API-jem
 (`@anthropic-ai/sdk`), alati ploče kroz MCP (service binding), web pretraga/dohvat kao server alati. Definicije agenata su u

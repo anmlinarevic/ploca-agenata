@@ -2,6 +2,7 @@
  * Čovjek je jedini koji odobrava odluke, upisuje tjedne i zadaje zadatke; to je ovdje, ne u MCP-u. */
 import { korisnik } from './auth.js';
 import { apiPoslovanje } from './poslovanje.js';
+import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -246,5 +247,11 @@ export default {
     } catch (e) {
       return greska(String(e.message || e), 400);
     }
+  },
+
+  // Svakih 30 minuta: ponude i uplate iz Parre (samo čitanje). Bez ključa ne radi ništa.
+  async scheduled(_event, env, ctx) {
+    const tenant = env.PARRA_ZAKUPAC || 'piccolini';
+    if (parraPodesena(env, tenant)) ctx.waitUntil(sinkronizirajParru(env, tenant));
   },
 };

@@ -5,6 +5,7 @@ import {
   normalizirajStavku, potrosnjaNarudzbe, stanjeSkladista, maskirajStavke, zagrebUUtc,
 } from '../../../packages/poslovanje/index.js';
 import { narudzbaIzReda, ucitaj, pregled } from '../../../packages/poslovanje/baza.js';
+import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const LOKALNO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -88,7 +89,18 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
   let r;
   const tko = `user:${u.id}`;
 
-  if (m === 'GET' && putanja === '/api/poslovanje') return json(await pregled(env, tenant, new URL(request.url).searchParams.get('od')));
+  if (m === 'GET' && putanja === '/api/poslovanje') {
+    const q = new URL(request.url).searchParams;
+    return json(await pregled(env, tenant, q.get('od'), q.get('pogled') === 'mjesec' ? 'mjesec' : 'tjedan'));
+  }
+
+  // ---- Parra: ručno osvježavanje (inače svakih 30 min preko crona) ----
+  if (m === 'POST' && putanja === '/api/parra/osvjezi') {
+    if (!parraPodesena(env, tenant)) return greska('Parra nije spojena. Upiši ključ: npx wrangler secret put PARRA_API_KLJUC', 503);
+    const r = await sinkronizirajParru(env, tenant);
+    await env.DB.batch([audit(env, u, tenant, 'parra_osvjezi', 'parra_ponude', null, null, { promijenjeno: r.promijenjeno, greska: r.greska })]);
+    return r.ok ? json(r) : greska(r.greska, 502);
+  }
 
   // ---- narudžbe ----
   if (m === 'POST' && putanja === '/api/narudzbe') {

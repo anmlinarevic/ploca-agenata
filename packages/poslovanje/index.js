@@ -209,11 +209,40 @@ export const ponedjeljak = (datum) => {
   return dodajDane(datum, -((d.getUTCDay() + 6) % 7));
 };
 
-/** Tjedan od ponedjeljka: 7 dana sa stavkama izrade, isporukama, terminima igraonice i opterećenjem. */
-export function kalendarTjedna(narudzbe, odDatum, n) {
-  const pon = ponedjeljak(odDatum);
-  const dani = Array.from({ length: 7 }, (_, i) => ({ datum: dodajDane(pon, i), izrada: [], isporuke: [], igraonica: [], sati: 0 }));
+// ---------- ponude iz Parre ----------
+/** Stanje ponude za kalendar: poslana → prihvaćena (datum rezerviran) → račun → djelomično plaćeno → plaćeno. */
+export function stanjePonude(p) {
+  if (p.status === 'Denied') return 'odbijena';
+  if (p.status === 'Expired') return 'istekla';
+  const racuni = (p.racuni || []).filter((r) => !/cancel|storn/i.test(r.status || ''));
+  if (racuni.length) {
+    if (p.za_platiti > 0 && (p.placeno ?? 0) >= p.za_platiti - 0.005) return 'placeno';
+    if (racuni.some((r) => r.status === 'Paid') && p.placeno == null) return 'placeno';
+    if ((p.placeno ?? 0) > 0) return 'djelomicno';
+    return 'racun';
+  }
+  return p.status === 'Accepted' ? 'prihvacena' : 'poslana';
+}
+export const NAZIV_PONUDE = {
+  poslana: 'Ponuda poslana', prihvacena: 'Prihvaćena · rezervirano', racun: 'Račun izdan, čeka uplatu',
+  djelomicno: 'Djelomično plaćeno', placeno: 'Plaćeno', odbijena: 'Odbijena', istekla: 'Istekla',
+};
+const ponudaUKalendaru = (p) => !['odbijena', 'istekla'].includes(p.stanje);
+
+/** Dani od `od` do `do` (uključivo) sa stavkama izrade, isporukama, terminima igraonice, ponudama iz Parre i opterećenjem. */
+export function kalendarRaspona(narudzbe, od, doDatum, n, ponude = []) {
+  const dani = [];
+  for (let d = od; d <= doDatum && dani.length < 62; d = dodajDane(d, 1)) dani.push({ datum: d, izrada: [], isporuke: [], igraonica: [], ponude: [], sati: 0 });
   const indeks = new Map(dani.map((d, i) => [d.datum, i]));
+  for (const p of ponude) {
+    if (!ponudaUKalendaru(p) || !p.isporuka_od) continue;
+    const kraj = p.isporuka_do && p.isporuka_do >= p.isporuka_od ? p.isporuka_do : p.isporuka_od;
+    const zapis = { id: p.id, broj: p.broj, stanje: p.stanje, opis: p.opis, razdoblje: kraj !== p.isporuka_od };
+    for (let d = p.isporuka_od, k = 0; d <= kraj && k < 62; d = dodajDane(d, 1), k++) {
+      const i = indeks.get(d);
+      if (i != null) dani[i].ponude.push(zapis);
+    }
+  }
   for (const nar of narudzbe) {
     if (nar.stanje === 'otkazano' || nar.stanje === 'upit') continue;
     const osnovno = { id: nar.id, sifra: nar.sifra, opis: nar.opis, stanje: nar.stanje, usluga: nar.usluga };
@@ -232,14 +261,37 @@ export function kalendarTjedna(narudzbe, odDatum, n) {
     }
   }
   for (const d of dani) { d.kapacitet = n.kapacitet_sati_dan; d.preko = d.sati > n.kapacitet_sati_dan; }
-  return { od: pon, do: dodajDane(pon, 6), dani };
+  return { od, do: doDatum, dani };
+}
+
+/** Tjedan od ponedjeljka (7 dana). */
+export function kalendarTjedna(narudzbe, odDatum, n, ponude = []) {
+  const pon = ponedjeljak(odDatum);
+  return { pogled: 'tjedan', ...kalendarRaspona(narudzbe, pon, dodajDane(pon, 6), n, ponude) };
+}
+
+/** Mjesec za mrežu: od ponedjeljka prvog tjedna do nedjelje zadnjeg; dani izvan mjeseca imaju izvan = true. */
+export function kalendarMjeseca(narudzbe, datum, n, ponude = []) {
+  const mjesec = datum.slice(0, 7), prvi = `${mjesec}-01`;
+  const zadnji = dodajDane(`${dodajDane(prvi, 31).slice(0, 7)}-01`, -1);
+  const k = kalendarRaspona(narudzbe, ponedjeljak(prvi), dodajDane(ponedjeljak(zadnji), 6), n, ponude);
+  for (const d of k.dani) d.izvan = d.datum.slice(0, 7) !== mjesec;
+  return { pogled: 'mjesec', mjesec, ...k };
 }
 
 // ---------- upozorenja ----------
 /** Razina: 1 hitno, 2 upozorenje, 3 obavijest. Bez osobnih podataka: samo šifre i opisi narudžbi. */
-export function upozorenja(narudzbe, skladiste, n, sada = new Date()) {
+export function upozorenja(narudzbe, skladiste, n, sada = new Date(), ponude = []) {
   const out = [];
   const danas = datumZagreb(sada);
+
+  // Parra: isporučeno (datum prošao), a račun nije plaćen; gleda se zadnjih 60 dana.
+  for (const p of ponude) {
+    const kraj = p.isporuka_do || p.isporuka_od;
+    if (!kraj || kraj >= danas || kraj < dodajDane(danas, -60)) continue;
+    if (['prihvacena', 'racun', 'djelomicno'].includes(p.stanje))
+      out.push({ razina: 2, vrsta: 'naplata', ponuda: p.id, tekst: `Ponuda ${p.broj}${p.opis ? ` (${p.opis})` : ''}: isporuka je bila ${hrDatum(kraj)}, a ${p.stanje === 'djelomicno' ? 'račun je plaćen samo djelomično' : p.stanje === 'racun' ? 'račun još nije plaćen' : 'račun još nije izdan'}.` });
+  }
   const aktivne = narudzbe.filter(jeAktivna);
   const ime = (nar) => `${nar.sifra} (${nar.opis})`;
 

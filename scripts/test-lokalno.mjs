@@ -58,7 +58,7 @@ writeFileSync('tenants/piccolini/token-test-korisnici.sql',
   "INSERT INTO odluke (id, tenant_id, naslov, agent, kreirano) VALUES ('x1', 'drugi', 'Tuđa odluka', 'seo', '2026-11-21T10:00:00Z');\n");
 d1('tenants/piccolini/token-test-korisnici.sql');
 
-writeFileSync('apps/dashboard/.dev.vars', 'DEV_USER=*\nINTERNI_KLJUC=test-interni\n');
+writeFileSync('apps/dashboard/.dev.vars', 'DEV_USER=*\nINTERNI_KLJUC=test-interni\nPARRA_API_KLJUC=test-parra\nPARRA_SUBJEKT=123\nPARRA_URL=http://localhost:8791\n');
 writeFileSync('apps/izvrsitelj/.dev.vars',
   `ANTHROPIC_API_KEY=test-kljuc\nANTHROPIC_BASE_URL=http://localhost:8790\nINTERNI_KLJUC=test-interni\nAGENT_TOKENS='${JSON.stringify(agentTokeni)}'\n`);
 
@@ -76,6 +76,7 @@ const node = (skripta, env = {}, args = []) =>
   spawnSync('node', [skripta, ...args], { stdio: 'inherit', env: { ...process.env, ...env } }).status ?? 1;
 
 const lazni = spawn('node', ['scripts/fake-anthropic.mjs'], { stdio: 'ignore' }); procesi.push(lazni);
+procesi.push(spawn('node', ['scripts/fake-parra.mjs'], { stdio: 'ignore' }));
 pokreni(['wrangler', 'dev', '--config', 'apps/mcp/wrangler.jsonc', '--port', '8799', '--persist-to', DB_STATE, '--var', `TOKEN_PEPPER:${pepperTest}`]);
 pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/izvrsitelj/wrangler.jsonc', '-c', 'apps/mcp/wrangler.jsonc',
   '--port', '8798', '--persist-to', DB_STATE]);
@@ -86,6 +87,7 @@ if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localh
     || node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
     || node('scripts/dashboard-test.mjs', { URL: 'http://localhost:8798' })
     || node('scripts/poslovanje-api-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord })
+    || node('scripts/parra-test.mjs', { URL: 'http://localhost:8798', PARRA: 'http://localhost:8791' })
     || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',

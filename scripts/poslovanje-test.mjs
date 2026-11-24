@@ -1,8 +1,9 @@
 // Jedinični testovi poslovne logike (bez servera): node scripts/poslovanje-test.mjs
 import {
   norme, povrsinaSlova, normalizirajStavku, potrosnjaStavke, potrosnjaNarudzbe, dopustenPrijelaz,
-  stanjeSkladista, kalendarTjedna, upozorenja, ponedjeljak, maskirajStavke,
+  stanjeSkladista, kalendarTjedna, kalendarMjeseca, upozorenja, ponedjeljak, maskirajStavke, stanjePonude,
 } from '../packages/poslovanje/index.js';
+import { redIzDetalja, ponudaIzReda } from '../packages/poslovanje/parra.js';
 
 const ok = (c, m) => { if (!c) { console.error('PAO:', m); process.exitCode = 1; } else console.log('ok  ', m); };
 const blizu = (a, b, e = 1e-3) => Math.abs(a - b) < e;
@@ -95,3 +96,28 @@ ok(!JSON.stringify(u).includes('@'), 'upozorenja bez e-mail adresa');
 
 // privatnost
 ok(maskirajStavke([s])[0].tekst === '••••••' && maskirajStavke([s])[0].dezeni.length === 6, 'nakon isporuke ime se maskira, tkanine ostaju');
+
+// mjesečni kalendar
+const vel = kalendarMjeseca([], '2026-02-15', n);
+ok(vel.od === '2026-01-26' && vel.do === '2026-03-01' && vel.dani.length === 35, `veljača 2026: ${vel.od} – ${vel.do}, ${vel.dani.length} dana`);
+ok(vel.dani.filter((d) => !d.izvan).length === 28 && vel.dani[0].izvan, 'dani izvan mjeseca označeni');
+const stu = kalendarMjeseca([], '2026-11-24', n);
+ok(stu.od === '2026-10-26' && stu.do === '2026-12-06' && stu.dani.length === 42, `studeni 2026: ${stu.dani.length} dana (6 tjedana)`);
+
+// ponude iz Parre
+ok(stanjePonude({ status: 'Issued', racuni: [] }) === 'poslana', 'izdana ponuda = poslana');
+ok(stanjePonude({ status: 'Accepted', racuni: [] }) === 'prihvacena', 'prihvaćena = rezervirano');
+ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1 }], placeno: 0, za_platiti: 50 }) === 'racun', 'račun izdan, nije plaćen');
+ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1 }], placeno: 20, za_platiti: 50 }) === 'djelomicno', 'djelomično plaćeno');
+ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1 }], placeno: 50, za_platiti: 50 }) === 'placeno', 'plaćeno do kraja');
+ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1, status: 'Cancelled' }] }) === 'prihvacena', 'storniran račun se ne broji');
+ok(stanjePonude({ status: 'Denied', racuni: [] }) === 'odbijena', 'odbijena');
+const det = redIzDetalja({ id: 7, status: { name: 'Accepted' }, basicInfo: { offerNumber: '7-1-1', offerDate: '2026-11-20T10:00:00' },
+  customer: { name: 'Ana Anić', contactEmail: 'ana@primjer.hr' }, deliveryInfo: { isDeliveryPeriod: true, deliveryDateFrom: '2026-12-01', deliveryDateTo: '2026-12-03', deliveryAddress: 'Ulica 1' },
+  offerLines: [{ name: 'Banner s imenom, po slovu', quantity: 6, unitOfMeasureMark: 'H87', description: 'LUCIJA, roza' }], totalAmount: 90, invoices: [] });
+ok(det.isporuka_od === '2026-12-01' && det.isporuka_do === '2026-12-03' && det.stavke[0].kolicina === 6, 'detalj: razdoblje isporuke i stavke');
+ok(!/Ana|ana@|Ulica|LUCIJA/.test(JSON.stringify(det)), 'detalj bez imena kupca, e-maila, adrese i opisa stavke');
+const pk = kalendarTjedna([], '2026-12-01', n, [ponudaIzReda({ ...det, stavke_json: JSON.stringify(det.stavke), racuni_json: '[]' })]);
+ok(['2026-12-01', '2026-12-02', '2026-12-03'].every((d) => pk.dani.find((x) => x.datum === d).ponude.length === 1) && pk.dani.find((x) => x.datum === '2026-12-04').ponude.length === 0, 'ponuda s razdobljem na svim danima razdoblja');
+const up = upozorenja([], [], n, new Date('2026-12-10T10:00:00Z'), [{ id: 1, broj: '1-1-1', stanje: 'racun', isporuka_od: '2026-12-05', isporuka_do: '2026-12-05' }]);
+ok(up.some((x) => x.vrsta === 'naplata'), 'upozorenje: isporučeno, račun nije plaćen');

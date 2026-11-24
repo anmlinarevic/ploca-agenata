@@ -94,6 +94,52 @@ main.omot { padding-block: 26px 72px; display: flex; flex-direction: column; gap
 .legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-mid); }
 .legenda span { display: inline-flex; align-items: center; gap: 6px; }
 .legenda i { width: 18px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid; }
+
+/* prekidač tjedan / mjesec */
+.prekidac { display: inline-flex; border: 1px solid var(--accent-line); border-radius: 3px; overflow: hidden; }
+.prekidac button { min-height: 40px; padding: 0 14px; border: 0; background: var(--white); color: var(--ink-mid); font-size: 12.8px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.prekidac button + button { border-left: 1px solid var(--accent-line); }
+.prekidac button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+/* ponude iz Parre: grafit, bez boje usluge; stanje se čita iz ruba i oznake */
+.stavka.ponuda { background: var(--white); border-color: var(--accent-line); border-left: 3px solid var(--accent); }
+.stavka.ponuda em { color: var(--ink-mid); }
+.stavka.ponuda.poslana { border-style: dashed; border-left-style: dashed; border-left-width: 1.5px; border-color: var(--line-strong); }
+.stavka.ponuda.placeno { background: var(--accent-soft); }
+.chip.p-poslana { border: 1px dashed var(--line-strong); color: var(--ink-mid); }
+.chip.p-prihvacena, .chip.p-racun, .chip.p-djelomicno { background: var(--accent-soft); color: var(--ink); }
+.chip.p-placeno { background: var(--accent); color: var(--on-accent); }
+
+/* mjesec */
+.mjesec { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.mjesec .dan-glava { border-left: 1px solid var(--line); padding: 8px; }
+.mjesec > :nth-child(7n+1) { border-left: 0; }
+.m-dan { border-left: 1px solid var(--line); border-top: 1px solid var(--line); padding: 6px; min-height: 124px; display: flex; flex-direction: column; gap: 4px; min-width: 0; cursor: pointer; }
+.m-dan:hover { background: var(--accent-soft); }
+.m-dan.izvan { background: var(--paper); }
+.m-dan.izvan .m-broj { color: var(--ink-soft); }
+.m-broj { font-family: var(--font-display); font-size: 17px; line-height: 1.2; align-self: flex-start; }
+.m-dan.danas .m-broj { background: var(--accent); color: var(--on-accent); border-radius: 3px; padding: 0 6px; }
+.m-stavka { display: block; width: 100%; text-align: left; font-size: 12px; line-height: 1.3; padding: 2px 6px; border-radius: 2px; border: 1px solid; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-stavka.sivanje { background: var(--glina-soft); border-color: var(--glina-line); }
+.m-stavka.igraonica { background: var(--kadulja-soft); border-color: var(--kadulja-line); }
+.m-stavka.opcija { background: var(--white); border-style: dashed; }
+.m-stavka.ponuda { background: var(--white); border-color: var(--accent-line); border-left: 3px solid var(--accent); }
+.m-stavka.ponuda.poslana { border-style: dashed; border-left-width: 1px; border-color: var(--line-strong); }
+.m-stavka.ponuda.placeno { background: var(--accent-soft); }
+.m-stavka[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.m-vise { font-size: 12px; color: var(--ink-mid); }
+.m-sati { margin-top: auto; font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.m-sati.preko { color: var(--danger); font-weight: 600; }
+@media (max-width: 640px) {
+  .mjesec .dan-glava b { font-size: 11px; letter-spacing: 0; }
+  .m-dan { min-height: 66px; padding: 4px 3px; gap: 3px; }
+  .m-broj { font-size: 14px; }
+  .m-stavka { font-size: 0; height: 6px; padding: 0; border-radius: 3px; pointer-events: none; }
+  .m-vise { font-size: 10.5px; }
+  .m-sati { display: none; }
+}
 .koraci { display: flex; flex-wrap: wrap; gap: 6px; }
 .korak { font-size: 12.5px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line); color: var(--ink-soft); }
 .korak.prosao { color: var(--ink-mid); background: var(--accent-soft); }

@@ -28,9 +28,15 @@
   // Postavke prijave (nisu tajne). Moraju biti ovdje, inače ih deploy briše iz nadzorne ploče.
   //   ACCESS_TEAM_DOMAIN  adresa tima u Zero Trustu
   //   ACCESS_AUD          "Application Audience (AUD) Tag" aplikacije "ploca"
+  //   PARRA_ZAKUPAC       zakupac čije su ponude u Parri
   "vars": {
     "ACCESS_AUD": "8a1ae2e5a92d27e39ff9ad235c4fde1ab5d28a7bbde088de9b8c67d308d1554a",
-    "ACCESS_TEAM_DOMAIN": "piccolini.cloudflareaccess.com"
-  }
+    "ACCESS_TEAM_DOMAIN": "piccolini.cloudflareaccess.com",
+    "PARRA_ZAKUPAC": "piccolini"
+  },
+  // Parra (ponude i uplate, samo čitanje) svakih 30 minuta. Tajne upisuje vlasnik u svom terminalu:
+  //   npx wrangler secret put PARRA_API_KLJUC --config apps/dashboard/wrangler.jsonc
+  //   npx wrangler secret put PARRA_SUBJEKT --config apps/dashboard/wrangler.jsonc
+  "triggers": { "crons": ["*/30 * * * *"] }
   // Lokalno: apps/dashboard/.dev.vars s DEV_USER=tvoj@email (NIKAD u produkciji).
 }

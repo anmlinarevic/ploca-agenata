@@ -1,8 +1,9 @@
 /* Čitanje podataka faze B iz D1. Koriste ga dashboard (API) i MCP (alati za agente Planer i Skladište). */
 import {
   norme as izracunajNorme, OPIS_NORMI, ZADANE_NORME, STANJA, NAZIV_STANJA,
-  potrosnjaNarudzbe, stanjeSkladista, kalendarTjedna, upozorenja, datumZagreb,
+  potrosnjaNarudzbe, stanjeSkladista, kalendarTjedna, kalendarMjeseca, upozorenja, datumZagreb, NAZIV_PONUDE,
 } from './index.js';
+import { ponudaIzReda } from './parra.js';
 
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
 
@@ -26,17 +27,33 @@ export async function ucitaj(env, tenant) {
   return { artikli: artikli.map(({ tenant_id, ...a }) => a), kretanja, narudzbe: narudzbe.map(narudzbaIzReda), n: izracunajNorme(normeRedovi) };
 }
 
-/** Sve za zaslone Kalendar i Skladište (i za agente) u jednom pozivu. `od` je bilo koji dan tjedna. */
-export async function pregled(env, tenant, od) {
-  const { artikli, kretanja, narudzbe, n } = await ucitaj(env, tenant);
+/** Ponude iz Parre koje još nešto znače za kalendar (isporuka unazad 120 dana ili bez datuma) i stanje sinkronizacije. */
+async function ucitajPonude(env, tenant) {
+  const granica = new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10);
+  const [redovi, sink] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM parra_ponude WHERE tenant_id = ? AND (isporuka_od IS NULL OR COALESCE(isporuka_do, isporuka_od) >= ?)
+      ORDER BY isporuka_od, broj`).bind(tenant, granica).all().then((x) => x.results),
+    env.DB.prepare(`SELECT zadnje, zadnje_uspjesno, greska, ponuda FROM parra_sinkronizacija WHERE tenant_id = ?`).bind(tenant).first(),
+  ]);
+  return { ponude: redovi.map(ponudaIzReda), sink };
+}
+
+/** Sve za zaslone Kalendar i Skladište (i za agente) u jednom pozivu.
+ * `od` je bilo koji dan tjedna (ili mjeseca); `pogled` je 'tjedan' (zadano) ili 'mjesec'. */
+export async function pregled(env, tenant, od, pogled = 'tjedan') {
+  const [{ artikli, kretanja, narudzbe, n }, { ponude, sink }] = await Promise.all([ucitaj(env, tenant), ucitajPonude(env, tenant)]);
   const sada = new Date();
   const skladiste = stanjeSkladista(artikli, kretanja, narudzbe, n, sada);
+  const dan = /^\d{4}-\d{2}-\d{2}$/.test(od || '') ? od : datumZagreb(sada);
   return {
     danas: datumZagreb(sada),
     norme: n, opisNormi: OPIS_NORMI, zadaneNorme: ZADANE_NORME, stanja: STANJA, nazivStanja: NAZIV_STANJA,
     narudzbe: narudzbe.map((x) => ({ ...x, potrosnja: x.usluga === 'sivanje' ? potrosnjaNarudzbe(x, n) : null })),
-    kalendar: kalendarTjedna(narudzbe, /^\d{4}-\d{2}-\d{2}$/.test(od || '') ? od : datumZagreb(sada), n),
+    kalendar: pogled === 'mjesec' ? kalendarMjeseca(narudzbe, dan, n, ponude) : kalendarTjedna(narudzbe, dan, n, ponude),
+    ponude: ponude.filter((p) => !['odbijena', 'istekla'].includes(p.stanje)),
+    nazivPonude: NAZIV_PONUDE,
+    parra: sink ? { spojeno: true, zadnje: sink.zadnje, zadnjeUspjesno: sink.zadnje_uspjesno, greska: sink.greska, ukupno: sink.ponuda } : { spojeno: false },
     skladiste,
-    upozorenja: upozorenja(narudzbe, skladiste, n, sada),
+    upozorenja: upozorenja(narudzbe, skladiste, n, sada, ponude),
   };
 }
