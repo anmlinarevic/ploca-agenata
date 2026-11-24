@@ -36,6 +36,8 @@ const m = await pregled(`?pogled=mjesec&od=${dan(10)}`);
 ok(m.kalendar.pogled === 'mjesec' && m.kalendar.dani.length % 7 === 0 && m.kalendar.dani.length >= 28, `mjesečni pogled: ${m.kalendar.dani.length} dana`);
 const raz = [dan(10), dan(11), dan(12)].filter((d) => m.kalendar.dani.some((x) => x.datum === d));
 ok(raz.every((d) => naDan(m, d).some((x) => x.broj === '103-1-1' && x.razdoblje && x.stanje === 'prihvacena')), 'najam s razdobljem na svim danima, „rezervirano”');
+ok(naDan(m, dan(10)).find((x) => x.broj === '103-1-1')?.usluga === 'igraonica' && p.ponude.find((x) => x.broj === '102-1-1')?.usluga === 'sivanje',
+  'ponuda ide u red svoje usluge: najam igraonice → igraonica, banner → šivanje');
 
 const s2 = await zovi('POST', '/api/parra/osvjezi', {});
 ok(s2.status === 200 && s2.d.promijenjeno === 0, 'druga sinkronizacija: ništa novo (delta po updatedSince + afterId)');

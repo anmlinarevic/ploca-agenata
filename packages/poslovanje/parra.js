@@ -1,7 +1,7 @@
 /* Čitanje ponuda i plaćanja iz Parre (https://api.parra.hr/docs, API v1.1). Samo GET: ploča ništa ne mijenja u Parri.
  * Ključ i id poslovnog subjekta su tajne Workera (PARRA_API_KLJUC, PARRA_SUBJEKT); ključ nikad ne ide u bazu ni pregledniku.
  * Na ploču ne ulaze ime kupca, OIB, adresa, kontakt ni opisi stavki: samo broj ponude, status, datumi, iznosi i nazivi stavki. */
-import { stanjePonude } from './index.js';
+import { stanjePonude, uslugaPonude } from './index.js';
 
 const OSNOVA = 'https://api.parra.hr';
 const STRANICA = 50;
@@ -29,6 +29,7 @@ export function ponudaIzReda(r) {
     promijenjeno: r.promijenjeno, opis: stavke.length ? stavke[0].naziv + (stavke.length > 1 ? ` + još ${stavke.length - 1}` : '') : null,
   };
   p.stanje = stanjePonude(p);
+  p.usluga = uslugaPonude(stavke);
   return p;
 }
 

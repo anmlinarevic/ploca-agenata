@@ -55,9 +55,8 @@
       <div class="legenda" aria-label="Legenda">
         <span><i style="background:var(--glina-soft);border-color:var(--glina-line)"></i>Šivanje</span>
         <span><i style="background:var(--kadulja-soft);border-color:var(--kadulja-line)"></i>Igraonica</span>
-        <span><i style="background:var(--white);border:1.5px dashed var(--line-strong)"></i>Opcija</span>
+        <span><i style="background:var(--white);border:1.5px dashed var(--line-strong)"></i>Opcija ili poslana ponuda</span>
         <span><i style="background:var(--white);border-color:var(--line-strong)"></i>Isporuka</span>
-        <span><i style="background:var(--white);border:1px solid var(--accent-line);border-left:3px solid var(--accent)"></i>Ponuda iz Parre</span>
       </div>
     </div>
     <div class="kartica okvir-tablice" id="okvir-tjedan"><div class="tjedan" id="tjedan" role="table" aria-label="Tjedni kalendar"></div></div>
@@ -201,8 +200,12 @@
   }
 
   function stavkaPonude(p) {
-    return '<button type="button" class="stavka ponuda ' + esc(p.stanje) + '" data-ponuda="p' + esc(p.id) + '" aria-pressed="' + (stanje.odabrana === 'p' + p.id) + '">' +
+    return '<button type="button" class="stavka ponuda ' + esc(p.usluga) + ' ' + esc(p.stanje) + '" data-ponuda="p' + esc(p.id) + '" aria-pressed="' + (stanje.odabrana === 'p' + p.id) + '">' +
       '<em>Parra · ' + esc(p.broj) + '</em><strong>' + esc(p.opis || 'Ponuda') + '</strong><span>' + esc(KRATKO_PONUDA[p.stanje] || p.stanje) + (p.razdoblje ? ' · razdoblje' : '') + '</span></button>';
+  }
+
+  function ponudeUsluge(dan, usluga) {
+    return dan.ponude.filter(function (p) { return p.usluga === usluga; }).map(stavkaPonude).join('');
   }
 
   function renderMjesec(d) {
@@ -213,7 +216,7 @@
       var st = [];
       dan.isporuke.forEach(function (s) { st.push('<button type="button" class="m-stavka sivanje" data-id="' + esc(s.id) + '" aria-pressed="' + (stanje.odabrana === s.id) + '" title="Isporuka ' + esc(s.sifra + ' · ' + s.opis) + '">' + esc(s.sifra + ' ' + s.opis) + '</button>'); });
       dan.igraonica.forEach(function (s) { st.push('<button type="button" class="m-stavka igraonica' + (s.stanje === 'opcija' ? ' opcija' : '') + '" data-id="' + esc(s.id) + '" aria-pressed="' + (stanje.odabrana === s.id) + '" title="' + esc(s.sifra + ' · ' + s.opis) + '">' + esc((s.od || '') + ' ' + s.opis) + '</button>'); });
-      dan.ponude.forEach(function (p) { st.push('<button type="button" class="m-stavka ponuda ' + esc(p.stanje) + '" data-ponuda="p' + esc(p.id) + '" aria-pressed="' + (stanje.odabrana === 'p' + p.id) + '" title="Ponuda ' + esc(p.broj + ' · ' + (p.opis || '') + ' · ' + (KRATKO_PONUDA[p.stanje] || '')) + '">' + esc(p.broj + ' ' + (p.opis || '')) + '</button>'); });
+      dan.ponude.forEach(function (p) { st.push('<button type="button" class="m-stavka ponuda ' + esc(p.usluga) + ' ' + esc(p.stanje) + '" data-ponuda="p' + esc(p.id) + '" aria-pressed="' + (stanje.odabrana === 'p' + p.id) + '" title="Ponuda ' + esc(p.broj + ' · ' + (p.opis || '') + ' · ' + (KRATKO_PONUDA[p.stanje] || '')) + '">' + esc(p.broj + ' ' + (p.opis || '')) + '</button>'); });
       var vise = st.length > 4 ? '<span class="m-vise">+ još ' + (st.length - 3) + '</span>' : '';
       if (vise) st = st.slice(0, 3);
       var oznaka = P.danUTjednu(dan.datum) + ' ' + P.datum(dan.datum) + ': ' + (dan.isporuke.length + dan.igraonica.length + dan.ponude.length) + ' stavki';
@@ -236,7 +239,7 @@
       h += '<div class="celija" style="min-height:150px">';
       dan.izrada.forEach(function (s) { h += stavka(s, s.sifra, 'izrada ' + P.broj(s.sati) + ' h', ''); });
       dan.isporuke.forEach(function (s) { h += stavka(s, 'Isporuka · ' + s.sifra, KRATKO[s.stanje], ' isporuka'); });
-      h += '</div>';
+      h += ponudeUsluge(dan, 'sivanje') + '</div>';
     });
     h += '<div class="oznaka-reda">Igraonica<span class="sitno" style="font-size:12px;font-weight:400">termini</span></div>';
     k.dani.forEach(function (dan) {
@@ -245,12 +248,8 @@
         var opc = s.stanje === 'opcija';
         h += stavka(s, (opc ? 'Opcija · ' : '') + s.sifra, (s.od || '') + (s.do ? '–' + s.do : '') + ' · ' + KRATKO[s.stanje], opc ? ' opcija' : '');
       });
-      h += '</div>';
+      h += ponudeUsluge(dan, 'igraonica') + '</div>';
     });
-    if (d.parra.spojeno || k.dani.some(function (dan) { return dan.ponude.length; })) {
-      h += '<div class="oznaka-reda">Ponude<span class="sitno" style="font-size:12px;font-weight:400">iz Parre, po datumu isporuke</span></div>';
-      k.dani.forEach(function (dan) { h += '<div class="celija" style="min-height:80px">' + dan.ponude.map(stavkaPonude).join('') + '</div>'; });
-    }
     h += '<div class="oznaka-reda">Opterećenje<span class="sitno" style="font-size:12px;font-weight:400">sati šivanja</span></div>';
     k.dani.forEach(function (dan) {
       var posto = Math.min(100, Math.round(dan.sati / dan.kapacitet * 100));

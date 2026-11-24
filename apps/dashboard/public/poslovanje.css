@@ -101,11 +101,8 @@ main.omot { padding-block: 26px 72px; display: flex; flex-direction: column; gap
 .prekidac button + button { border-left: 1px solid var(--accent-line); }
 .prekidac button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 
-/* ponude iz Parre: grafit, bez boje usluge; stanje se čita iz ruba i oznake */
-.stavka.ponuda { background: var(--white); border-color: var(--accent-line); border-left: 3px solid var(--accent); }
-.stavka.ponuda em { color: var(--ink-mid); }
-.stavka.ponuda.poslana { border-style: dashed; border-left-style: dashed; border-left-width: 1.5px; border-color: var(--line-strong); }
-.stavka.ponuda.placeno { background: var(--accent-soft); }
+/* ponude iz Parre: u boji svoje usluge (šivanje ili igraonica); poslana je kao opcija (bijela, isprekidana), prihvaćena puna */
+.stavka.ponuda.poslana { border-style: dashed; border-width: 1.5px; background: var(--white); }
 .chip.p-poslana { border: 1px dashed var(--line-strong); color: var(--ink-mid); }
 .chip.p-prihvacena, .chip.p-racun, .chip.p-djelomicno { background: var(--accent-soft); color: var(--ink); }
 .chip.p-placeno { background: var(--accent); color: var(--on-accent); }
@@ -125,9 +122,7 @@ main.omot { padding-block: 26px 72px; display: flex; flex-direction: column; gap
 .m-stavka.sivanje { background: var(--glina-soft); border-color: var(--glina-line); }
 .m-stavka.igraonica { background: var(--kadulja-soft); border-color: var(--kadulja-line); }
 .m-stavka.opcija { background: var(--white); border-style: dashed; }
-.m-stavka.ponuda { background: var(--white); border-color: var(--accent-line); border-left: 3px solid var(--accent); }
-.m-stavka.ponuda.poslana { border-style: dashed; border-left-width: 1px; border-color: var(--line-strong); }
-.m-stavka.ponuda.placeno { background: var(--accent-soft); }
+.m-stavka.ponuda.poslana { background: var(--white); border-style: dashed; }
 .m-stavka[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
 .m-vise { font-size: 12px; color: var(--ink-mid); }
 .m-sati { margin-top: auto; font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }

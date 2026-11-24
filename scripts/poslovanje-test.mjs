@@ -1,7 +1,7 @@
 // Jedinični testovi poslovne logike (bez servera): node scripts/poslovanje-test.mjs
 import {
   norme, povrsinaSlova, normalizirajStavku, potrosnjaStavke, potrosnjaNarudzbe, dopustenPrijelaz,
-  stanjeSkladista, kalendarTjedna, kalendarMjeseca, upozorenja, ponedjeljak, maskirajStavke, stanjePonude,
+  stanjeSkladista, kalendarTjedna, kalendarMjeseca, upozorenja, ponedjeljak, maskirajStavke, stanjePonude, uslugaPonude,
 } from '../packages/poslovanje/index.js';
 import { redIzDetalja, ponudaIzReda } from '../packages/poslovanje/parra.js';
 
@@ -112,6 +112,10 @@ ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1 }], placeno: 20, za_plati
 ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1 }], placeno: 50, za_platiti: 50 }) === 'placeno', 'plaćeno do kraja');
 ok(stanjePonude({ status: 'Accepted', racuni: [{ id: 1, status: 'Cancelled' }] }) === 'prihvacena', 'storniran račun se ne broji');
 ok(stanjePonude({ status: 'Denied', racuni: [] }) === 'odbijena', 'odbijena');
+ok(uslugaPonude([{ naziv: 'Paket: softplay igraonica i dvije igračke pas skakalica — do 8 sati' }, { naziv: 'Banner „SRETAN ROĐENDAN“' }]) === 'igraonica', 'paket igraonice (i uz banner) = igraonica');
+ok(uslugaPonude([{ naziv: 'Prijevoz — dostava i preuzimanje igraonice' }]) === 'igraonica', 'prijevoz = igraonica');
+ok(uslugaPonude([{ naziv: 'Rođendanski set: banner „SRETAN ROĐENDAN“ i banner s imenom do 4 slova' }, { naziv: 'Dostava bannera u BoxNow paketomat' }]) === 'sivanje', 'banneri i BoxNow = šivanje');
+ok(uslugaPonude([]) === 'sivanje', 'bez stavki = šivanje');
 const det = redIzDetalja({ id: 7, status: { name: 'Accepted' }, basicInfo: { offerNumber: '7-1-1', offerDate: '2026-11-20T10:00:00' },
   customer: { name: 'Ana Anić', contactEmail: 'ana@primjer.hr' }, deliveryInfo: { isDeliveryPeriod: true, deliveryDateFrom: '2026-12-01', deliveryDateTo: '2026-12-03', deliveryAddress: 'Ulica 1' },
   offerLines: [{ name: 'Banner s imenom, po slovu', quantity: 6, unitOfMeasureMark: 'H87', description: 'LUCIJA, roza' }], totalAmount: 90, invoices: [] });

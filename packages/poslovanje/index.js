@@ -228,6 +228,10 @@ export const NAZIV_PONUDE = {
   djelomicno: 'Djelomično plaćeno', placeno: 'Plaćeno', odbijena: 'Odbijena', istekla: 'Istekla',
 };
 const ponudaUKalendaru = (p) => !['odbijena', 'istekla'].includes(p.stanje);
+// Ponuda je ili za igraonicu ili za šivanje: čim ima stavku igraonice ili prijevoza, datum isporuke je termin igraonice.
+const STAVKA_IGRAONICE = /igraonic|soft\s*-?play|skakalic|prijevoz/i;
+/** Usluga ponude po nazivima stavki: 'igraonica' ili 'sivanje'. */
+export const uslugaPonude = (stavke = []) => (stavke.some((s) => STAVKA_IGRAONICE.test(s?.naziv || '')) ? 'igraonica' : 'sivanje');
 
 /** Dani od `od` do `do` (uključivo) sa stavkama izrade, isporukama, terminima igraonice, ponudama iz Parre i opterećenjem. */
 export function kalendarRaspona(narudzbe, od, doDatum, n, ponude = []) {
@@ -237,7 +241,7 @@ export function kalendarRaspona(narudzbe, od, doDatum, n, ponude = []) {
   for (const p of ponude) {
     if (!ponudaUKalendaru(p) || !p.isporuka_od) continue;
     const kraj = p.isporuka_do && p.isporuka_do >= p.isporuka_od ? p.isporuka_do : p.isporuka_od;
-    const zapis = { id: p.id, broj: p.broj, stanje: p.stanje, opis: p.opis, razdoblje: kraj !== p.isporuka_od };
+    const zapis = { id: p.id, broj: p.broj, stanje: p.stanje, opis: p.opis, usluga: p.usluga || uslugaPonude(p.stavke), razdoblje: kraj !== p.isporuka_od };
     for (let d = p.isporuka_od, k = 0; d <= kraj && k < 62; d = dodajDane(d, 1), k++) {
       const i = indeks.get(d);
       if (i != null) dani[i].ponude.push(zapis);
