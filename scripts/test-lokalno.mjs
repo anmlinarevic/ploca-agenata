@@ -9,6 +9,9 @@ import { generateKeyPairSync } from 'node:crypto';
 
 const izvoz = process.argv[2];
 if (!izvoz) { console.error('Upotreba: node scripts/test-lokalno.mjs <mapa-s-izvozom>'); process.exit(1); }
+// Portovi se mogu promijeniti ako je neki zauzet (npr. ostao je stari `wrangler dev`): PORT_PLOCA, PORT_MCP.
+const PLOCA = process.env.PORT_PLOCA || '8798', MCPP = process.env.PORT_MCP || '8799';
+const P_URL = `http://localhost:${PLOCA}`, M_URL = `http://localhost:${MCPP}`;
 const CFG = ['--config', 'apps/mcp/wrangler.jsonc'];
 const DB_STATE = '.wrangler-test/state';
 const sh = (cmd, args, env = {}) => {
@@ -84,25 +87,25 @@ const lazni = spawn('node', ['scripts/fake-anthropic.mjs'], { stdio: 'ignore' })
 procesi.push(spawn('node', ['scripts/fake-parra.mjs'], { stdio: 'ignore' }));
 procesi.push(spawn('node', ['scripts/fake-meta.mjs'], { stdio: 'ignore' }));
 procesi.push(spawn('node', ['scripts/fake-gsc.mjs'], { stdio: 'ignore', env: { ...process.env, GSC_JAVNI: gscPar.publicKey } }));
-pokreni(['wrangler', 'dev', '--config', 'apps/mcp/wrangler.jsonc', '--port', '8799', '--persist-to', DB_STATE, '--var', `TOKEN_PEPPER:${pepperTest}`]);
+pokreni(['wrangler', 'dev', '--config', 'apps/mcp/wrangler.jsonc', '--port', MCPP, '--persist-to', DB_STATE, '--var', `TOKEN_PEPPER:${pepperTest}`]);
 pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/izvrsitelj/wrangler.jsonc', '-c', 'apps/mcp/wrangler.jsonc',
-  '--port', '8798', '--persist-to', DB_STATE]);
+  '--port', PLOCA, '--persist-to', DB_STATE]);
 
 let kod = 1;
-if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localhost:8798/')) && (await cekaj('http://localhost:8790/zahtjevi'))) {
+if ((await cekaj(M_URL + '/health')) && (await cekaj(P_URL + '/')) && (await cekaj('http://localhost:8790/zahtjevi'))) {
   kod = node('scripts/poslovanje-test.mjs')
-    || node('scripts/smoke-test.mjs', { URL: 'http://localhost:8799', TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
-    || node('scripts/dashboard-test.mjs', { URL: 'http://localhost:8798' })
-    || node('scripts/poslovanje-api-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord })
-    || node('scripts/parra-test.mjs', { URL: 'http://localhost:8798', PARRA: 'http://localhost:8791' })
-    || node('scripts/meta-test.mjs', { URL: 'http://localhost:8798', META: 'http://localhost:8792' })
-    || node('scripts/gsc-test.mjs', { URL: 'http://localhost:8798', GSC: 'http://localhost:8793' })
-    || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord }, ['faza1']);
+    || node('scripts/smoke-test.mjs', { URL: M_URL, TOKEN: tKoord, TOKEN_KONK: tKonk, TOKEN_SEO: tSeo })
+    || node('scripts/dashboard-test.mjs', { URL: P_URL })
+    || node('scripts/poslovanje-api-test.mjs', { URL: P_URL, MCP: M_URL, TOKEN: tKoord })
+    || node('scripts/parra-test.mjs', { URL: P_URL, PARRA: 'http://localhost:8791' })
+    || node('scripts/meta-test.mjs', { URL: P_URL, META: 'http://localhost:8792' })
+    || node('scripts/gsc-test.mjs', { URL: P_URL, GSC: 'http://localhost:8793' })
+    || node('scripts/izvrsitelj-test.mjs', { URL: P_URL, MCP: M_URL, TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',
       `UPDATE tenants SET postavke_json = '{"limit_usd":0.01}' WHERE id = 'piccolini';\n`);
     d1('tenants/piccolini/token-test-limit.sql');
-    kod = node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', BROJ_ZAHTJEVA: '27' }, ['faza2']);
+    kod = node('scripts/izvrsitelj-test.mjs', { URL: P_URL, BROJ_ZAHTJEVA: '27' }, ['faza2']);
   }
 } else console.error('Serveri se nisu pokrenuli');
 ugasi();

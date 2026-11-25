@@ -33,10 +33,25 @@ export const TOOLS = [
   },
   {
     name: 'dohvati_nove_zadatke',
-    description: 'Zadaci koje je vlasnik zadao agentima, sa statusom "novo".',
+    description: 'Zadaci sa statusom "novo" koje nitko ne pokreće sam (stari ručni zadaci i oni čije pokretanje nije uspjelo). Zadaci koje je dao koordinator pokreću se sami i nisu ovdje.',
     inputSchema: prazno,
     run: async (_a, { tenantId }, env) => (await sve(env,
-      `SELECT * FROM zadaci WHERE tenant_id = ? AND status = 'novo' ORDER BY kreirano`, tenantId)).map((r) => dokument(r)),
+      `SELECT * FROM zadaci WHERE tenant_id = ? AND status = 'novo' AND automatski = 0 ORDER BY kreirano`, tenantId)).map((r) => dokument(r)),
+  },
+  {
+    name: 'dohvati_zadatke',
+    description: 'Zadaci agentima s rezultatom (najnoviji prvi): tko ih je dao (ti = vlasnik, koordinator), status, rezultat, odluka koju izvršavaju. `otvoreni: true` samo novi i u izradi. Za pitanje vlasnika „što je s …”.',
+    inputSchema: { type: 'object', properties: { otvoreni: { type: 'boolean' }, limit: { type: 'integer', minimum: 1, maximum: 50, default: 15 } }, additionalProperties: false },
+    run: async (a, { tenantId }, env) => (await sve(env,
+      `SELECT id, agent, opis, status, rezultat, kreirano, rok, zadao, odluka_id FROM zadaci WHERE tenant_id = ?
+       ${a.otvoreni ? "AND status IN ('novo','u_izradi')" : ''} ORDER BY kreirano DESC LIMIT ?`, tenantId, ograniči(a.limit, 15, 50))),
+  },
+  {
+    name: 'dohvati_pristupe',
+    description: 'Zahtjevi za pristup koje vlasnik još nije riješio (otvoreno) i nedavno riješeni. Prije nego zatražiš isti pristup ponovno.',
+    inputSchema: prazno,
+    run: async (_a, { tenantId }, env) => sve(env,
+      `SELECT id, agent, sto, zasto, kako, status, kreirano, rijeseno FROM pristupi WHERE tenant_id = ? ORDER BY status = 'otvoreno' DESC, kreirano DESC LIMIT 30`, tenantId),
   },
   {
     name: 'dohvati_otvorene_odluke',

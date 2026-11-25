@@ -3,10 +3,19 @@
  * postavljaju se u wrangler.jsonc ("vars") i treba ih provjeriti na Anthropicovu cjeniku. */
 const broj = (v, zadano) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? n : zadano; };
 
-export function cijene(env) {
+// Cjenik po modelu (USD po milijun tokena). CENA_* u wrangler.jsonc vrijede za zadani model (env.MODEL).
+const CJENIK = {
+  'claude-sonnet-5-5': { ulaz: 2, izlaz: 10, cacheCitanje: 0.1, cachePisanje: 2.5 },
+  'claude-opus-5-5': { ulaz: 4, izlaz: 20, cacheCitanje: 0.2, cachePisanje: 5 },
+};
+
+export function cijene(env, model = env.MODEL) {
+  const z = CJENIK[model] || CJENIK['claude-sonnet-5-5'];
+  const zadani = !model || model === (env.MODEL || 'claude-sonnet-5-5');
   return {
-    ulaz: broj(env.CENA_ULAZ, 2), izlaz: broj(env.CENA_IZLAZ, 10),
-    cacheCitanje: broj(env.CENA_CACHE_CITANJE, 0.1), cachePisanje: broj(env.CENA_CACHE_PISANJE, 2.5),
+    ulaz: zadani ? broj(env.CENA_ULAZ, z.ulaz) : z.ulaz, izlaz: zadani ? broj(env.CENA_IZLAZ, z.izlaz) : z.izlaz,
+    cacheCitanje: zadani ? broj(env.CENA_CACHE_CITANJE, z.cacheCitanje) : z.cacheCitanje,
+    cachePisanje: zadani ? broj(env.CENA_CACHE_PISANJE, z.cachePisanje) : z.cachePisanje,
     pretraga: broj(env.CENA_PRETRAGA, 0.01), // USD po jednoj pretrazi (procjena)
   };
 }
