@@ -1,11 +1,15 @@
 // Lažni Meta Graph API (v25.0) za lokalne testove i demo: Facebook stranica 555 s povezanim Instagramom 777.
-// Token: Bearer test-meta. Upravljanje testom: POST /pokvari (token istekao), POST /popravi, POST /nova-objava, GET /zahtjevi.
+// Token korisnika sustava: Bearer test-meta. Rubovi Facebook stranice (/insights, /posts, uvidi objava) rade samo sa straničnim tokenom
+// (Bearer test-meta-stranica, dolazi u polju access_token stranice), a s običnim vraćaju kod 190 kao prava Meta.
+// Upravljanje testom: POST /pokvari (token istekao), POST /popravi, POST /nova-objava, POST /bez-stranicnog-tokena, POST /sa-stranicnim-tokenom, GET /zahtjevi.
 import http from 'node:http';
 
 const port = Number(process.env.PORT || 8792);
 const DAN = 86400000;
 const zahtjevi = [];
 let pokvareno = false;
+let bezStranicnog = false;
+const STRANICNI = 'test-meta-stranica';
 
 // Vrijeme objave: prije `dana` dana u `sat` sati po Zagrebu (zimsko vrijeme, UTC+1); oblik kao Meta: +0000
 const kad = (dana, sat) => {
@@ -47,17 +51,23 @@ http.createServer((req, res) => {
   if (u.pathname === '/zahtjevi') return posalji(res, 200, { broj: zahtjevi.length, zadnji: zahtjevi.slice(-60) });
   if (req.method === 'POST' && u.pathname === '/pokvari') { pokvareno = true; return posalji(res, 200, {}); }
   if (req.method === 'POST' && u.pathname === '/popravi') { pokvareno = false; return posalji(res, 200, {}); }
+  if (req.method === 'POST' && u.pathname === '/bez-stranicnog-tokena') { bezStranicnog = true; return posalji(res, 200, {}); }
+  if (req.method === 'POST' && u.pathname === '/sa-stranicnim-tokenom') { bezStranicnog = false; return posalji(res, 200, {}); }
   if (req.method === 'POST' && u.pathname === '/nova-objava') {
     igObjave.push({ ...igObjave[igObjave.length - 2], id: `1799${igObjave.length}`, timestamp: kad(0, 9), caption: 'Nova objava' });
     return posalji(res, 200, {});
   }
   zahtjevi.push(req.method + ' ' + u.pathname + u.search);
-  if (pokvareno || req.headers.authorization !== 'Bearer test-meta')
+  const auth = req.headers.authorization;
+  if (pokvareno || (auth !== 'Bearer test-meta' && auth !== 'Bearer ' + STRANICNI))
     return posalji(res, 400, { error: { message: 'Error validating access token: Session has expired.', type: 'OAuthException', code: 190, error_subcode: 463 } });
   if (req.method !== 'GET') return posalji(res, 405, {});
   const put = u.pathname.replace(/^\/v25\.0\//, ''), metrike = (u.searchParams.get('metric') || '').split(',').filter(Boolean);
 
-  if (put === '555') return posalji(res, 200, { name: 'Piccolini Play', followers_count: 842, instagram_business_account: { id: '777', username: 'piccoliniplay', followers_count: 1284 }, id: '555' });
+  const trebaStranicni = put === '555/insights' || put === '555/posts' || /^555_\d+\/insights$/.test(put);
+  if (trebaStranicni && auth !== 'Bearer ' + STRANICNI)
+    return posalji(res, 400, { error: { message: '(#190) This method must be called with a Page Access Token', type: 'OAuthException', code: 190 } });
+  if (put === '555') return posalji(res, 200, { name: 'Piccolini Play', followers_count: 842, ...(bezStranicnog ? {} : { access_token: STRANICNI }), instagram_business_account: { id: '777', username: 'piccoliniplay', followers_count: 1284 }, id: '555' });
   if (put === '777/insights') {
     const prethodno = +u.searchParams.get('since') < Date.now() / 1000 - 40 * 86400;
     const v = prethodno ? { reach: 11200, views: 19800, total_interactions: 640, saves: 41, shares: 22 } : { reach: 14200, views: 26400, total_interactions: 910, saves: 68, shares: 35 };

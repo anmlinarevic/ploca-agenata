@@ -47,9 +47,20 @@ ok(p.meta.greska && p.kanali.instagram.ukupnoObjava === 12, 'greška se vidi na 
 await fetch(META + '/popravi', { method: 'POST' });
 ok((await zovi('POST', '/api/meta/osvjezi', {})).status === 200 && !(await mreze()).meta.greska, 'nakon popravka opet radi');
 
+// Meta za rubove Facebook stranice traži stranični token (kod 190 poput isteklog tokena): to nije istekao token
+await fetch(META + '/bez-stranicnog-tokena', { method: 'POST' });
+const s5 = await zovi('POST', '/api/meta/osvjezi', {});
+p = await mreze();
+ok(s5.status === 200 && p.meta.upozorenja.some((u) => /stranični token/i.test(u)) && !/istekao/i.test(p.meta.greska || ''), 'bez straničnog tokena: nije „token istekao”, nego upozorenje');
+ok(p.kanali.instagram.ukupnoObjava === 12 && p.kanali.instagram.doseg28 === 14200, 'bez straničnog tokena Instagram radi dalje');
+await fetch(META + '/sa-stranicnim-tokenom', { method: 'POST' });
+const s6 = await zovi('POST', '/api/meta/osvjezi', {});
+p = await mreze();
+ok(s6.status === 200 && p.meta.upozorenja.length === 0 && p.kanali.facebook.pregledi28 === 6900, 'sa straničnim tokenom Facebook opet radi, bez upozorenja');
+
 const z = await (await fetch(META + '/zahtjevi')).json();
 ok(z.zadnji.every((x) => x.startsWith('GET ')), 'prema Meti idu samo GET zahtjevi');
-ok(z.zadnji.every((x) => !/access_token/.test(x)), 'token ide u zaglavlje, ne u adresu');
+ok(z.zadnji.every((x) => !/access_token=/.test(x)), 'token ide u zaglavlje, ne u adresu');
 
 const tudje = await zovi('POST', '/api/meta/osvjezi', {}, 'savjetnik@test.hr', 'drugi');
 ok(tudje.status === 503, 'drugi zakupac nema Metu');

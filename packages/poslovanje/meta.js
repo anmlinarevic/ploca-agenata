@@ -46,17 +46,20 @@ function klijent(env, fetchFn) {
   const osnova = `${(env.META_URL || OSNOVA).replace(/\/$/, '')}/${env.META_VERZIJA || VERZIJA}`;
   let zahtjeva = 0;
   /** Vraća JSON; meke greške (npr. metrika koja ne postoji za tu objavu) kao { meka: poruka }; tvrde baca. */
-  const get = async (put, upit = {}) => {
+  // `token`: zamjena za META_TOKEN (stranični token za rubove Facebook stranice). Nikad se ne sprema ni vraća.
+  const get = async (put, upit = {}, token = null) => {
     if (zahtjeva >= NAJVISE_ZAHTJEVA) return null;
     zahtjeva++;
     const qs = new URLSearchParams(Object.entries(upit).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)])).toString();
     const odg = await fetchFn(`${osnova}/${put}${qs ? `?${qs}` : ''}`, {
-      headers: { authorization: `Bearer ${String(env.META_TOKEN).trim()}`, accept: 'application/json' },
+      headers: { authorization: `Bearer ${String(token || env.META_TOKEN).trim()}`, accept: 'application/json' },
     });
     let d = null; try { d = await odg.json(); } catch {}
     if (odg.ok && d && !d.error) return d;
     const e = d?.error || {}, kod = +e.code;
-    if (kod === 190 || odg.status === 401) throw new GreskaMete('Meta ne prihvaća token (istekao ili opozvan). Napravi novi i upiši ga: npx wrangler secret put META_TOKEN');
+    // Isti kod 190 Meta šalje i kad treba stranični token; to nije istekao token.
+    if (kod === 190 && /page access token/i.test(e.message || '')) return { meka: 'Meta traži stranični token za ovaj podatak.' };
+    if (kod === 190 || odg.status === 401) throw new GreskaMete(`Meta ne prihvaća token (istekao ili opozvan)${e.message ? `: ${String(e.message).slice(0, 120)}` : ''}. Napravi novi i upiši ga: npx wrangler secret put META_TOKEN`);
     if (kod === 10 || (kod >= 200 && kod < 300) || odg.status === 403) throw new GreskaMete('Tokenu nedostaje dozvola za čitanje uvida (instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights).');
     if ([4, 17, 32, 613].includes(kod) || odg.status === 429) throw new GreskaMete('Meta je privremeno ograničila broj zahtjeva. Nastavlja se u idućem krugu.');
     if (kod === 803 || (kod === 100 && /node|exist|unknown path/i.test(e.message || '') && put === String(env.META_STRANICA).trim()))
@@ -98,9 +101,12 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
 
   try {
     // 1) stranica + povezani Instagram poslovni račun
-    const str = await k.get(stranica, { fields: 'name,followers_count,fan_count,instagram_business_account{id,username,followers_count}' });
+    const str = await k.get(stranica, { fields: 'name,followers_count,fan_count,access_token,instagram_business_account{id,username,followers_count}' });
     if (str?.meka) throw new GreskaMete(`Meta ne daje podatke stranice: ${str.meka}`);
     stranicaIme = str.name || null;
+    // Pregled i objave Facebook stranice traže stranični token, koji se dobiva od stranice (token korisnika sustava ga ne zamjenjuje).
+    const stranicniToken = str.access_token || null;
+    if (!stranicniToken) upozorenja.push('Facebook: Meta nije dala stranični token. Provjeri da korisnik sustava ima stranicu s pravom na uvide.');
     ig = str.instagram_business_account?.id || null;
     igIme = str.instagram_business_account?.username || null;
     if (!ig) upozorenja.push('Facebook stranica nema povezan Instagram poslovni ili kreatorski račun.');
@@ -129,25 +135,32 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
       }
     }
 
-    // 4) Facebook stranica: pregledi i jedinstveni gledatelji (28 dana, klizno)
-    let fbt = await k.get(`${stranica}/insights`, { metric: 'page_media_view,page_total_media_view_unique', period: 'days_28', since: s(kraj - 30 * DAN), until: s(kraj) });
-    upozori('Facebook stranica', fbt);
-    if (fbt && !fbt.meka) {
-      const m = poImenu(fbt);
-      const prvi = (x) => { const v = x?.values || []; return v.length >= 2 ? vrijednost(x, false) : null; };
-      await izvrsi([
-        razdoblje('facebook', 'zadnjih', d(r1.od), d(r1.do), { pregledi: vrijednost(m.page_media_view), doseg: vrijednost(m.page_total_media_view_unique) }),
-        razdoblje('facebook', 'prethodnih', d(r0.od), d(r0.do), { pregledi: prvi(m.page_media_view), doseg: prvi(m.page_total_media_view_unique) }),
-      ]);
-    }
-    // 5) Facebook objave
-    const fbo = await k.get(`${stranica}/posts`, { fields: 'id,message,created_time,permalink_url,status_type', limit: 20 });
-    upozori('Facebook objave', fbo);
-    if (fbo && !fbo.meka) {
-      await izvrsi((fbo.data || []).filter((p) => p.id && p.created_time).map((p) => objavaRed('facebook', {
-        id: String(p.id), vrsta: vrstaFb(p), objavljeno: new Date(p.created_time).toISOString(), poveznica: p.permalink_url || null, opis: cistiOpis(p.message),
-      })));
-      objava += (fbo.data || []).length;
+    // 4) i 5) Facebook stranica (stranični token). Greška ovdje je upozorenje: Instagram i uvidi objava ipak nastavljaju.
+    try {
+      if (stranicniToken) {
+        // pregledi i jedinstveni gledatelji (28 dana, klizno)
+        const fbt = await k.get(`${stranica}/insights`, { metric: 'page_media_view,page_total_media_view_unique', period: 'days_28', since: s(kraj - 30 * DAN), until: s(kraj) }, stranicniToken);
+        upozori('Facebook stranica', fbt);
+        if (fbt && !fbt.meka) {
+          const m = poImenu(fbt);
+          const prvi = (x) => { const v = x?.values || []; return v.length >= 2 ? vrijednost(x, false) : null; };
+          await izvrsi([
+            razdoblje('facebook', 'zadnjih', d(r1.od), d(r1.do), { pregledi: vrijednost(m.page_media_view), doseg: vrijednost(m.page_total_media_view_unique) }),
+            razdoblje('facebook', 'prethodnih', d(r0.od), d(r0.do), { pregledi: prvi(m.page_media_view), doseg: prvi(m.page_total_media_view_unique) }),
+          ]);
+        }
+        const fbo = await k.get(`${stranica}/posts`, { fields: 'id,message,created_time,permalink_url,status_type', limit: 20 }, stranicniToken);
+        upozori('Facebook objave', fbo);
+        if (fbo && !fbo.meka) {
+          await izvrsi((fbo.data || []).filter((p) => p.id && p.created_time).map((p) => objavaRed('facebook', {
+            id: String(p.id), vrsta: vrstaFb(p), objavljeno: new Date(p.created_time).toISOString(), poveznica: p.permalink_url || null, opis: cistiOpis(p.message),
+          })));
+          objava += (fbo.data || []).length;
+        }
+      }
+    } catch (e) {
+      if (!(e instanceof GreskaMete)) throw e;
+      upozorenja.push(`Facebook: ${e.message}`.slice(0, 220));
     }
 
     // 6) uvidi objava: prvo nikad osvježene, pa najstarije osvježene, samo mlađe od 35 dana (osim prvog puta)
@@ -165,7 +178,8 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
         const m = poImenu(odg.meka ? {} : odg);
         v = { pregledi: vrijednost(m.views), doseg: vrijednost(m.reach), spremanja: vrijednost(m.saved), dijeljenja: vrijednost(m.shares) };
       } else {
-        const odg = await k.get(`${o.id}/insights`, { metric: 'post_media_view,post_total_media_view_unique,post_reactions_by_type_total,post_clicks' });
+        if (!stranicniToken) continue;
+        const odg = await k.get(`${o.id}/insights`, { metric: 'post_media_view,post_total_media_view_unique,post_reactions_by_type_total,post_clicks' }, stranicniToken);
         if (!odg) break;
         const m = poImenu(odg.meka ? {} : odg);
         v = { pregledi: vrijednost(m.post_media_view), doseg: vrijednost(m.post_total_media_view_unique), lajkovi: vrijednost(m.post_reactions_by_type_total), klikovi: vrijednost(m.post_clicks) };
