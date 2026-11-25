@@ -30,11 +30,13 @@
   //   ACCESS_AUD          "Application Audience (AUD) Tag" aplikacije "ploca"
   //   PARRA_ZAKUPAC       zakupac čije su ponude u Parri
   //   META_ZAKUPAC        zakupac čiji su Instagram i Facebook stranica
+  //   GSC_ZAKUPAC         zakupac čija je stranica u Google Search Consoleu
   "vars": {
     "ACCESS_AUD": "8a1ae2e5a92d27e39ff9ad235c4fde1ab5d28a7bbde088de9b8c67d308d1554a",
     "ACCESS_TEAM_DOMAIN": "piccolini.cloudflareaccess.com",
     "PARRA_ZAKUPAC": "piccolini",
-    "META_ZAKUPAC": "piccolini"
+    "META_ZAKUPAC": "piccolini",
+    "GSC_ZAKUPAC": "piccolini"
   },
   // Parra (ponude i uplate, samo čitanje) svakih 30 minuta. Tajne upisuje vlasnik u svom terminalu:
   //   npx wrangler secret put PARRA_API_KLJUC --config apps/dashboard/wrangler.jsonc
@@ -42,6 +44,9 @@
   // Instagram i Facebook stranica (samo čitanje) svakih 6 sati:
   //   npx wrangler secret put META_TOKEN --config apps/dashboard/wrangler.jsonc
   //   npx wrangler secret put META_STRANICA --config apps/dashboard/wrangler.jsonc
+  // Google Search Console (samo čitanje) jednom dnevno, umjesto jednog kruga Parre (upute: docs/GSC-SPAJANJE.md):
+  //   Get-Content kljuc.json -Raw | npx wrangler secret put GSC_KLJUC --config apps/dashboard/wrangler.jsonc
+  //   npx wrangler secret put GSC_SVOJSTVO --config apps/dashboard/wrangler.jsonc   (npr. sc-domain:piccoliniplay.hr)
   "triggers": { "crons": ["*/30 * * * *", "15 */6 * * *"] }
   // Lokalno: apps/dashboard/.dev.vars s DEV_USER=tvoj@email (NIKAD u produkciji).
 }

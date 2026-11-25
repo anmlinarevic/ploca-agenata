@@ -8,6 +8,7 @@ import { narudzbaIzReda, ucitaj, pregled } from '../../../packages/poslovanje/ba
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 import { metaPodesena, sinkronizirajMetu, pregledMreza } from '../../../packages/poslovanje/meta.js';
 import { pregledFinancija } from '../../../packages/poslovanje/financije.js';
+import { gscPodesen, sinkronizirajGsc, pregledWeba } from '../../../packages/poslovanje/gsc.js';
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const LOKALNO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -111,6 +112,15 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
     if (!metaPodesena(env, tenant)) return greska('Meta nije spojena. Upiši token: npx wrangler secret put META_TOKEN', 503);
     const r = await sinkronizirajMetu(env, tenant);
     await env.DB.batch([audit(env, u, tenant, 'meta_osvjezi', 'meta_objave', null, null, { objava: r.objava, uvida: r.uvida, greska: r.greska })]);
+    return r.ok ? json(r) : greska(r.greska, 502);
+  }
+
+  // ---- Google Search Console: pregled i ručno osvježavanje (inače jednom dnevno preko crona) ----
+  if (m === 'GET' && putanja === '/api/web') return json(await pregledWeba(env, tenant));
+  if (m === 'POST' && putanja === '/api/gsc/osvjezi') {
+    if (!gscPodesen(env, tenant)) return greska('Search Console nije spojen. Upute: docs/GSC-SPAJANJE.md', 503);
+    const r = await sinkronizirajGsc(env, tenant);
+    await env.DB.batch([audit(env, u, tenant, 'gsc_osvjezi', 'gsc_stavke', null, null, { stavki: r.stavki, provjereno: r.provjereno, greska: r.greska })]);
     return r.ok ? json(r) : greska(r.greska, 502);
   }
 

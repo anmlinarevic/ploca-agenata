@@ -5,6 +5,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { generateKeyPairSync } from 'node:crypto';
 
 const izvoz = process.argv[2];
 if (!izvoz) { console.error('Upotreba: node scripts/test-lokalno.mjs <mapa-s-izvozom>'); process.exit(1); }
@@ -58,7 +59,11 @@ writeFileSync('tenants/piccolini/token-test-korisnici.sql',
   "INSERT INTO odluke (id, tenant_id, naslov, agent, kreirano) VALUES ('x1', 'drugi', 'Tuđa odluka', 'seo', '2026-11-21T10:00:00Z');\n");
 d1('tenants/piccolini/token-test-korisnici.sql');
 
-writeFileSync('apps/dashboard/.dev.vars', 'DEV_USER=*\nINTERNI_KLJUC=test-interni\nPARRA_API_KLJUC=test-parra\nPARRA_SUBJEKT=123\nPARRA_URL=http://localhost:8791\nMETA_TOKEN=test-meta\nMETA_STRANICA=555\nMETA_URL=http://localhost:8792\n');
+// Testni ključ servisnog računa za lažni Google (javni ključ dobiva fake-gsc.mjs i njime provjerava potpis JWT-a).
+const gscPar = generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+const gscKljuc = { type: 'service_account', client_email: 'ploca@test-projekt.iam.gserviceaccount.com', private_key: gscPar.privateKey, token_uri: 'http://localhost:8793/token' };
+writeFileSync('apps/dashboard/.dev.vars','DEV_USER=*\nINTERNI_KLJUC=test-interni\nPARRA_API_KLJUC=test-parra\nPARRA_SUBJEKT=123\nPARRA_URL=http://localhost:8791\nMETA_TOKEN=test-meta\nMETA_STRANICA=555\nMETA_URL=http://localhost:8792\n' +
+  `GSC_KLJUC='${JSON.stringify(gscKljuc)}'\nGSC_SVOJSTVO=sc-domain:piccoliniplay.hr\nGSC_API_URL=http://localhost:8793\nGSC_TOKEN_URL=http://localhost:8793/token\n`);
 writeFileSync('apps/izvrsitelj/.dev.vars',
   `ANTHROPIC_API_KEY=test-kljuc\nANTHROPIC_BASE_URL=http://localhost:8790\nINTERNI_KLJUC=test-interni\nAGENT_TOKENS='${JSON.stringify(agentTokeni)}'\n`);
 
@@ -78,6 +83,7 @@ const node = (skripta, env = {}, args = []) =>
 const lazni = spawn('node', ['scripts/fake-anthropic.mjs'], { stdio: 'ignore' }); procesi.push(lazni);
 procesi.push(spawn('node', ['scripts/fake-parra.mjs'], { stdio: 'ignore' }));
 procesi.push(spawn('node', ['scripts/fake-meta.mjs'], { stdio: 'ignore' }));
+procesi.push(spawn('node', ['scripts/fake-gsc.mjs'], { stdio: 'ignore', env: { ...process.env, GSC_JAVNI: gscPar.publicKey } }));
 pokreni(['wrangler', 'dev', '--config', 'apps/mcp/wrangler.jsonc', '--port', '8799', '--persist-to', DB_STATE, '--var', `TOKEN_PEPPER:${pepperTest}`]);
 pokreni(['wrangler', 'dev', '-c', 'apps/dashboard/wrangler.jsonc', '-c', 'apps/izvrsitelj/wrangler.jsonc', '-c', 'apps/mcp/wrangler.jsonc',
   '--port', '8798', '--persist-to', DB_STATE]);
@@ -90,6 +96,7 @@ if ((await cekaj('http://localhost:8799/health')) && (await cekaj('http://localh
     || node('scripts/poslovanje-api-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord })
     || node('scripts/parra-test.mjs', { URL: 'http://localhost:8798', PARRA: 'http://localhost:8791' })
     || node('scripts/meta-test.mjs', { URL: 'http://localhost:8798', META: 'http://localhost:8792' })
+    || node('scripts/gsc-test.mjs', { URL: 'http://localhost:8798', GSC: 'http://localhost:8793' })
     || node('scripts/izvrsitelj-test.mjs', { URL: 'http://localhost:8798', MCP: 'http://localhost:8799', TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',

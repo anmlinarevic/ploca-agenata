@@ -72,6 +72,16 @@ system usera s dozvolama instagram_basic, instagram_manage_insights, pages_read_
 i `npx wrangler secret put META_STRANICA --config apps/dashboard/wrangler.jsonc` (id Facebook stranice). Upute korak po korak:
 `docs/META-SPAJANJE.md`. Lokalni test: `scripts/fake-meta.mjs` (token `test-meta`, stranica 555), testovi u `scripts/meta-test.mjs`.
 
+### Google Search Console (→ Web)
+Dashboard jednom dnevno (jedan krug crona `*/30` umjesto Parre, da ne dijele ograničenje od 50 podzahtjeva) i na gumb na
+stranici Web čita Search Console (`packages/poslovanje/gsc.js`) servisnim računom: JWT potpisan ključem u Workeru (WebCrypto,
+RS256), opseg `webmasters.readonly`, račun u Search Consoleu s dopuštenjem „Ograničeno”. Čita klikove, pojavljivanja, CTR i
+poziciju za 28 + 28 dana, klikove po danu (cijeli mjeseci idu i u `mjesecno.gsc_*`), najbolje upite, stranice i zemlje, poslane
+sitemape te je li svaka adresa iz sitemapa u indeksu (URL Inspection, jednom u 20 sati po adresi). Ništa ne šalje ni ne mijenja.
+Tablice: `gsc_dani`, `gsc_razdoblje`, `gsc_stavke`, `gsc_sitemapi`, `gsc_url`, `gsc_sinkronizacija` (migracija 0008).
+Tajne: `GSC_KLJUC` (cijela JSON datoteka ključa) i `GSC_SVOJSTVO` (npr. `sc-domain:piccoliniplay.hr`). Upute: `docs/GSC-SPAJANJE.md`.
+Lokalni test: `scripts/fake-gsc.mjs` (provjerava potpis JWT-a testnim javnim ključem), testovi u `scripts/gsc-test.mjs`.
+
 ## Korak 4: izvršitelj
 `apps/izvrsitelj`: Queue (jedan posao istodobno, bez automatskog ponavljanja) + Cron + petlja agenta nad Claude API-jem
 (`@anthropic-ai/sdk`), alati ploče kroz MCP (service binding), web pretraga/dohvat kao server alati. Definicije agenata su u

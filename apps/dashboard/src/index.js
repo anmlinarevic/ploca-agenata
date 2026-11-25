@@ -4,6 +4,7 @@ import { korisnik } from './auth.js';
 import { apiPoslovanje } from './poslovanje.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 import { metaPodesena, sinkronizirajMetu } from '../../../packages/poslovanje/meta.js';
+import { gscNaRedu, sinkronizirajGsc } from '../../../packages/poslovanje/gsc.js';
 
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -253,12 +254,15 @@ export default {
   },
 
   // Svakih 30 minuta: ponude i uplate iz Parre. Svakih 6 sati (u 15 min): Instagram i Facebook. Bez tajni ne radi ništa.
+  // Search Console jednom dnevno uzima jedan krug od 30 minuta umjesto Parre (svaki izvor troši do 40 od 50 podzahtjeva po pozivu).
   async scheduled(event, env, ctx) {
     if (event?.cron === META_CRON) {
       const t = env.META_ZAKUPAC || 'piccolini';
       if (metaPodesena(env, t)) ctx.waitUntil(sinkronizirajMetu(env, t));
       return;
     }
+    const gt = env.GSC_ZAKUPAC || 'piccolini';
+    if (await gscNaRedu(env, gt).catch(() => false)) { ctx.waitUntil(sinkronizirajGsc(env, gt)); return; }
     const tenant = env.PARRA_ZAKUPAC || 'piccolini';
     if (parraPodesena(env, tenant)) ctx.waitUntil(sinkronizirajParru(env, tenant));
   },

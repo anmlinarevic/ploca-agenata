@@ -10,6 +10,41 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="poslovanje.css">
 <script src="ploca.js"></script>
+<style>
+/* Web: Google Search Console (samo čitanje, jednom dnevno) i pull requestovi. */
+.najava { padding: 22px 24px; display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: flex-start; justify-content: space-between; }
+.najava > div { display: flex; flex-direction: column; gap: 8px; flex: 1 1 420px; min-width: 0; }
+.najava h2 { font-size: 23px; }
+.upozorenja-gsc { margin: 4px 0 0; padding-left: 18px; font-size: 13.6px; color: var(--ink-mid); display: flex; flex-direction: column; gap: 2px; }
+.kpi-red { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.kpi { padding: 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kpi .naziv { font-size: 12.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.kpi .broj { font-family: var(--font-display); font-size: 34px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .opis { font-size: 13.6px; color: var(--ink-mid); }
+.rast { font-weight: 700; color: var(--kadulja); }
+.pad { font-weight: 700; color: var(--danger); }
+.sazetak { border-left: 3px solid var(--accent); gap: 8px; }
+.uvid { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 14.6px; line-height: 1.5; }
+.uvid:first-child { border-top: 0; }
+.uvid svg { margin-top: 3px; color: var(--ink-mid); }
+.graf-dani { display: flex; align-items: flex-end; gap: 3px; height: 160px; border-bottom: 1px solid var(--line-strong); }
+.graf-dani i { flex: 1 1 0; min-width: 0; background: var(--accent); border-radius: 2px 2px 0 0; }
+.graf-dani i.nula { background: var(--accent-line); }
+.os { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-soft); }
+table.gsc { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.gsc th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); padding: 0 8px 8px 0; border-bottom: 1px solid var(--line); }
+table.gsc td { padding: 9px 8px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.gsc tr:last-child td { border-bottom: 0; }
+table.gsc .b { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.gsc th.b { text-align: right; }
+table.gsc td.tekst { overflow-wrap: anywhere; }
+.pomak { font-size: 12px; font-weight: 600; margin-left: 4px; }
+.adresa { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.adresa:first-child { border-top: 0; }
+.adresa b { font-weight: 600; font-size: 14.4px; overflow-wrap: anywhere; }
+.adresa .sitno { grid-column: 1; }
+.adresa .chip { grid-row: span 2; align-self: center; }
+</style>
 
 <header class="zaglavlje">
   <div class="omot">
@@ -17,20 +52,90 @@
       <div style="display:flex;flex-direction:column;gap:6px">
         <span class="nadnaslov">Odjel · <span id="zakupac">web</span></span>
         <h1>Web</h1>
-        <span class="sitno">piccoliniplay.hr i konfigurator. Agenti predlažu izmjene kao pull request; spajanje radiš ti.</span>
+        <span class="sitno">piccoliniplay.hr i konfigurator. Search Console se osvježava jednom dnevno, samo čitanje. Agenti predlažu izmjene kao pull request; spajanje radiš ti.</span>
       </div>
       <div class="kontrole"><a class="btn glavni" href="/#zadaci">Zadaj zadatak za stranicu</a></div>
     </div>
   </div>
 </header>
 
-<main class="omot">
-  <div class="mreza-2">
-    <section class="kartica okvir"><div class="okvir-glava"><div><h2>Google Search Console</h2><span class="sitno">Klikovi, pojavljivanja i pozicije stranice.</span></div><span class="chip neutral">nije spojeno</span></div>
-      <p class="sitno" style="margin:0">Kad se spoji, ovdje su klikovi s Googlea u 28 dana, najbolji upiti i stranice s greškom.</p></section>
-    <section class="kartica okvir"><div class="okvir-glava"><div><h2>Pull requestovi</h2><span class="sitno">Prijedlozi izmjena stranice od agenata i Claude Codea.</span></div><span class="chip neutral">nije spojeno</span></div>
-      <p class="sitno" style="margin:0">Kad se spoji GitHub (samo čitanje), ovdje su otvoreni pull requestovi koji čekaju tvoj pregled.</p></section>
+<main class="omot" style="display:flex;flex-direction:column;gap:22px">
+  <section class="kartica najava" id="gsc-najava" aria-labelledby="h-gsc-najava">
+    <div>
+      <span class="nadnaslov" style="font-size:12.5px">Google Search Console</span>
+      <h2 id="h-gsc-najava">Search Console još nije spojen</h2>
+      <p class="sitno" style="margin:0">Kad se spoji, ovdje su klikovi s Googlea u 28 dana, upiti po kojima nas ljudi nalaze, pozicije, stranice koje nisu u indeksu i stanje sitemapa. Spaja se servisnim računom Googlea (samo čitanje), čiji ključ upišeš kao tajnu GSC_KLJUC, i adresom svojstva u GSC_SVOJSTVO. Upute su u docs/GSC-SPAJANJE.md.</p>
+    </div>
+  </section>
+
+  <section class="kartica najava" id="gsc-spojeno" aria-labelledby="h-gsc" hidden>
+    <div>
+      <span class="nadnaslov" style="font-size:12.5px">Google Search Console · samo čitanje</span>
+      <h2 id="h-gsc">Search Console je spojen</h2>
+      <p class="sitno" style="margin:0" id="gsc-opis"></p>
+      <p class="sitno" style="margin:0" id="gsc-vrijeme"></p>
+      <ul id="gsc-upozorenja" class="upozorenja-gsc" hidden></ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;flex:0 1 auto;align-items:flex-start">
+      <button class="btn" type="button" id="gsc-osvjezi">Osvježi iz Search Consolea</button>
+      <p class="poruka" id="gsc-poruka" aria-live="polite" style="margin:0"></p>
+    </div>
+  </section>
+
+  <div id="gsc-stvarno" hidden style="display:flex;flex-direction:column;gap:22px">
+    <section class="kartica okvir sazetak" aria-labelledby="h-uvidi">
+      <h2 id="h-uvidi">Što se vidi iz brojki</h2>
+      <span class="sitno" style="font-size:13px">Izračun ploče iz Search Consolea. Prijedloge izmjena stranice radi SEO agent, uz razlog iz ovih brojki.</span>
+      <div id="gsc-uvidi"></div>
+    </section>
+    <div class="kpi-red" id="gsc-kpi"></div>
+    <div class="mreza-2">
+      <section class="kartica okvir" aria-labelledby="h-dani">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="h-dani">Klikovi po danu</h2>
+          <span class="sitno" style="font-size:13.6px" id="gsc-dani-opis"></span>
+        </div>
+        <div class="graf-dani" id="gsc-dani" role="img"></div>
+        <div class="os"><span id="gsc-os-od"></span><span id="gsc-os-do"></span></div>
+      </section>
+      <section class="kartica okvir" aria-labelledby="h-indeks" style="gap:6px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="h-indeks">Stranice u Googleu</h2>
+          <span class="sitno" style="font-size:13.6px">Svaka adresa iz sitemapa, provjerena jednom dnevno.</span>
+        </div>
+        <div id="gsc-indeks"></div>
+      </section>
+    </div>
+    <div class="mreza-2">
+      <section class="kartica okvir" aria-labelledby="h-upiti" style="gap:8px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="h-upiti">Upiti</h2>
+          <span class="sitno" style="font-size:13.6px">Što ljudi upisuju u Google kad se pojavimo, 28 dana. Strelica je pomak pozicije naspram prethodnih 28 dana.</span>
+        </div>
+        <div class="okvir-tablice" id="gsc-upiti"></div>
+      </section>
+      <section class="kartica okvir" aria-labelledby="h-stranice" style="gap:8px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <h2 id="h-stranice">Stranice</h2>
+          <span class="sitno" style="font-size:13.6px">Koje stranice dovode ljude s Googlea, 28 dana.</span>
+        </div>
+        <div class="okvir-tablice" id="gsc-stranice"></div>
+      </section>
+    </div>
+    <div class="mreza-2">
+      <section class="kartica okvir" aria-labelledby="h-zemlje" style="gap:8px">
+        <h2 id="h-zemlje">Zemlje</h2>
+        <div class="okvir-tablice" id="gsc-zemlje"></div>
+      </section>
+      <section class="kartica okvir" aria-labelledby="h-sitemapi" style="gap:6px">
+        <h2 id="h-sitemapi">Sitemapi</h2>
+        <div id="gsc-sitemapi"></div>
+      </section>
+    </div>
   </div>
+
+  <section class="kartica okvir"><div class="okvir-glava"><div><h2>Pull requestovi</h2><span class="sitno">Prijedlozi izmjena stranice od agenata i Claude Codea.</span></div><span class="chip neutral">nije spojeno</span></div>
+    <p class="sitno" style="margin:0">Kad se spoji GitHub (samo čitanje), ovdje su otvoreni pull requestovi koji čekaju tvoj pregled.</p></section>
   <section class="kartica okvir" aria-labelledby="h-zadaci">
     <div class="okvir-glava"><div><h2 id="h-zadaci">Zadaci odjela</h2><span class="sitno">Zadaci i odluke agenata koji rade za Web (SEO, opći zadaci).</span></div><a class="sitno" href="/#svi">Svi zadaci</a></div>
     <div id="zadaci"><p class="prazno">Učitavam…</p></div>
@@ -52,5 +157,95 @@
       return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip neutral">' + x.v + '</span><span class="chip neutral">' + esc((PL.AG[x.a] || {}).naziv || x.a) + '</span><span class="chip ' + (x.s === 'gotovo' ? 'ok' : x.s === 'ceka' ? 'pozor' : 'neutral') + '">' + esc(STZ[x.s] || x.s) + '</span></div><b>' + esc(x.n) + '</b></div><a class="btn malo" href="' + x.l + '">Otvori</a></div>';
     }).join('') : '<p class="prazno">Još nema zadataka za Web.</p>';
   }).catch(function (e) { $('#zadaci').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+
+  // ---- Google Search Console ----
+  var GORE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 11l4-4 3 3 5-5M10 5h4v4"/></svg>';
+  var DOLJE = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 5l4 4 3-3 5 5M10 11h4V7"/></svg>';
+  var RAVNO = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 8h12M10 4l4 4-4 4"/></svg>';
+  var IKONA = { gore: GORE, dolje: DOLJE, ravno: RAVNO };
+  var podaci = null;
+  var tocke = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+  function n(v) { return v == null ? '–' : tocke(v); }
+  function zarez(v) { return v == null ? '–' : String(v).replace('.', ','); }
+  function ctr(v) { return v == null ? '–' : zarez(Math.round(v * 1000) / 10) + ' %'; }
+  function vrijemeHr(iso) { return new Date(iso).toLocaleString('hr-HR', { timeZone: 'Europe/Zagreb', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  function promjena(p, tekst, jedinica) { return '<span class="' + (p >= 0 ? 'rast' : 'pad') + '">' + (p >= 0 ? '+' : '−') + zarez(Math.abs(p)) + (jedinica == null ? ' %' : jedinica) + '</span> ' + tekst; }
+  function put(url) { return String(url).replace(/^https?:\/\/[^/]+/, '') || '/'; }
+  function pomak(x) {
+    if (x.pomak == null || Math.abs(x.pomak) < 0.5) return '';
+    return '<span class="pomak ' + (x.pomak > 0 ? 'rast' : 'pad') + '" title="pomak pozicije naspram prethodnih 28 dana">' + (x.pomak > 0 ? '↑' : '↓') + zarez(Math.abs(x.pomak)) + '</span>';
+  }
+  function tablica(redovi, prvi, prazno) {
+    if (!redovi.length) return '<p class="prazno">' + prazno + '</p>';
+    return '<table class="gsc"><thead><tr><th>' + prvi + '</th><th class="b">Klikovi</th><th class="b">Pojav.</th><th class="b">Pozicija</th></tr></thead><tbody>' + redovi.map(function (x) {
+      return '<tr><td class="tekst">' + x.naziv + '</td><td class="b">' + n(x.klikovi) + '</td><td class="b">' + n(x.pojavljivanja) + '</td><td class="b">' + zarez(x.pozicija) + pomak(x) + '</td></tr>';
+    }).join('') + '</tbody></table>';
+  }
+
+  function renderStatus() {
+    var g = podaci.gsc;
+    $('#gsc-opis').textContent = [g.svojstvo ? 'Svojstvo ' + g.svojstvo : null, g.racun ? 'servisni račun ' + g.racun : null, g.doDatuma ? 'podaci do ' + P.datum(g.doDatuma) + ' (Google kasni 2–3 dana)' : null].filter(Boolean).join(' · ');
+    var v = $('#gsc-vrijeme');
+    v.className = g.greska ? 'sitno nedovoljno' : 'sitno';
+    v.textContent = g.greska || (g.zadnjeUspjesno ? 'Osvježeno ' + vrijemeHr(g.zadnjeUspjesno) + '. Dalje se osvježava jednom dnevno.' : 'Još nije osvježeno. Klikni gumb ili pričekaj do idućeg jutra.');
+    var up = $('#gsc-upozorenja');
+    up.hidden = !g.upozorenja.length;
+    up.innerHTML = g.upozorenja.map(function (u) { return '<li>' + esc(u) + '</li>'; }).join('');
+  }
+
+  function renderStvarno() {
+    var d = podaci, z = d.zadnjih, pr = d.promjene;
+    $('#gsc-uvidi').innerHTML = d.uvidi.length ? d.uvidi.map(function (u) { return '<div class="uvid">' + (IKONA[u.smjer] || RAVNO) + '<span>' + esc(u.tekst) + '</span></div>'; }).join('')
+      : '<p class="prazno">Još premalo podataka za zaključke.</p>';
+    $('#gsc-kpi').innerHTML = [
+      ['Klikovi, 28 dana', n(z.klikovi), pr.klikovi == null ? 'posjeti s Googlea' : promjena(pr.klikovi, 'naspram prethodnih 28 dana')],
+      ['Pojavljivanja', n(z.pojavljivanja), pr.pojavljivanja == null ? 'koliko puta smo bili u rezultatima' : promjena(pr.pojavljivanja, 'naspram prethodnih 28 dana')],
+      ['CTR', ctr(z.ctr), pr.ctr == null ? 'udio pojavljivanja koja su postala klik' : promjena(pr.ctr, 'naspram prethodnih 28 dana', ' p. p.')],
+      ['Prosječna pozicija', zarez(z.pozicija), pr.pozicija == null ? 'manje je bolje; 1–10 je prva stranica' : promjena(pr.pozicija, pr.pozicija >= 0 ? 'mjesta bliže vrhu' : 'mjesta dalje od vrha', '')]
+    ].map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('');
+
+    var g = $('#gsc-dani'), dani = d.dani;
+    var max = Math.max.apply(null, dani.map(function (x) { return x.klikovi; }).concat([1]));
+    g.innerHTML = dani.map(function (x) {
+      return '<i class="' + (x.klikovi ? '' : 'nula') + '" title="' + esc(P.datum(x.datum) + ': ' + x.klikovi + ' klikova, ' + x.pojavljivanja + ' pojavljivanja') + '" style="height:' + Math.max(2, Math.round(x.klikovi / max * 100)) + '%"></i>';
+    }).join('') || '<p class="prazno" style="align-self:center">Još nema klikova.</p>';
+    g.setAttribute('aria-label', 'Klikovi po danu, ' + z.od + ' do ' + z.do + ', najviše ' + max + ' u danu');
+    $('#gsc-dani-opis').textContent = 'Od ' + P.datum(z.od) + ' do ' + P.datum(z.do) + '. Najviše u jednom danu: ' + max + '.';
+    $('#gsc-os-od').textContent = P.datum(z.od); $('#gsc-os-do').textContent = P.datum(z.do);
+
+    $('#gsc-indeks').innerHTML = d.indeks.length ? d.indeks.map(function (a) {
+      var chip = a.uIndeksu ? '<span class="chip ok">u indeksu</span>' : a.presuda ? '<span class="chip kriticno">nije u indeksu</span>' : '<span class="chip neutral">čeka provjeru</span>';
+      var opis = [a.pokrivenost, a.zadnjePuzanje ? 'Google bio ' + P.datum(a.zadnjePuzanje) : null, a.drugiKanonski ? 'Google bira drugu kanonsku adresu' : null].filter(Boolean).join(' · ');
+      return '<div class="adresa"><b>' + esc(put(a.url)) + '</b>' + chip + '<span class="sitno">' + esc(opis || '') + '</span></div>';
+    }).join('') : '<p class="prazno">Nema adresa: sitemap još nije poslan ili nije pročitan.</p>';
+
+    $('#gsc-upiti').innerHTML = tablica(d.upiti.slice(0, 15).map(function (x) { return Object.assign({}, x, { naziv: esc(x.kljuc) }); }), 'Upit', 'Još nema upita. Google pokazuje samo upite s dovoljno pretraga.');
+    $('#gsc-stranice').innerHTML = tablica(d.stranice.slice(0, 12).map(function (x) {
+      return Object.assign({}, x, { naziv: '<a href="' + esc(x.kljuc) + '" target="_blank" rel="noopener">' + esc(put(x.kljuc)) + '</a>' });
+    }), 'Stranica', 'Još nema stranica s pojavljivanjima.');
+    $('#gsc-zemlje').innerHTML = tablica(d.zemlje.map(function (x) { return Object.assign({}, x, { naziv: esc(x.naziv) }); }), 'Zemlja', 'Još nema podataka po zemljama.');
+    $('#gsc-sitemapi').innerHTML = d.sitemapi.length ? d.sitemapi.map(function (s) {
+      var chip = s.greske ? '<span class="chip kriticno">' + s.greske + ' grešaka</span>' : s.ceka ? '<span class="chip neutral">obrađuje se</span>' : '<span class="chip ok">u redu</span>';
+      var opis = [s.adresa ? s.adresa + ' adresa' : null, s.zadnjePreuzeto ? 'Google pročitao ' + P.datum(s.zadnjePreuzeto) : 'Google ga još nije pročitao', s.upozorenja ? s.upozorenja + ' upozorenja' : null].filter(Boolean).join(' · ');
+      return '<div class="adresa"><b>' + esc(put(s.putanja)) + '</b>' + chip + '<span class="sitno">' + esc(opis) + '</span></div>';
+    }).join('') : '<p class="prazno">Nijedan sitemap nije poslan. U Search Consoleu: Sitemapi → dodaj sitemap.xml.</p>';
+  }
+
+  function stanjeEkrana() {
+    var sp = !!podaci.gsc.spojeno, ima = sp && !!podaci.zadnjih;
+    $('#gsc-najava').hidden = sp;
+    $('#gsc-spojeno').hidden = !sp;
+    $('#gsc-stvarno').hidden = !ima;
+    if (sp) renderStatus();
+    if (ima) renderStvarno();
+  }
+  function ucitaj() { return P.api('GET', '/api/web').then(function (d) { podaci = d; stanjeEkrana(); }); }
+  $('#gsc-osvjezi').onclick = function () {
+    var b = this; b.disabled = true; P.poruka($('#gsc-poruka'), 'Čitam Search Console…');
+    P.api('POST', '/api/gsc/osvjezi', {}).then(function (r) {
+      return ucitaj().then(function () { P.poruka($('#gsc-poruka'), 'Upita, stranica i zemalja: ' + r.stavki + ', provjerenih adresa: ' + r.provjereno + '.', 'ok'); });
+    }).catch(function (err) { P.poruka($('#gsc-poruka'), err.message, 'greska'); return ucitaj().catch(function () {}); }).then(function () { b.disabled = false; });
+  };
+  ucitaj().catch(function (e) { $('#gsc-najava').insertAdjacentHTML('beforeend', '<p class="poruka greska">' + esc(e.message) + '</p>'); });
 })();
 </script>
