@@ -138,5 +138,15 @@ ok(kk.graf.length === 10 && kk.prosjekPrethodnih5 === 104 && kk.prosjekZadnjih5 
 ok(kk.pratiteljiRast === 40 && kk.pratiteljiOd === '2026-10-27' && kk.dosegPromjena === 20, 'rast pratitelja u 30 dana i promjena dosega');
 ok(kk.najbolje && kk.najbolje.sat === 4 && kk.najbolje.objava >= 2, 'najbolje polje: 20 h, barem 2 objave');
 ok(kk.uvidi.some((u) => /Reelsi imaju prosječno 2,9 puta više pregleda od fotografija/.test(u.tekst)), 'uvid: reelsi naspram fotografija');
-ok(kk.uvidi.some((u) => /objave srijedom oko 20 h: .*(10 objava)/.test(u.tekst)), 'uvid: dan i sat objave, množina');
+ok(kk.kadObjaviti.uzorak === 10 && kk.kadObjaviti.sat.indeks === 4 && kk.kadObjaviti.sat.medijan === 130 && kk.kadObjaviti.dan.indeks === 2, 'kad objaviti: sat i dan po medijanu, uzorak 10');
+ok(kk.uvidi.some((u) => /Objave oko 20 h imaju najviše pregleda \(medijan 130, 10 objava\)/.test(u.tekst)) && kk.uvidi.some((u) => /Najbolji dan je srijeda \(medijan 130 pregleda, 10 objava\)/.test(u.tekst)), 'uvid: sat i dan, množina');
+// Slučaj s ploče: polja s jednom objavom (viralna) ne smiju ni odlučiti ni nestati, a slabo polje s 2 objave nije „najbolje”
+const pov = (iso, pregledi) => ({ id: iso, vrsta: 'reel', pregledi, spremanja: 0, opis: 'x', objavljeno: iso });
+const ned = izracunajKanal({ danas: '2026-11-25', objave: [
+  pov('2026-11-22T10:00:00Z', 500), pov('2026-11-15T10:00:00Z', 520), pov('2026-11-08T10:00:00Z', 480), pov('2026-11-01T10:00:00Z', 510), pov('2026-10-18T10:00:00Z', 490),
+  pov('2026-11-19T19:00:00Z', 4600), pov('2026-11-17T16:00:00Z', 200), pov('2026-11-10T16:00:00Z', 234)] });
+ok(ned.kadObjaviti.sat.indeks === 1 && ned.kadObjaviti.dan.indeks === 6 && ned.kadObjaviti.dan.objava === 5, 'nedjelja u 11 h (5 objava) je najbolja po satu i danu');
+ok(ned.kadObjaviti.jedna.dan === 3 && ned.kadObjaviti.jedna.sat === 4 && ned.kadObjaviti.jedna.pregledi === 4600, 'najjača pojedinačna objava je izdvojena, ne računa se kao obrazac');
+ok(ned.najbolje.dan === 6 && ned.najbolje.sat === 1, 'uokvireno polje: nedjelja 11 h, ne utorak 17 h s 2 slabe objave');
+ok(izracunajKanal({ danas: '2026-11-25', objave: [pov('2026-11-22T10:00:00Z', 500), pov('2026-11-15T10:00:00Z', 520)] }).kadObjaviti.sat === null, 'premalo objava: nema preporuke po satu');
 ok(izracunajKanal({ danas: '2026-11-25' }).uvidi.length === 0 && izracunajKanal({ danas: '2026-11-25' }).najbolje === null, 'bez objava: bez uvida i preporuke');

@@ -209,11 +209,11 @@ const zgDijelovi = (iso) => {
 };
 const najbliziSat = (h) => SATI.reduce((b, s, i) => (Math.abs(s - h) < Math.abs(SATI[b] - h) ? i : b), 0);
 const tisuce = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const medijan = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); };
 const prosjek = (a) => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null);
 const posto = (novo, staro) => (novo != null && staro ? Math.round((novo - staro) / staro * 100) : null);
 const NAZIV_VRSTE = { reel: 'Reelsi', video: 'Videi', slika: 'Fotografije', album: 'Albumi', objava: 'Tekstualne objave' };
 const OD_VRSTE = { reel: 'reelsa', video: 'videa', slika: 'fotografija', album: 'albuma', objava: 'tekstualnih objava' };
-const DANI_KADA = ['ponedjeljkom', 'utorkom', 'srijedom', 'četvrtkom', 'petkom', 'subotom', 'nedjeljom'];
 /** 1 objava, 2 objave, 5 objava (hrvatska množina). */
 export const brojObjava = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'objava' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'objave' : 'objava'}`;
 
@@ -234,14 +234,22 @@ export function izracunajKanal({ objave = [], pratitelji = [], razdoblja = {}, d
   // kad objaviti: prosjek pregleda po danu i satu (zadnjih 180 dana)
   const od180 = danas ? new Date(Date.parse(danas) - 180 * DAN).toISOString() : '';
   const celije = DANI.map(() => SATI.map(() => []));
+  const poSatu = SATI.map(() => []), poDanu = DANI.map(() => []);
+  let uzorak = 0, jedna = null;
   for (const o of sPregledima) {
     if (o.objavljeno < od180) continue;
     const z = zgDijelovi(o.objavljeno);
-    if (z.dan >= 0) celije[z.dan][najbliziSat(z.sat)].push(o.pregledi);
+    if (z.dan < 0) continue;
+    const j = najbliziSat(z.sat);
+    celije[z.dan][j].push(o.pregledi); poSatu[j].push(o.pregledi); poDanu[z.dan].push(o.pregledi); uzorak++;
+    if (!jedna || o.pregledi > jedna.pregledi) jedna = { dan: z.dan, sat: j, pregledi: o.pregledi };
   }
   const toplina = celije.map((r) => r.map((c) => ({ prosjek: prosjek(c), objava: c.length })));
   let najbolje = null;
   toplina.forEach((r, i) => r.forEach((c, j) => { if (c.objava >= 2 && (!najbolje || c.prosjek > najbolje.prosjek)) najbolje = { dan: i, sat: j, ...c }; }));
+  // Zaključak gleda cijele sate i cijele dane (više objava u skupini) i medijan, da jedna viralna objava ne odluči.
+  const najGrupa = (g) => { let b = null; g.forEach((a, i) => { if (a.length >= 3) { const m = medijan(a); if (!b || m > b.medijan) b = { indeks: i, medijan: m, objava: a.length }; } }); return b; };
+  const kadObjaviti = { uzorak, sat: najGrupa(poSatu), dan: najGrupa(poDanu), jedna };
 
   // uvidi (izračun ploče, ne agent)
   const uvidi = [];
@@ -256,7 +264,8 @@ export function izracunajKanal({ objave = [], pratitelji = [], razdoblja = {}, d
     const omjer = vrste[0].p / vrste[1].p;
     if (omjer >= 1.3) uvidi.push({ smjer: 'gore', tekst: `${NAZIV_VRSTE[vrste[0].v] || vrste[0].v} imaju prosječno ${omjer >= 2 ? `${String(Math.round(omjer * 10) / 10).replace('.', ',')} puta` : `${Math.round((omjer - 1) * 100)} %`} više pregleda od ${OD_VRSTE[vrste[1].v] || vrste[1].v} (zadnjih 90 dana).` });
   }
-  if (najbolje) uvidi.push({ smjer: 'sat', tekst: `Najbolje prolaze objave ${DANI_KADA[najbolje.dan]} oko ${SATI[najbolje.sat]} h: prosječno ${tisuce(najbolje.prosjek)} pregleda (${brojObjava(najbolje.objava)}).` });
+  if (kadObjaviti.sat) uvidi.push({ smjer: 'sat', tekst: `Objave oko ${SATI[kadObjaviti.sat.indeks]} h imaju najviše pregleda (medijan ${tisuce(kadObjaviti.sat.medijan)}, ${brojObjava(kadObjaviti.sat.objava)}).` });
+  if (kadObjaviti.dan) uvidi.push({ smjer: 'sat', tekst: `Najbolji dan je ${DANI[kadObjaviti.dan.indeks]} (medijan ${tisuce(kadObjaviti.dan.medijan)} pregleda, ${brojObjava(kadObjaviti.dan.objava)}).` });
   const spremane = sObjave.filter((o) => o.spremanja > 0 && o.objavljeno >= od90).sort((a, b) => b.spremanja - a.spremanja)[0];
   if (spremane) uvidi.push({ smjer: 'gore', tekst: `Najviše spremanja u 90 dana (${spremane.spremanja}): ${spremane.opis ? `„${spremane.opis.slice(0, 60)}${spremane.opis.length > 60 ? '…' : ''}”` : 'objava bez opisa'}.` });
 
@@ -269,7 +278,7 @@ export function izracunajKanal({ objave = [], pratitelji = [], razdoblja = {}, d
     prosjekZadnjih5: pz, prosjekPrethodnih5: pp, promjena5: p,
     spremanjaPoObjavi: sp.length ? Math.round(sp.reduce((s2, o) => s2 + o.spremanja, 0) / sp.length * 10) / 10 : null,
     graf: zadnjih10.map((o) => ({ id: o.id, pregledi: o.pregledi, objavljeno: o.objavljeno, vrsta: o.vrsta, opis: o.opis, poveznica: o.poveznica })),
-    toplina, najbolje, uvidi,
+    toplina, najbolje, kadObjaviti, uvidi,
     objave: [...sObjave].reverse().slice(0, 12).map((o) => ({ id: o.id, vrsta: o.vrsta, objavljeno: o.objavljeno, opis: o.opis, poveznica: o.poveznica,
       pregledi: o.pregledi, doseg: o.doseg, lajkovi: o.lajkovi, komentari: o.komentari, spremanja: o.spremanja, dijeljenja: o.dijeljenja })),
     ukupnoObjava: sObjave.length,

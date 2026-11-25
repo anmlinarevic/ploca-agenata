@@ -129,7 +129,7 @@
       <section class="kartica okvir" aria-labelledby="h-s-sati">
         <div style="display:flex;flex-direction:column;gap:2px">
           <h2 id="h-s-sati">Kad objaviti</h2>
-          <span class="sitno" style="font-size:13.6px">Prosječni pregledi po danu i satu objave, zadnjih 180 dana. Uokvireno je najbolje polje s barem 2 objave.</span>
+          <span class="sitno" style="font-size:13.6px">Prosječni pregledi po danu i satu objave, zadnjih 180 dana. Polja s jednom objavom nisu pokazatelj, pa se zaključak ispod računa po cijelim satima i danima. Uokvireno je najbolje polje s barem 2 objave.</span>
         </div>
         <div class="toplina" id="s-toplina" role="table" aria-label="Pregledi po danu i satu objave"></div>
         <p style="margin:0;font-size:14.6px;color:var(--ink-mid)" id="s-najbolje"></p>
@@ -314,9 +314,13 @@
         return '<span class="polje-t' + (naj ? ' najbolje' : '') + '" title="' + objaveRijec(x.objava) + ', prosječno ' + tocke(x.prosjek) + ' pregleda" style="background:color-mix(in srgb, var(--kadulja) ' + Math.round(8 + t * 85) + '%, transparent);color:' + (t > 0.55 ? 'var(--on-accent)' : 'var(--ink)') + '">' + kratko(x.prosjek) + '</span>';
       }).join('');
     }).join('');
-    $('#s-najbolje').innerHTML = c.najbolje
-      ? '<strong style="color:var(--ink)">' + esc(podaci.dani[c.najbolje.dan].replace(/^./, function (z) { return z.toUpperCase(); })) + ' oko ' + podaci.sati[c.najbolje.sat] + ' h</strong> ima najviše pregleda: prosječno ' + tocke(c.najbolje.prosjek) + ' (' + objaveRijec(c.najbolje.objava) + ').'
-      : 'Za preporuku treba barem 2 objave u istom danu i satu.';
+    var kad = c.kadObjaviti, redovi = [];
+    if (kad.sat) redovi.push('<strong style="color:var(--ink)">Po satu:</strong> oko ' + podaci.sati[kad.sat.indeks] + ' h (medijan ' + tocke(kad.sat.medijan) + ' pregleda, ' + objaveRijec(kad.sat.objava) + ').');
+    if (kad.dan) redovi.push('<strong style="color:var(--ink)">Po danu:</strong> ' + esc(podaci.dani[kad.dan.indeks]) + ' (medijan ' + tocke(kad.dan.medijan) + ' pregleda, ' + objaveRijec(kad.dan.objava) + ').');
+    if (!kad.sat && !kad.dan) redovi.push('Za preporuku treba barem 3 objave u istom satu ili istom danu.');
+    if (kad.jedna) redovi.push('Najjača pojedinačna objava: ' + esc(podaci.dani[kad.jedna.dan]) + ' oko ' + podaci.sati[kad.jedna.sat] + ' h, ' + tocke(kad.jedna.pregledi) + ' pregleda. Jedna objava ne čini obrazac.');
+    redovi.push('<span class="sitno" style="font-size:13px">Na temelju ' + objaveRijec(kad.uzorak) + ' s brojkama; preporuka je pouzdanija od oko 15 objava.</span>');
+    $('#s-najbolje').innerHTML = redovi.map(function (r) { return '<span style="display:block">' + r + '</span>'; }).join('');
 
     $('#s-promjene').innerHTML = c.uvidi.length
       ? c.uvidi.map(function (u) { return '<div class="uvid">' + (IKONA[u.smjer] || RAVNO) + '<span>' + esc(u.tekst) + '</span></div>'; }).join('')
