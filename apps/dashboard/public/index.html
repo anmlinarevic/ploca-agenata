@@ -254,12 +254,21 @@ footer.omot { padding-block: 0 48px; font-size: 13.6px; color: var(--ink-soft); 
 .jedan-red { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .btn.vise { align-self: flex-start; margin-top: 6px; }
 .ladica-prekrivac { position: fixed; inset: 0; background: rgba(31,27,36,.32); z-index: 40; }
-.ladica { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); background: var(--paper); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(31,27,36,.16); z-index: 41;
+.feed-red.otvorivo { cursor: pointer; border-radius: 3px; }
+.feed-red.otvorivo:hover { background: var(--accent-soft); }
+.feed-red.otvoreno { background: var(--accent-soft); }
+.feed-red .puni-tekst { white-space: pre-line; font-size: 14px; color: var(--ink); line-height: 1.55; overflow-wrap: anywhere; margin-top: 4px; }
+.feed-red .vise-teksta { font-size: 12.5px; font-weight: 600; color: var(--ink-mid); text-decoration: underline; margin-top: 2px; }
+.ladica { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 100%); max-width: 100%; background: var(--paper); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(31,27,36,.16); z-index: 41;
   display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-right: env(safe-area-inset-right, 0px); }
 .ladica-glava { background: var(--white); border-bottom: 1px solid var(--line); padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 10px; }
 #ladica-filtri { display: flex; flex-direction: column; gap: 8px; }
 .ladica-tijelo { flex: 1 1 auto; overflow-y: auto; padding: 8px 20px 24px; background: var(--white); }
-html.ladica-otvorena body { overflow: hidden; }
+html.ladica-otvorena, html.ladica-otvorena body { overflow: hidden; }
+.ladica .feed-red { grid-template-columns: 26px minmax(0, 1fr); }
+.ladica .feed-red .meta { grid-column: 2; text-align: left; white-space: normal; }
+.feed-red .meta span { display: block; }
+.ladica .feed-red .meta { display: flex; gap: 12px; }
 /* ── Pregled za upravu i Svi zadaci ── */
 section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
 .kpi-red.sest { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -1114,16 +1123,26 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   var PRVIH = 5;
   function brojStavki(n, j, d, m) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? j : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? d : m); }
   var VRSTE_SAZETAK = [['odluka', 'odluka', 'odluke', 'odluka'], ['upozorenje', 'upozorenje', 'upozorenja', 'upozorenja'], ['zaTebe', 'za tebe', 'za tebe', 'za tebe'], ['agent', 'rezultat', 'rezultata', 'rezultata']];
+  /* Tekst agenta za čitanje na ploči: bez Markdown oznaka (##, **), retci ostaju. */
+  function cistTekst(t) { return String(t || '').replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/`/g, '').trim(); }
   function feedPokretanje(p) {
     var s = STATUS_POK[p.status] || [p.status, 'radi'];
-    return '<div class="feed-red">' + tocka(p.agent) + '<div style="min-width:0;display:flex;flex-direction:column;gap:2px"><span><b style="font-weight:600">' + esc(ag(p.agent).ime) + '</b> · ' + esc(p.opis || (p.vrsta === 'pregled' ? 'pregled' : 'zadatak')) + '</span>' +
-      '<span class="sitno jedan-red">' + esc(p.greska || p.rezultat || s[0]) + '</span></div><span class="meta">' + esc(datumSat(p.kreirano)) + (p.trosak ? '<br>' + esc(usd(p.trosak)) : '') + '</span></div>';
+    var z = p.zadatakId ? (S.zadaci || []).filter(function (x) { return x.id === p.zadatakId; })[0] : null;
+    var opis = (z && z.opis) || p.opis || (p.vrsta === 'pregled' ? 'pregled' : 'zadatak');
+    var rez = cistTekst(p.greska || p.rezultat || s[0]);
+    var otvoreno = LADICA.otvoreno === p.id;
+    var dugo = rez.length > 120 || opis.length > 110;
+    return '<div class="feed-red otvorivo' + (otvoreno ? ' otvoreno' : '') + '" data-pok="' + esc(p.id) + '" role="button" tabindex="0" aria-expanded="' + otvoreno + '">' + tocka(p.agent) +
+      '<div style="min-width:0;display:flex;flex-direction:column;gap:2px"><span' + (otvoreno ? '' : ' class="jedan-red"') + '><b style="font-weight:600">' + esc(ag(p.agent).ime) + '</b> · ' + esc(opis) + '</span>' +
+      '<span class="sitno' + (otvoreno ? ' puni-tekst' : ' jedan-red') + '">' + esc(rez) + '</span>' +
+      (dugo ? '<span class="vise-teksta">' + (otvoreno ? 'Sakrij' : 'Prikaži cijeli tekst') + '</span>' : '') + '</div>' +
+      '<span class="meta"><span>' + esc(datumSat(p.kreirano)) + '</span>' + (p.trosak ? '<span>' + esc(usd(p.trosak)) + '</span>' : '') + '</span></div>';
   }
 
   /* ── Ladica: sve stavke „Čeka tebe” ili sva pokretanja, s filtrima ── */
-  var LADICA = { vrsta: null, filtar: '', odjel: '', fokus: null };
+  var LADICA = { vrsta: null, filtar: '', odjel: '', fokus: null, otvoreno: null };
   function otvoriLadicu(vrsta, filtar) {
-    LADICA.vrsta = vrsta; LADICA.filtar = filtar || ''; LADICA.odjel = '';
+    LADICA.vrsta = vrsta; LADICA.filtar = filtar || ''; LADICA.odjel = ''; LADICA.otvoreno = null;
     LADICA.fokus = document.activeElement;
     $('#ladica').hidden = false; $('#ladica-prekrivac').hidden = false;
     document.documentElement.classList.add('ladica-otvorena');
@@ -1402,6 +1421,8 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       if (U.otvorene[id0]) { var ta0 = blok.querySelector('textarea'); if (ta0 && !k0.querySelector('.razlog')) ta0.focus(); }
       return;
     }
+    var fp = t.closest('[data-pok]');
+    if (fp) { otvoriPokretanje(fp.dataset.pok); return; }
     var la = t.closest('[data-ladica]');
     if (la) { otvoriLadicu(la.dataset.ladica, la.dataset.filtar); return; }
     if (t.closest('#ladica-zatvori') || t.id === 'ladica-prekrivac') { zatvoriLadicu(); return; }
@@ -1517,7 +1538,19 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       .then(function () { gumb.disabled = !mozePisati; });
   });
 
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') zatvoriLadicu(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { zatvoriLadicu(); return; }
+    var fp = (e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-pok]');
+    if (fp) { e.preventDefault(); otvoriPokretanje(fp.dataset.pok); }
+  });
+  /* Klik na pokretanje: na Pregledu otvara ladicu s tim pokretanjem raširenim, u ladici širi ili skuplja tekst. */
+  function otvoriPokretanje(id) {
+    if ($('#ladica').hidden || LADICA.vrsta !== 'rad') otvoriLadicu('rad');
+    LADICA.otvoreno = LADICA.otvoreno === id ? null : id;
+    renderLadica();
+    var el = $('#ladica-tijelo [data-pok="' + id + '"]');
+    if (el) { el.focus(); el.scrollIntoView({ block: 'nearest' }); }
+  }
   document.addEventListener('toggle', function (e) { if (e.target.matches && e.target.matches('#lista-izvjestaja details') && e.target.open) ucitajIzvjestaj(e.target); }, true);
 
   /* ── Tko je prijavljen, koji zakupac ── */
