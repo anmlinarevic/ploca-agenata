@@ -38,7 +38,7 @@ async function stanje(env, t) {
     all(env, `SELECT * FROM aktivnost WHERE tenant_id = ? ORDER BY kad DESC LIMIT 40`, t),
     all(env, `SELECT * FROM konkurenti WHERE tenant_id = ? ORDER BY red`, t),
     all(env, `SELECT id, agent, status, vrsta, opis, kreirano, pocetak, kraj, koraka, pretrage, trosak_usd, greska, rezultat, zadatak_id
-              FROM pokretanja WHERE tenant_id = ? ORDER BY kreirano DESC LIMIT 15`, t),
+              FROM pokretanja WHERE tenant_id = ? ORDER BY kreirano DESC LIMIT 50`, t),
     all(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? ORDER BY kad DESC LIMIT 12`, t),
     one(env, `SELECT COALESCE(SUM(trosak_usd), 0) AS s FROM pokretanja WHERE tenant_id = ? AND kreirano >= ?`, t, mjesecOd),
     one(env, `SELECT postavke_json FROM tenants WHERE id = ?`, t),
