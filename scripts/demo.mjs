@@ -114,5 +114,7 @@ d1('.wrangler-demo/demo.sql');
 console.log('\nDemo je spreman: http://localhost:8797/kalendar.html  (Ctrl+C za kraj)');
 console.log('Lažni Parra (izmišljene ponude) na :8791; gumb „Osvježi iz Parre” ih učita.\n');
 spawn('node', ['scripts/fake-parra.mjs'], { stdio: 'ignore' });
+spawn('node', ['scripts/fake-meta.mjs'], { stdio: 'ignore' });
 spawn('npx', ['wrangler', 'dev', ...CFG, '--port', '8797', '--persist-to', STATE, '--var', 'DEV_USER:demo@primjer.hr',
-  '--var', 'PARRA_API_KLJUC:test-parra', '--var', 'PARRA_SUBJEKT:123', '--var', 'PARRA_URL:http://localhost:8791'], { stdio: 'inherit', shell: true });
+  '--var', 'PARRA_API_KLJUC:test-parra', '--var', 'PARRA_SUBJEKT:123', '--var', 'PARRA_URL:http://localhost:8791',
+  '--var', 'META_TOKEN:test-meta', '--var', 'META_STRANICA:555', '--var', 'META_URL:http://localhost:8792'], { stdio: 'inherit', shell: true });

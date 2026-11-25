@@ -52,6 +52,18 @@ Ključ i id poslovnog subjekta su tajne; upisuje ih vlasnik u svom terminalu (vr
 `npx wrangler secret put PARRA_API_KLJUC --config apps/dashboard/wrangler.jsonc` i `npx wrangler secret put PARRA_SUBJEKT --config apps/dashboard/wrangler.jsonc`.
 Lokalni test: lažni Parra u `scripts/fake-parra.mjs` (ključ `test-parra`, subjekt 123), testovi u `scripts/parra-test.mjs`.
 
+### Meta (Instagram i Facebook stranica → Mreže)
+Dashboard svakih 6 sati (cron `15 */6 * * *`) i na gumb na Mrežama čita vlastitu Facebook stranicu i povezani Instagram
+poslovni račun (`packages/poslovanje/meta.js`, Graph API v25.0, samo GET, token u zaglavlju): pratitelji po danu, doseg i
+pregledi za 28 dana (i prethodnih 28), objave s pregledima, dosegom, spremanjima i dijeljenjima. Ekran računa zadnjih 5
+naspram prethodnih 5 objava, najbolji dan i sat objave te uvide (reelsi naspram fotografija, najviše spremanja).
+Ploča ne čita poruke ni komentare; opis objave skraćen je na 90 znakova bez @oznaka i brojeva telefona.
+Tablice: `meta_pratitelji`, `meta_razdoblje`, `meta_objave`, `meta_sinkronizacija` (migracija 0007).
+Tajne upisuje vlasnik: `npx wrangler secret put META_TOKEN --config apps/dashboard/wrangler.jsonc` (token stranice ili
+system usera s dozvolama instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights, pages_show_list)
+i `npx wrangler secret put META_STRANICA --config apps/dashboard/wrangler.jsonc` (id Facebook stranice). Upute korak po korak:
+`docs/META-SPAJANJE.md`. Lokalni test: `scripts/fake-meta.mjs` (token `test-meta`, stranica 555), testovi u `scripts/meta-test.mjs`.
+
 ## Korak 4: izvršitelj
 `apps/izvrsitelj`: Queue (jedan posao istodobno, bez automatskog ponavljanja) + Cron + petlja agenta nad Claude API-jem
 (`@anthropic-ai/sdk`), alati ploče kroz MCP (service binding), web pretraga/dohvat kao server alati. Definicije agenata su u

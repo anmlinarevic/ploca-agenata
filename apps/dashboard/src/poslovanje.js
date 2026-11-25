@@ -6,6 +6,7 @@ import {
 } from '../../../packages/poslovanje/index.js';
 import { narudzbaIzReda, ucitaj, pregled } from '../../../packages/poslovanje/baza.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
+import { metaPodesena, sinkronizirajMetu, pregledMreza } from '../../../packages/poslovanje/meta.js';
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const LOKALNO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -99,6 +100,15 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
     if (!parraPodesena(env, tenant)) return greska('Parra nije spojena. Upiši ključ: npx wrangler secret put PARRA_API_KLJUC', 503);
     const r = await sinkronizirajParru(env, tenant);
     await env.DB.batch([audit(env, u, tenant, 'parra_osvjezi', 'parra_ponude', null, null, { promijenjeno: r.promijenjeno, greska: r.greska })]);
+    return r.ok ? json(r) : greska(r.greska, 502);
+  }
+
+  // ---- Meta (Instagram i Facebook stranica): pregled i ručno osvježavanje (inače svakih 6 sati preko crona) ----
+  if (m === 'GET' && putanja === '/api/mreze') return json(await pregledMreza(env, tenant));
+  if (m === 'POST' && putanja === '/api/meta/osvjezi') {
+    if (!metaPodesena(env, tenant)) return greska('Meta nije spojena. Upiši token: npx wrangler secret put META_TOKEN', 503);
+    const r = await sinkronizirajMetu(env, tenant);
+    await env.DB.batch([audit(env, u, tenant, 'meta_osvjezi', 'meta_objave', null, null, { objava: r.objava, uvida: r.uvida, greska: r.greska })]);
     return r.ok ? json(r) : greska(r.greska, 502);
   }
 

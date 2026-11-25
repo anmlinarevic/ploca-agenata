@@ -125,3 +125,18 @@ const pk = kalendarTjedna([], '2026-12-01', n, [ponudaIzReda({ ...det, stavke_js
 ok(['2026-12-01', '2026-12-02', '2026-12-03'].every((d) => pk.dani.find((x) => x.datum === d).ponude.length === 1) && pk.dani.find((x) => x.datum === '2026-12-04').ponude.length === 0, 'ponuda s razdobljem na svim danima razdoblja');
 const up = upozorenja([], [], n, new Date('2026-12-10T10:00:00Z'), [{ id: 1, broj: '1-1-1', stanje: 'racun', isporuka_od: '2026-12-05', isporuka_do: '2026-12-05' }]);
 ok(up.some((x) => x.vrsta === 'naplata'), 'upozorenje: isporučeno, račun nije plaćen');
+
+// ---- Meta: izračun za ekran Mreže ----
+const { cistiOpis, izracunajKanal } = await import('../packages/poslovanje/meta.js');
+ok(cistiOpis('Piši @ana.kupac ili 091 234 5678, ana@primjer.hr') === 'Piši @… ili …, …', 'opis objave bez @oznake, telefona i e-maila');
+ok(cistiOpis('') === null, 'prazan opis = null');
+const obj = (dana, pregledi, vrsta = 'slika', spremanja = 0) => ({ id: String(dana), vrsta, pregledi, spremanja, opis: 'o' + dana,
+  objavljeno: new Date(Date.parse('2026-11-25T19:00:00Z') - dana * 86400000).toISOString() });
+const kk = izracunajKanal({ danas: '2026-11-25', objave: [obj(70, 100), obj(63, 120), obj(56, 110), obj(49, 90), obj(42, 100), obj(35, 300, 'reel', 4), obj(28, 320, 'reel'), obj(21, 310, 'reel', 9), obj(14, 140), obj(7, 330, 'reel'), obj(1, null)],
+  pratitelji: [{ datum: '2026-10-27', pratitelji: 1000 }, { datum: '2026-11-25', pratitelji: 1040 }], razdoblja: { zadnjih: { doseg: 1200 }, prethodnih: { doseg: 1000 } } });
+ok(kk.graf.length === 10 && kk.prosjekPrethodnih5 === 104 && kk.prosjekZadnjih5 === 280 && kk.promjena5 === 169, 'zadnjih 5 naspram prethodnih 5 (objava bez brojki se ne broji)');
+ok(kk.pratiteljiRast === 40 && kk.pratiteljiOd === '2026-10-27' && kk.dosegPromjena === 20, 'rast pratitelja u 30 dana i promjena dosega');
+ok(kk.najbolje && kk.najbolje.sat === 4 && kk.najbolje.objava >= 2, 'najbolje polje: 20 h, barem 2 objave');
+ok(kk.uvidi.some((u) => /Reelsi imaju prosječno 2,9 puta više pregleda od fotografija/.test(u.tekst)), 'uvid: reelsi naspram fotografija');
+ok(kk.uvidi.some((u) => /objave srijedom oko 20 h: .*(10 objava)/.test(u.tekst)), 'uvid: dan i sat objave, množina');
+ok(izracunajKanal({ danas: '2026-11-25' }).uvidi.length === 0 && izracunajKanal({ danas: '2026-11-25' }).najbolje === null, 'bez objava: bez uvida i preporuke');
