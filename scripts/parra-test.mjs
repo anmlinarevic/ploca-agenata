@@ -63,3 +63,10 @@ ok(tudje.status === 503, 'drugi zakupac nema Parru');
 const tp = await zovi('GET', '/api/poslovanje', undefined, 'savjetnik@test.hr', 'drugi');
 ok(tp.status === 200 && tp.d.ponude.length === 0, 'drugi zakupac ne vidi Piccolinijeve ponude');
 ok(!/test-parra/.test(JSON.stringify(p)) && !/test-parra/.test(tp.t), 'ključ se nikad ne vraća pregledniku');
+
+const f = await zovi('GET', '/api/financije');
+ok(f.status === 200 && f.d.mjeseci.length === 6 && f.d.cekaUplatu === 40 && f.d.racunaOtvoreno === 1 && f.d.troskovi.spojeno === false, `financije iz Parre: čeka uplatu ${f.d?.cekaUplatu} €`);
+const sf = await zovi('GET', '/api/stanje');
+ok(sf.status === 200 && sf.d.potrosnja && typeof sf.d.potrosnja.poAgentu === 'object', 'potrošnja po agentu za ovaj mjesec');
+const ft = await zovi('GET', '/api/financije', undefined, 'savjetnik@test.hr', 'drugi');
+ok(ft.status === 200 && ft.d.cekaUplatu === 0 && ft.d.ovaj.prihod === 0, 'drugi zakupac ne vidi Piccolinijeve financije');

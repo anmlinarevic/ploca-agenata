@@ -4,11 +4,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light">
-<title>Mreže</title>
+<title>Mreže i marketing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Rubik:wght@800&display=swap">
 <link rel="stylesheet" href="poslovanje.css">
+<script src="ploca.js"></script>
 <style>
 /* Društvene mreže: analitika (faza C) i Kreator sadržaja (faza E). Dok Meta nije spojena, prikazuje se samo označeni primjer. */
 :root { --na-tkanini: #1f1b24; }
@@ -72,31 +73,26 @@
 .objava-red .brojke { grid-row: span 2; align-self: center; text-align: right; font-size: 13px; color: var(--ink-mid); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .objava-red .brojke b { font-size: 15px; color: var(--ink); }
 .polje-t.prazno { background: var(--paper); color: var(--ink-soft); font-weight: 400; }
+.marketing-veze { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
+.marketing-veze a { text-decoration: none; color: inherit; gap: 6px; padding: 18px 20px; }
+.marketing-veze a:hover { border-color: var(--line-strong); }
+.marketing-veze b { font-weight: 600; font-size: 15.5px; }
+.sazetak-mreza { border-left: 3px solid var(--accent); }
 </style>
 
 <header class="zaglavlje">
   <div class="omot">
     <div class="red-zaglavlja">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <span class="nadnaslov">Društvene mreže · <span id="zakupac">analitika i sadržaj</span></span>
-        <h1>Mreže</h1>
+        <span class="nadnaslov">Odjel · <span id="zakupac">mreže i marketing</span></span>
+        <h1>Mreže i marketing</h1>
         <span class="sitno">Instagram i Facebook stranica osvježavaju se svakih 6 sati. Ploča samo čita: ništa ne objavljuje i ne čita poruke.</span>
       </div>
       <div class="kanali" role="group" aria-label="Kanal" id="kanali" hidden>
-        <span class="primjer" id="kanali-primjer">Primjer podataka</span>
         <button class="kanal" type="button" data-kanal="instagram" aria-pressed="true">Instagram</button>
         <button class="kanal" type="button" data-kanal="facebook" aria-pressed="false">Facebook</button>
-        <button class="kanal" type="button" data-kanal="tiktok" aria-pressed="false">TikTok</button>
       </div>
     </div>
-    <nav class="tabovi" aria-label="Dijelovi ploče">
-      <a href="/#poslovno">Poslovno</a>
-      <a href="/#odluke">Odluke</a>
-      <a href="/#zadaci">Zadaci</a>
-      <a href="/kalendar.html">Kalendar</a>
-      <a href="/skladiste.html">Skladište</a>
-      <a href="/mreze.html" aria-current="page">Mreže</a>
-    </nav>
   </div>
 </header>
 
@@ -115,7 +111,19 @@
     </div>
   </section>
 
+  <section class="kartica najava" id="meta-najava" aria-labelledby="h-najava">
+    <div>
+      <h2 id="h-najava">Instagram i Facebook još nisu spojeni</h2>
+      <p class="sitno" style="margin:0">Za spajanje treba poslovni ili kreatorski Instagram povezan s Facebook stranicom, Meta aplikacija i token koji upišeš kao tajnu (META_TOKEN i META_STRANICA). Upute su u docs/META-SPAJANJE.md.</p>
+    </div>
+  </section>
+
   <div id="stvarno" hidden style="display:flex;flex-direction:column;gap:28px">
+    <section class="kartica okvir sazetak-mreza" aria-labelledby="h-s-promjene" style="gap:8px">
+      <h2 id="h-s-promjene">Što se vidi iz brojki</h2>
+      <span class="sitno" style="font-size:13px">Izračun ploče iz tvojih objava, za odabrani kanal. Tjedni sažetak Analitičara mreža dolazi kad se pokrene agent.</span>
+      <div id="s-promjene"></div>
+    </section>
     <div class="kpi-red" id="s-kpi"></div>
     <div class="par">
       <section class="kartica okvir" aria-labelledby="h-s-graf">
@@ -129,131 +137,44 @@
       <section class="kartica okvir" aria-labelledby="h-s-sati">
         <div style="display:flex;flex-direction:column;gap:2px">
           <h2 id="h-s-sati">Kad objaviti</h2>
-          <span class="sitno" style="font-size:13.6px">Prosječni pregledi po danu i satu objave, zadnjih 180 dana. Polja s jednom objavom nisu pokazatelj, pa se zaključak ispod računa po cijelim satima i danima. Uokvireno je najbolje polje s barem 2 objave.</span>
+          <span class="sitno" style="font-size:13.6px">Prosječni pregledi po danu i satu objave, zadnjih 180 dana. Polja s jednom objavom nisu pokazatelj, pa se zaključak ispod računa po cijelim satima i danima.</span>
         </div>
         <div class="toplina" id="s-toplina" role="table" aria-label="Pregledi po danu i satu objave"></div>
         <p style="margin:0;font-size:14.6px;color:var(--ink-mid)" id="s-najbolje"></p>
       </section>
     </div>
-    <div class="par">
-      <section class="kartica okvir" aria-labelledby="h-s-promjene" style="gap:6px">
-        <h2 id="h-s-promjene">Što se vidi iz brojki</h2>
-        <span class="sitno" style="font-size:13px">Izračun ploče iz tvojih objava. Tjedni sažetak Analitičara mreža dolazi kad se pokrene agent.</span>
-        <div id="s-promjene"></div>
-      </section>
-      <section class="kartica okvir" aria-labelledby="h-s-objave" style="gap:6px">
-        <h2 id="h-s-objave">Zadnje objave</h2>
-        <span class="sitno" style="font-size:13px">Pregledi · doseg · spremanja. Klik otvara objavu.</span>
-        <div id="s-objave"></div>
-      </section>
-    </div>
-    <p class="sitno" style="margin:0">Trendovi kod sličnih računa i Kreator sadržaja su sljedeći koraci. Kako će izgledati vidi se u primjeru: <button class="btn" type="button" id="primjer-gumb-2" style="min-height:32px;padding:0 10px;font-size:13px">Pokaži primjer</button></p>
-  </div>
-
-  <section class="kartica najava" id="meta-najava" aria-labelledby="h-najava">
-    <div>
-      <h2 id="h-najava">Instagram i Facebook još nisu spojeni</h2>
-      <p class="sitno" style="margin:0">Za spajanje treba poslovni ili kreatorski Instagram povezan s Facebook stranicom, Meta aplikacija i token koji upišeš kao tajnu (META_TOKEN i META_STRANICA). Ploča samo čita: ne objavljuje i ne odgovara na poruke. TikTok dolazi kasnije.</p>
-      <ul>
-        <li>pregledi zadnjih 5 objava naspram prethodnih 5, doseg, spremanja i pratitelji</li>
-        <li>kad objaviti: pregledi po danu i satu objave</li>
-        <li>što se promijenilo i što raste kod sličnih računa</li>
-        <li>ideje, scenariji i gotovi kratki videi iz konfiguratora, koje ti odobravaš</li>
-      </ul>
-    </div>
-    <button class="btn" type="button" id="primjer-gumb" aria-pressed="false">Pokaži primjer podataka</button>
-  </section>
-
-  <div id="primjer" hidden style="display:flex;flex-direction:column;gap:28px">
-    <p class="poruka" style="margin:0"><span class="primjer">Primjer podataka</span> Brojke ispod su izmišljene i služe samo da se vidi izgled. Prave stižu kad se spoje mreže.</p>
-    <div class="kpi-red" id="kpi"></div>
-    <div class="par">
-      <section class="kartica okvir" aria-labelledby="h-videi">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <h2 id="h-videi">Pregledi zadnjih 10 videa</h2>
-          <span class="sitno" style="font-size:13.6px">Svijetli stupci su prethodnih 5, tamni zadnjih 5. Crtkana crta je prosjek zadnjih 5.</span>
-        </div>
-        <div class="stupci-grafa" id="graf" role="img"></div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft)"><span>starije</span><span>novije</span></div>
-      </section>
-      <section class="kartica okvir" aria-labelledby="h-sati">
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <h2 id="h-sati">Kad objaviti</h2>
-          <span class="sitno" style="font-size:13.6px">Prosječni pregledi u stotinama, po danu i satu objave. Uokvireno je najbolje.</span>
-        </div>
-        <div class="toplina" id="toplina" role="table" aria-label="Pregledi po danu i satu"></div>
-        <p style="margin:0;font-size:14.6px;color:var(--ink-mid)"><strong style="color:var(--ink)">Utorak i četvrtak oko 20 h</strong> imaju dvostruko više pregleda od jutarnjih objava.</p>
-      </section>
-    </div>
-    <div class="par">
-      <section class="kartica okvir" aria-labelledby="h-promjene" style="gap:6px">
-        <h2 id="h-promjene">Što se promijenilo</h2>
-        <span class="sitno" style="font-size:13px">Analitičar mreža, tjedni sažetak</span>
-        <div id="promjene"></div>
-      </section>
-      <section class="kartica okvir" aria-labelledby="h-trendovi" style="gap:6px">
-        <h2 id="h-trendovi">Trendovi kod sličnih računa</h2>
-        <span class="sitno" style="font-size:13px">Agent Trendovi: javne brojke poslovnih računa i popularni hashtagovi, ne samo izravna konkurencija</span>
-        <div id="trendovi"></div>
-      </section>
-    </div>
-    <section aria-labelledby="h-kreator" style="display:flex;flex-direction:column;gap:14px">
-      <div class="blok-naslov">
-        <h2 id="h-kreator">Kreator sadržaja</h2>
-        <span class="sitno">Sadržaj koji nije snimanje šivanja ni igraonice: videi iz konfiguratora i stranice, za Instagram, Facebook i TikTok.</span>
-      </div>
-      <div class="kreator">
-        <div class="kartica video-kartica">
-          <div class="okvir-videa" role="img" aria-label="Pregled videa: ime LUCIJA se slaže slovo po slovo">
-            <div class="spaga" id="lucija"></div>
-            <span class="natpis-videa">Ime koje ostaje u sobi</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px;flex:1 1 200px;min-width:0">
-            <span class="oznaka-ok" id="video-stanje">Video spreman</span>
-            <h3 style="font-size:21px">LUCIJA, slovo po slovo</h3>
-            <p style="margin:0;font-size:14.4px;color:var(--ink-mid);line-height:1.55">12 s, 9:16. Slova iz konfiguratora padaju na špagu jedno po jedno, zatim natpis i poveznica na /banneri. Glazba bez autorskih prava.</p>
-            <p style="margin:0;font-size:13.6px;color:var(--ink-soft)">Prijedlog objave: utorak 20 h · Instagram Reels, Facebook, TikTok</p>
-            <div class="kontrole" style="margin-top:auto">
-              <button class="btn glavni" type="button" id="odobri-video">Odobri</button>
-              <button class="btn" type="button" id="vrati-video">Vrati s komentarom</button>
-            </div>
-            <p class="poruka" id="video-poruka" aria-live="polite"></p>
-          </div>
-        </div>
-        <div class="tok">
-          <div class="faza-sadrzaja"><h3>Ideje</h3><div class="ideja"><b>Ista riječ u tri tkanine</b><span>iz konfiguratora · 8 s</span></div><div class="ideja"><b>Odbrojavanje do rođendana</b><span>serija od 3 objave</span></div></div>
-          <div class="faza-sadrzaja"><h3>Scenarij</h3><div class="ideja"><b>Kako naručiti u 3 koraka</b><span>snimke ekrana stranice · 20 s</span></div><div class="ideja"><b>Od upita do paketa</b><span>vremenska crta jedne narudžbe</span></div></div>
-          <div class="faza-sadrzaja"><h3>Čeka tebe</h3><div class="ideja"><b>LUCIJA, slovo po slovo</b><span>video spreman · lijevo</span></div></div>
-          <div class="faza-sadrzaja"><h3>Objavio si</h3><div class="ideja"><b>Igraonica u dnevnom boravku</b><span>14. 11. · 2.310 pregleda</span></div></div>
-        </div>
-      </div>
+    <section class="kartica okvir" aria-labelledby="h-s-objave" style="gap:6px">
+      <h2 id="h-s-objave">Zadnje objave</h2>
+      <span class="sitno" style="font-size:13px">Pregledi · doseg · spremanja. Klik otvara objavu.</span>
+      <div id="s-objave"></div>
     </section>
   </div>
+
+  <section id="marketing" aria-labelledby="h-marketing" style="display:flex;flex-direction:column;gap:12px">
+    <h2 id="h-marketing" style="font-size:24px">Marketing</h2>
+    <div class="marketing-veze">
+      <a class="kartica okvir" href="/#odluke"><b>Odluke marketinga</b><span class="sitno">Prijedlozi SEO-a, AI vidljivosti, sadržaja, lokalnog i konkurencije koje odobravaš.</span></a>
+      <a class="kartica okvir" href="/#napredak"><b>Napredak plana</b><span class="sitno">Faze marketinškog plana i što je gotovo.</span></a>
+      <a class="kartica okvir" href="/#konkurencija"><b>Konkurencija</b><span class="sitno">Usporedba cijena i ponude. Način traženja se redefinira.</span></a>
+      <a class="kartica okvir" href="/#brojke"><b>Tjedne brojke</b><span class="sitno">Upiti, narudžbe i izvori kupaca koje upisuješ tjedno.</span></a>
+    </div>
+    <p class="sitno" style="margin:0">Trendovi kod sličnih računa i Kreator sadržaja su sljedeći koraci.</p>
+  </section>
 </main>
 
 <script src="zajednicko.js"></script>
 <script>
 (function () {
   'use strict';
-  /* Primjer podataka (izmišljeno, kao na prototipu). Kad se spoji Meta (faza C), ovo zamjenjuju brojke iz API-ja. */
-  var KANALI = {
-    instagram: { naziv: 'Instagram', videi: [1180, 1620, 1410, 1850, 1740, 1720, 2310, 1490, 1980, 1700], doseg: '14.200', dosegOpis: '62 % ne prati račun', spremanja: '23', pratitelji: '1.284', pratiteljiOpis: '+38 u 30 dana' },
-    facebook: { naziv: 'Facebook', videi: [420, 380, 510, 460, 530, 610, 580, 720, 540, 690], doseg: '6.900', dosegOpis: 'većinom dijeljenja u grupama', spremanja: '6', pratitelji: '842', pratiteljiOpis: '+9 u 30 dana' },
-    tiktok: { naziv: 'TikTok', videi: [310, 2900, 640, 880, 1210, 3400, 950, 1720, 4100, 1380], doseg: '21.500', dosegOpis: 'gotovo sve s „Za tebe”', spremanja: '41', pratitelji: '356', pratiteljiOpis: '+71 u 30 dana' }
-  };
-  var SATI = ['8 h', '11 h', '14 h', '17 h', '20 h', '22 h'];
-  var DANI = ['Pon', 'Uto', 'Sri', 'Čet', 'Pet', 'Sub', 'Ned'];
-  var TOPLINA = [[6, 8, 9, 12, 16, 13], [7, 9, 10, 13, 24, 17], [6, 8, 9, 11, 17, 14], [7, 8, 11, 14, 22, 16], [5, 7, 9, 10, 12, 10], [9, 12, 11, 10, 11, 8], [10, 13, 12, 11, 15, 12]];
   var GORE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16l6-6 4 4 6-6"></path><path d="M15 8h5v5"></path></svg>';
   var DOLJE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8l6 6 4-4 6 6"></path><path d="M15 16h5v-5"></path></svg>';
   var SAT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>';
   var RAVNO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path></svg>';
-  var PROMJENE = [[GORE, 'Videi kraći od 15 sekundi imaju prosječno dvostruko više pregleda od dužih.'], [GORE, 'Objave s imenom djeteta u kadru imaju 3 puta više spremanja.'], [DOLJE, 'Fotografije igraonice bez djece padaju: 40 % manje dosega nego prošli mjesec.'], [SAT, 'Najviše pratitelja je online navečer između 20 i 22 h.']];
-  var TRENDOVI = [[GORE, 'Format „prije i poslije” dječje sobe raste kod tri računa za uređenje (HR i SLO).'], [GORE, 'Ručni rad u ubrzanom snimku (ASMR šivanja) ima najveći rast pregleda u kategoriji.'], [RAVNO, 'Poklon za krštenje: hashtag stabilan, ali objave s cijenom u opisu imaju više komentara.']];
   var $ = function (s) { return document.querySelector(s); };
   var esc = window.P.esc;
   var tocke = function (n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
   var kanal = 'instagram';
+  try { if (localStorage.getItem('mreze-kanal') === 'facebook') kanal = 'facebook'; } catch (e) {}
 
   /* ── prave brojke iz Mete (/api/mreze) ── */
   var podaci = null;
@@ -338,10 +259,7 @@
     $('#meta-spojeno').hidden = !sp;
     $('#meta-najava').hidden = sp;
     $('#stvarno').hidden = !imaStvarno();
-    $('[data-kanal="tiktok"]').hidden = sp;
-    if (sp && kanal === 'tiktok') kanal = 'instagram';
-    $('#kanali').hidden = !(imaStvarno() || !$('#primjer').hidden);
-    $('#kanali-primjer').hidden = imaStvarno();
+    $('#kanali').hidden = !imaStvarno();
     if (sp) renderStatus();
     if (imaStvarno()) renderStvarno();
     document.querySelectorAll('[data-kanal]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.kanal === kanal)); });
@@ -356,61 +274,12 @@
     }).catch(function (err) { P.poruka($('#meta-poruka'), err.message, 'greska'); return ucitaj().catch(function () {}); }).then(function () { b.disabled = false; });
   };
 
-  function renderKanal() {
-    var c = KANALI[kanal];
-    var prosjek = function (a) { return Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length); };
-    var pret = prosjek(c.videi.slice(0, 5)), zad = prosjek(c.videi.slice(5)), max = Math.max.apply(null, c.videi);
-    var rast = Math.round((zad - pret) / pret * 100);
-    $('#kpi').innerHTML = [
-      ['Zadnjih 5 videa', tocke(zad), 'prosjek pregleda · <span class="' + (rast >= 0 ? 'rast' : 'pad') + '">' + (rast >= 0 ? '+' : '') + rast + ' %</span> naspram prethodnih 5'],
-      ['Doseg, 30 dana', c.doseg, esc(c.dosegOpis)],
-      ['Spremanja po objavi', c.spremanja, 'najbolji signal da se netko vraća'],
-      ['Pratitelji', c.pratitelji, esc(c.pratiteljiOpis)]
-    ].map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('');
-    var g = $('#graf');
-    g.setAttribute('aria-label', c.naziv + ': prosjek prethodnih 5 videa ' + tocke(pret) + ', zadnjih 5 ' + tocke(zad) + ' pregleda');
-    g.innerHTML = '<span class="prosjek" style="bottom:' + Math.round(zad / max * 139) + 'px"></span>' + c.videi.map(function (v, i) {
-      return '<div class="stupac-grafa' + (i >= 5 ? ' novi' : '') + '"><small>' + (v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + 'k' : v) + '</small><i style="height:' + Math.round(v / max * 82) + '%"></i></div>';
-    }).join('');
-    document.querySelectorAll('[data-kanal]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.kanal === kanal)); });
-  }
-  function renderStalno() {
-    var maxT = 24;
-    $('#toplina').innerHTML = '<span></span>' + SATI.map(function (h) { return '<span class="z">' + h + '</span>'; }).join('') + TOPLINA.map(function (r, i) {
-      return '<span class="z dan">' + DANI[i] + '</span>' + r.map(function (v) {
-        var t = v / maxT;
-        return '<span class="polje-t' + (v === maxT ? ' najbolje' : '') + '" style="background:color-mix(in srgb, var(--kadulja) ' + Math.round(8 + t * 85) + '%, transparent);color:' + (t > 0.55 ? 'var(--on-accent)' : 'var(--ink)') + '">' + v + '</span>';
-      }).join('');
-    }).join('');
-    var uvid = function (l) { return l.map(function (x) { return '<div class="uvid">' + x[0] + '<span>' + esc(x[1]) + '</span></div>'; }).join(''); };
-    $('#promjene').innerHTML = uvid(PROMJENE);
-    $('#trendovi').innerHTML = uvid(TRENDOVI);
-    $('#lucija').innerHTML = 'LUCIJA'.split('').map(function (l, i) { return '<span class="ls" style="background:' + (i < 3 ? '#f2cfc8' : '#cfe5d6') + ';animation-delay:' + (i * 0.25) + 's">' + l + '</span>'; }).join('');
-  }
-  function prikazi(da) {
-    $('#primjer').hidden = !da;
-    ['#primjer-gumb', '#primjer-gumb-2'].forEach(function (s) {
-      $(s).textContent = da ? 'Sakrij primjer' : (s === '#primjer-gumb' ? 'Pokaži primjer podataka' : 'Pokaži primjer');
-      $(s).setAttribute('aria-pressed', String(da));
-    });
-    try { localStorage.setItem('mreze-primjer', da ? '1' : ''); } catch (e) {}
-    stanjeEkrana();
-  }
 
   document.addEventListener('click', function (e) {
     var k = e.target.closest('[data-kanal]');
-    if (k) { kanal = k.dataset.kanal; renderKanal(); stanjeEkrana(); return; }
-    if (e.target.closest('#primjer-gumb, #primjer-gumb-2')) { prikazi($('#primjer').hidden); return; }
-    if (e.target.closest('#odobri-video, #vrati-video')) {
-      window.P.poruka($('#video-poruka'), 'Ovo je primjer. Odobravanje videa radi kad Kreator sadržaja počne raditi (faza E).');
-    }
+    if (k) { kanal = k.dataset.kanal; try { localStorage.setItem('mreze-kanal', kanal); } catch (er) {} stanjeEkrana(); }
   });
 
-  renderStalno();
-  renderKanal();
-  var zapamceno = false;
-  try { zapamceno = localStorage.getItem('mreze-primjer') === '1'; } catch (e) {}
-  prikazi(zapamceno);
   ucitaj().catch(function () {});
 })();
 </script>

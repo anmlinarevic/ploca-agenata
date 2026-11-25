@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="hr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>Web</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
+<script src="ploca.js"></script>
+
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov">Odjel · <span id="zakupac">web</span></span>
+        <h1>Web</h1>
+        <span class="sitno">piccoliniplay.hr i konfigurator. Agenti predlažu izmjene kao pull request; spajanje radiš ti.</span>
+      </div>
+      <div class="kontrole"><a class="btn glavni" href="/#zadaci">Zadaj zadatak za stranicu</a></div>
+    </div>
+  </div>
+</header>
+
+<main class="omot">
+  <div class="mreza-2">
+    <section class="kartica okvir"><div class="okvir-glava"><div><h2>Google Search Console</h2><span class="sitno">Klikovi, pojavljivanja i pozicije stranice.</span></div><span class="chip neutral">nije spojeno</span></div>
+      <p class="sitno" style="margin:0">Kad se spoji, ovdje su klikovi s Googlea u 28 dana, najbolji upiti i stranice s greškom.</p></section>
+    <section class="kartica okvir"><div class="okvir-glava"><div><h2>Pull requestovi</h2><span class="sitno">Prijedlozi izmjena stranice od agenata i Claude Codea.</span></div><span class="chip neutral">nije spojeno</span></div>
+      <p class="sitno" style="margin:0">Kad se spoji GitHub (samo čitanje), ovdje su otvoreni pull requestovi koji čekaju tvoj pregled.</p></section>
+  </div>
+  <section class="kartica okvir" aria-labelledby="h-zadaci">
+    <div class="okvir-glava"><div><h2 id="h-zadaci">Zadaci odjela</h2><span class="sitno">Zadaci i odluke agenata koji rade za Web (SEO, opći zadaci).</span></div><a class="sitno" href="/#svi">Svi zadaci</a></div>
+    <div id="zadaci"><p class="prazno">Učitavam…</p></div>
+  </section>
+</main>
+
+<script src="zajednicko.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); }, esc = P.esc;
+  var STZ = { novo: 'Novo', u_izradi: 'U radu', gotovo: 'Gotovo', odbijeno: 'Odbijeno', ceka: 'Čeka tebe', odobreno: 'U radu' };
+  P.api('GET', '/api/stanje').then(function (st) {
+    var ag = PL.AGENTI.filter(function (a) { return a.odjeli.indexOf('web') >= 0; }).map(function (a) { return a.id; });
+    var r = (st.odluke || []).filter(function (o) { return ag.indexOf(o.agent) >= 0; }).map(function (o) { return { v: 'Odluka', n: o.naslov, a: o.agent, s: o.status, k: o.kreirano, l: '/#odluke' }; })
+      .concat((st.zadaci || []).filter(function (z) { return ag.indexOf(z.agent) >= 0; }).map(function (z) { return { v: 'Zadatak agentu', n: z.opis, a: z.agent, s: z.status, k: z.kreirano, l: '/#zadaci' }; }))
+      .sort(function (a, b) { return String(b.k || '').localeCompare(String(a.k || '')); }).slice(0, 15);
+    $('#zadaci').innerHTML = r.length ? r.map(function (x) {
+      return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip neutral">' + x.v + '</span><span class="chip neutral">' + esc((PL.AG[x.a] || {}).naziv || x.a) + '</span><span class="chip ' + (x.s === 'gotovo' ? 'ok' : x.s === 'ceka' ? 'pozor' : 'neutral') + '">' + esc(STZ[x.s] || x.s) + '</span></div><b>' + esc(x.n) + '</b></div><a class="btn malo" href="' + x.l + '">Otvori</a></div>';
+    }).join('') : '<p class="prazno">Još nema zadataka za Web.</p>';
+  }).catch(function (e) { $('#zadaci').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+})();
+</script>

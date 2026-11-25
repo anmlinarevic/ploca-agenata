@@ -150,3 +150,19 @@ ok(ned.kadObjaviti.jedna.dan === 3 && ned.kadObjaviti.jedna.sat === 4 && ned.kad
 ok(ned.najbolje.dan === 6 && ned.najbolje.sat === 1, 'uokvireno polje: nedjelja 11 h, ne utorak 17 h s 2 slabe objave');
 ok(izracunajKanal({ danas: '2026-11-25', objave: [pov('2026-11-22T10:00:00Z', 500), pov('2026-11-15T10:00:00Z', 520)] }).kadObjaviti.sat === null, 'premalo objava: nema preporuke po satu');
 ok(izracunajKanal({ danas: '2026-11-25' }).uvidi.length === 0 && izracunajKanal({ danas: '2026-11-25' }).najbolje === null, 'bez objava: bez uvida i preporuke');
+
+// ---- Financije: prihod po mjesecu isporuke, naplata, čeka uplatu ----
+const { izracunajFinancije, mjeseci: mjeseciFin } = await import('../packages/poslovanje/financije.js');
+ok(mjeseciFin('2026-11-25', 6).join(',') === '2026-06,2026-07,2026-08,2026-09,2026-10,2026-11', 'zadnjih 6 mjeseci');
+const fin = izracunajFinancije([
+  { stanje: 'placeno', iznos: 64, placeno: 64, za_platiti: 64, racuni: [{ id: 1 }], isporuka_od: '2026-11-05', usluga: 'sivanje' },
+  { stanje: 'racun', iznos: 40, placeno: 0, za_platiti: 40, racuni: [{ id: 2 }], isporuka_od: '2026-11-20', usluga: 'sivanje' },
+  { stanje: 'prihvacena', iznos: 180, racuni: [], isporuka_od: '2026-11-10', isporuka_do: '2026-11-11', usluga: 'igraonica' },
+  { stanje: 'prihvacena', iznos: 90, racuni: [], isporuka_od: '2026-12-06', usluga: 'igraonica' },
+  { stanje: 'poslana', iznos: 500, racuni: [], isporuka_od: '2026-11-15', usluga: 'sivanje' },
+  { stanje: 'placeno', iznos: 100, placeno: 100, za_platiti: 100, racuni: [{ id: 3 }], isporuka_od: '2026-10-12', usluga: 'sivanje' },
+], [{ mjesec: '2026-11', usd: 1.234 }], '2026-11-25');
+ok(fin.ovaj.prihod === 284 && fin.ovaj.naplaceno === 64 && fin.ovaj.sivanje === 104 && fin.ovaj.igraonica === 180, 'studeni: prihod bez poslanih ponuda, po usluzi');
+ok(fin.promjena === 184 && fin.prosli.prihod === 100, 'promjena naspram listopada');
+ok(fin.cekaUplatu === 40 && fin.racunaOtvoreno === 1 && fin.bezRacuna === 1 && fin.bezRacunaIznos === 180, 'čeka uplatu i isporučeno bez računa');
+ok(fin.ovaj.agenti === 1.23 && fin.mjeseci.length === 6, 'trošak agenata po mjesecu');

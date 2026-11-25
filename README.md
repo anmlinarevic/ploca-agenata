@@ -44,6 +44,14 @@ Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji)
 `npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.
 Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i Access: `docs/DEPLOY-CLOUDFLARE.md`.
 
+### Ploča tvrtke (navigacija po odjelima)
+Sve stranice dijele bočnu navigaciju (`public/ploca.js`): **Pregled** (uprava, `/#pregled`), odjeli **Prodaja** (`prodaja.html`),
+**Proizvodnja** (`skladiste.html`), **Mreže i marketing** (`mreze.html`), **Financije** (`financije.html`), **Web** (`web.html`) te
+zajednički **Kalendar**, **Svi zadaci** (`/#svi`), **Agenti** (`/#agenti`) i **Izvori i pravila** (`izvori.html`).
+Pregled spaja stvarne brojke: prihod i naplata iz Parre (`GET /api/financije`, `packages/poslovanje/financije.js`), kalendar i skladište,
+Meta, odluke i zadatke („Čeka tebe”), pokretanja agenata i potrošnju po agentu (`/api/stanje` → `potrosnja.poAgentu`).
+Popis agenata i odjela za koje rade je u `ploca.js` (`PL.AGENTI`). Prototip izgleda: `tina-obrt/docs/marketing/ploca/prototip/ploca-tvrtke.html`.
+
 ### Parra (ponude → kalendar)
 Dashboard svakih 30 minuta (cron) i na gumb „Osvježi iz Parre” čita ponude i uplate iz Parre (`packages/poslovanje/parra.js`, API v1.1, samo GET).
 Datum isporuke ponude ide u kalendar: poslana → prihvaćena (datum rezerviran) → račun izdan → plaćeno. Odbijene i istekle se ne prikazuju.

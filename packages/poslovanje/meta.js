@@ -59,7 +59,7 @@ function klijent(env, fetchFn) {
     const e = d?.error || {}, kod = +e.code;
     // Isti kod 190 Meta šalje i kad treba stranični token; to nije istekao token.
     if (kod === 190 && /page access token/i.test(e.message || '')) return { meka: 'Meta traži stranični token za ovaj podatak.' };
-    if (kod === 190 || odg.status === 401) throw new GreskaMete(`Meta ne prihvaća token (istekao ili opozvan)${e.message ? `: ${String(e.message).slice(0, 120)}` : ''}. Napravi novi i upiši ga: npx wrangler secret put META_TOKEN`);
+    if (kod === 190 || odg.status === 401) throw new GreskaMete(`Meta ne prihvaća token (istekao ili opozvan)${e.message ? `: ${String(e.message).slice(0, 120).replace(/\.+$/, '')}` : ''}. Napravi novi i upiši ga: npx wrangler secret put META_TOKEN`);
     if (kod === 10 || (kod >= 200 && kod < 300) || odg.status === 403) throw new GreskaMete('Tokenu nedostaje dozvola za čitanje uvida (instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights).');
     if ([4, 17, 32, 613].includes(kod) || odg.status === 429) throw new GreskaMete('Meta je privremeno ograničila broj zahtjeva. Nastavlja se u idućem krugu.');
     if (kod === 803 || (kod === 100 && /node|exist|unknown path/i.test(e.message || '') && put === String(env.META_STRANICA).trim()))

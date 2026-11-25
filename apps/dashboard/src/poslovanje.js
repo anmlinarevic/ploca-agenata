@@ -7,6 +7,7 @@ import {
 import { narudzbaIzReda, ucitaj, pregled } from '../../../packages/poslovanje/baza.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 import { metaPodesena, sinkronizirajMetu, pregledMreza } from '../../../packages/poslovanje/meta.js';
+import { pregledFinancija } from '../../../packages/poslovanje/financije.js';
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
 const LOKALNO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -105,6 +106,7 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
 
   // ---- Meta (Instagram i Facebook stranica): pregled i ručno osvježavanje (inače svakih 6 sati preko crona) ----
   if (m === 'GET' && putanja === '/api/mreze') return json(await pregledMreza(env, tenant));
+  if (m === 'GET' && putanja === '/api/financije') return json(await pregledFinancija(env, tenant));
   if (m === 'POST' && putanja === '/api/meta/osvjezi') {
     if (!metaPodesena(env, tenant)) return greska('Meta nije spojena. Upiši token: npx wrangler secret put META_TOKEN', 503);
     const r = await sinkronizirajMetu(env, tenant);

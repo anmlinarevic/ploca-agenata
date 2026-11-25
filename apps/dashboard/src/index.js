@@ -28,7 +28,7 @@ const dnevnik = (env, tenant, sto) =>
 /** Oblik dokumenata isti je kao u staroj ploči (camelCase), pa front-end ostaje gotovo isti. */
 async function stanje(env, t) {
   const mjesecOd = `${new Date().toISOString().slice(0, 7)}-01T00:00:00.000Z`;
-  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed] = await Promise.all([
+  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed, poAgentu] = await Promise.all([
     all(env, `SELECT * FROM odluke WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM zadaci WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM tjedni WHERE tenant_id = ? ORDER BY tjedan`, t),
@@ -42,10 +42,12 @@ async function stanje(env, t) {
     all(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? ORDER BY kad DESC LIMIT 12`, t),
     one(env, `SELECT COALESCE(SUM(trosak_usd), 0) AS s FROM pokretanja WHERE tenant_id = ? AND kreirano >= ?`, t, mjesecOd),
     one(env, `SELECT postavke_json FROM tenants WHERE id = ?`, t),
+    all(env, `SELECT agent, COUNT(*) AS n, COALESCE(SUM(trosak_usd), 0) AS usd, MAX(kreirano) AS zadnje FROM pokretanja WHERE tenant_id = ? AND kreirano >= ? GROUP BY agent`, t, mjesecOd),
   ]);
   const post = parse(tenantRed?.postavke_json) || {};
   return {
-    potrosnja: { mjesec: mjesecOd.slice(0, 7), potroseno: Math.round(potrosnja.s * 100) / 100, limit: Number.isFinite(+post.limit_usd) ? +post.limit_usd : 20, raspored: post.raspored === true },
+    potrosnja: { mjesec: mjesecOd.slice(0, 7), potroseno: Math.round(potrosnja.s * 100) / 100, limit: Number.isFinite(+post.limit_usd) ? +post.limit_usd : 20, raspored: post.raspored === true,
+      poAgentu: Object.fromEntries(poAgentu.map((x) => [x.agent, { pokretanja: x.n, usd: Math.round(x.usd * 100) / 100, zadnje: x.zadnje }])) },
     pokretanja: pokretanja.map((p) => ({
       id: p.id, agent: p.agent, status: p.status, vrsta: p.vrsta, opis: p.opis, kreirano: p.kreirano, kraj: p.kraj, koraka: p.koraka,
       pretrage: p.pretrage, trosak: p.trosak_usd, greska: p.greska, rezultat: p.rezultat, zadatakId: p.zadatak_id,

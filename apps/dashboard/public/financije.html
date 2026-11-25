@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="hr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>Financije</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
+<script src="ploca.js"></script>
+<style>
+.par-stupci { display: flex; align-items: flex-end; gap: 14px; height: 190px; border-bottom: 1px solid var(--line-strong); padding-top: 20px; }
+.par-stupci .grupa { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px; min-width: 0; position: relative; }
+.par-stupci i { display: block; width: 40%; max-width: 28px; border-radius: 2px 2px 0 0; }
+.par-stupci i.prihod { background: var(--accent); }
+.par-stupci i.naplaceno { background: var(--kadulja); }
+.par-stupci small { position: absolute; top: -18px; font-size: 11px; color: var(--ink-mid); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.os { display: flex; gap: 14px; font-size: 12px; color: var(--ink-soft); }
+.os span { flex: 1 1 0; text-align: center; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-mid); }
+.legenda i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.tablica-omot { overflow-x: auto; }
+table.tablica { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tablica th { text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line-strong); }
+.tablica td { padding: 10px; border-bottom: 1px solid var(--line); }
+.tablica .br { text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov">Odjel · <span id="zakupac">financije</span></span>
+        <h1>Financije</h1>
+        <span class="sitno">Prihodi i uplate iz Parre, po mjesecu isporuke. Troškovi obrta stižu kad se spoje izvodi banke. Cijene se ovdje ne mijenjaju.</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="omot">
+  <div class="kpi-red" id="kpi"><p class="prazno">Učitavam…</p></div>
+  <div class="mreza-2">
+    <section class="kartica okvir" aria-labelledby="h-mj">
+      <div class="okvir-glava"><div><h2 id="h-mj">Prihod i naplata, 6 mjeseci</h2><span class="sitno">Prihvaćene ponude po mjesecu isporuke i koliko je od toga plaćeno.</span></div>
+        <div class="legenda"><span><i style="background:var(--accent)"></i>prihod</span><span><i style="background:var(--kadulja)"></i>naplaćeno</span></div></div>
+      <div class="par-stupci" id="stupci" role="img"></div>
+      <div class="os" id="os"></div>
+    </section>
+    <section class="kartica okvir" aria-labelledby="h-usl">
+      <div class="okvir-glava"><div><h2 id="h-usl">Po usluzi</h2><span class="sitno">Usluga se prepoznaje po stavkama ponude.</span></div></div>
+      <div class="tablica-omot" id="usluge"></div>
+    </section>
+  </div>
+  <div class="mreza-2">
+    <section class="kartica okvir" aria-labelledby="h-nap">
+      <div class="okvir-glava"><div><h2 id="h-nap">Za naplatu</h2><span class="sitno">Isporučeno, a račun nije izdan ili nije plaćen. Podsjetnik i račun radiš u Parri.</span></div></div>
+      <div id="naplata"></div>
+    </section>
+    <section class="kartica okvir" aria-labelledby="h-tr">
+      <div class="okvir-glava"><div><h2 id="h-tr">Troškovi</h2><span class="sitno">Za sad je poznat samo trošak agenata.</span></div><span class="chip pozor">izvodi nisu spojeni</span></div>
+      <div id="troskovi"></div>
+      <p class="napomena">Dobit i marža po usluzi računaju se kad se spoje izvodi žiro računa obrta (Google Drive ili mail). Do tada ploča ne pogađa troškove.</p>
+    </section>
+  </div>
+</main>
+
+<script src="zajednicko.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); }, esc = P.esc;
+  var eur = function (n) { return (Number(n) || 0).toLocaleString('hr-HR', { maximumFractionDigits: 2 }) + ' €'; };
+  var usd = function (n) { return (Number(n) || 0).toFixed(2).replace('.', ',') + ' USD'; };
+  var MJ = ['siječanj', 'veljača', 'ožujak', 'travanj', 'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan', 'listopad', 'studeni', 'prosinac'];
+  function kpi(n, b, o, izvor, pozor) { return '<div class="kartica kpi' + (pozor ? ' pozor' : '') + '"><span class="naziv">' + n + '</span><span class="broj">' + b + '</span><span class="opis">' + o + '</span>' + (izvor ? '<span class="izvor">' + izvor + '</span>' : '') + '</div>'; }
+
+  Promise.all([P.api('GET', '/api/financije'), P.api('GET', '/api/poslovanje')]).then(function (r) {
+    var f = r[0], d = r[1], mj = MJ[+f.ovaj.mjesec.slice(5) - 1];
+    var pr = f.promjena == null ? 'prihvaćene ponude s isporukom ovaj mjesec' : '<span class="' + (f.promjena >= 0 ? 'rast' : 'pad') + '">' + (f.promjena >= 0 ? '+' : '') + f.promjena + ' %</span> naspram prošlog mjeseca';
+    $('#kpi').innerHTML = kpi('Prihod, ' + mj, eur(f.ovaj.prihod), pr, 'Parra · po datumu isporuke') +
+      kpi('Naplaćeno, ' + mj, eur(f.ovaj.naplaceno), 'od ponuda s isporukom ovaj mjesec', 'Parra · uplate') +
+      kpi('Čeka uplatu', eur(f.cekaUplatu), f.racunaOtvoreno + ' ' + (f.racunaOtvoreno === 1 ? 'račun' : 'računa') + (f.bezRacuna ? ' · ' + f.bezRacuna + ' isporučeno bez računa (' + eur(f.bezRacunaIznos) + ')' : ''), 'Parra · računi', f.cekaUplatu > 0 || f.bezRacuna > 0) +
+      kpi('Agenti, ' + mj, usd(f.ovaj.agenti), 'trošak Claude API-ja iz pokretanja', 'ploča');
+    if (!f.parra.spojeno) $('#kpi').insertAdjacentHTML('beforeend', '<p class="napomena" style="grid-column:1/-1">Parra još nije spojena, pa su prihodi prazni.</p>');
+
+    var max = Math.max.apply(null, f.mjeseci.map(function (m) { return m.prihod; }).concat([1]));
+    $('#stupci').setAttribute('aria-label', 'Prihod i naplata po mjesecima');
+    $('#stupci').innerHTML = f.mjeseci.map(function (m) {
+      return '<div class="grupa" title="' + esc(m.naziv + ': prihod ' + eur(m.prihod) + ', naplaćeno ' + eur(m.naplaceno)) + '"><small>' + (m.prihod ? eur(Math.round(m.prihod)) : '') + '</small><i class="prihod" style="height:' + Math.round(m.prihod / max * 90) + '%"></i><i class="naplaceno" style="height:' + Math.round(m.naplaceno / max * 90) + '%"></i></div>';
+    }).join('');
+    $('#os').innerHTML = f.mjeseci.map(function (m) { return '<span>' + m.naziv + '</span>'; }).join('');
+
+    var ukS = f.mjeseci.reduce(function (s, m) { return s + m.sivanje; }, 0), ukI = f.mjeseci.reduce(function (s, m) { return s + m.igraonica; }, 0);
+    $('#usluge').innerHTML = '<table class="tablica"><thead><tr><th>Usluga</th><th class="br">' + esc(mj) + '</th><th class="br">6 mjeseci</th><th class="br">Udio</th></tr></thead><tbody>' +
+      [['Šivanje', 'sivanje', f.ovaj.sivanje, ukS], ['Igraonica', 'igraonica', f.ovaj.igraonica, ukI]].map(function (u) {
+        return '<tr><td><span class="chip ' + u[1] + '">' + u[0] + '</span></td><td class="br">' + eur(u[2]) + '</td><td class="br">' + eur(u[3]) + '</td><td class="br">' + ((ukS + ukI) ? Math.round(u[3] / (ukS + ukI) * 100) + ' %' : '–') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+
+    var danas = d.danas;
+    var lista = (d.ponude || []).filter(function (p) { var kraj = p.isporuka_do || p.isporuka_od; return kraj && kraj < danas && ['prihvacena', 'racun', 'djelomicno'].indexOf(p.stanje) >= 0; })
+      .sort(function (a, b) { return (a.isporuka_do || a.isporuka_od) < (b.isporuka_do || b.isporuka_od) ? -1 : 1; });
+    var NAZ = { prihvacena: 'račun nije izdan', racun: 'račun nije plaćen', djelomicno: 'djelomično plaćeno' };
+    $('#naplata').innerHTML = lista.length ? lista.map(function (p) {
+      var dug = p.stanje === 'prihvacena' ? p.iznos : (p.za_platiti || 0) - (p.placeno || 0);
+      return '<div class="stavka-z"><div class="tijelo"><b>' + esc(p.broj) + (p.opis ? ' · ' + esc(p.opis) : '') + '</b><span class="sitno">isporuka ' + P.datum(p.isporuka_do || p.isporuka_od) + ' · ' + NAZ[p.stanje] + '</span></div><b>' + eur(dug) + '</b></div>';
+    }).join('') : '<p class="prazno">Sve isporučeno je naplaćeno.</p>';
+
+    $('#troskovi').innerHTML = '<div class="red-trake">' + f.mjeseci.map(function (m) { return '<div class="red-traka"><span>Agenti, ' + m.naziv + '</span><span class="t"><i style="width:' + Math.min(100, Math.round(m.agenti / 25 * 100)) + '%"></i></span><b>' + usd(m.agenti) + '</b></div>'; }).join('') + '</div>';
+  }).catch(function (e) { $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+})();
+</script>

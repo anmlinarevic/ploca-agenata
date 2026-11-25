@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="hr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>Prodaja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
+<script src="ploca.js"></script>
+
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov">Odjel · <span id="zakupac">prodaja</span></span>
+        <h1>Prodaja</h1>
+        <span class="sitno">Ponude iz Parre, termini igraonice i upiti. Ploča samo čita Parru.</span>
+      </div>
+      <div class="kontrole"><a class="btn" href="/#brojke">Upiši tjedne brojke</a><a class="btn glavni" href="/kalendar.html">Kalendar</a></div>
+    </div>
+  </div>
+</header>
+
+<main class="omot">
+  <div class="kpi-red" id="kpi"><p class="prazno">Učitavam…</p></div>
+  <div class="mreza-2">
+    <section class="kartica okvir" aria-labelledby="h-ponude">
+      <div class="okvir-glava"><div><h2 id="h-ponude">Ponude iz Parre</h2><span class="sitno">Po stanju, iznosi bez kupaca. Ponude s isporukom u zadnjih 120 dana i buduće.</span></div></div>
+      <div class="red-trake" id="ponude"></div>
+    </section>
+    <section class="kartica okvir" aria-labelledby="h-vikendi">
+      <div class="okvir-glava"><div><h2 id="h-vikendi">Igraonica, sljedeća 4 vikenda</h2><span class="sitno">Iz kalendara i prihvaćenih ponuda.</span></div></div>
+      <div class="red-trake" id="vikendi"></div>
+    </section>
+  </div>
+  <div class="mreza-2">
+    <section class="kartica okvir" aria-labelledby="h-odgovor">
+      <div class="okvir-glava"><div><h2 id="h-odgovor">Ponude bez odgovora</h2><span class="sitno">Poslane ponude starije od 7 dana. Podsjetnik šalješ ti iz Parre.</span></div></div>
+      <div id="odgovor"></div>
+    </section>
+    <section class="kartica okvir" aria-labelledby="h-upiti">
+      <div class="okvir-glava"><div><h2 id="h-upiti">Upiti po tjednu</h2><span class="sitno">Ručni unos u Tjednim brojkama dok se ne spoji Gmail.</span></div><a class="sitno" href="/#brojke">Brojke</a></div>
+      <div class="red-trake" id="upiti"></div>
+    </section>
+  </div>
+  <section class="kartica okvir" aria-labelledby="h-zadaci">
+    <div class="okvir-glava"><div><h2 id="h-zadaci">Zadaci odjela</h2><span class="sitno">Upozorenja iz kalendara i odluke agenata koji rade za Prodaju.</span></div><a class="sitno" href="/#svi">Svi zadaci</a></div>
+    <div id="zadaci"></div>
+  </section>
+  <section class="kartica okvir"><div class="okvir-glava"><div><h2>Konkurencija</h2><span class="sitno">Usporedba cijena i ponude. Način traženja konkurencije se redefinira.</span></div><a class="btn malo" href="/#konkurencija">Otvori</a></div></section>
+</main>
+
+<script src="zajednicko.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); }, esc = P.esc;
+  var eur = function (n) { return (Number(n) || 0).toLocaleString('hr-HR', { maximumFractionDigits: 2 }) + ' €'; };
+  var NAZ = { poslana: 'Poslana', prihvacena: 'Prihvaćena', racun: 'Račun izdan', djelomicno: 'Djelomično plaćeno', placeno: 'Plaćeno' };
+  function kpi(n, b, o, izvor) { return '<div class="kartica kpi"><span class="naziv">' + n + '</span><span class="broj">' + b + '</span><span class="opis">' + o + '</span>' + (izvor ? '<span class="izvor">' + izvor + '</span>' : '') + '</div>'; }
+  function traka(naziv, sirina, desno) { return '<div class="red-traka"><span>' + esc(naziv) + '</span><span class="t"><i style="width:' + Math.max(0, Math.min(100, sirina)) + '%"></i></span><b>' + desno + '</b></div>'; }
+
+  Promise.all([P.api('GET', '/api/poslovanje'), P.api('GET', '/api/stanje')]).then(function (r) {
+    var d = r[0], st = r[1], danas = d.danas, ponude = d.ponude || [];
+    var dana = function (iso) { return Math.round((Date.parse(danas) - Date.parse(iso)) / 86400000); };
+    var poslane = ponude.filter(function (p) { return p.stanje === 'poslana'; });
+    var stare = poslane.filter(function (p) { return p.datum_ponude && dana(p.datum_ponude) > 7; }).sort(function (a, b) { return a.datum_ponude < b.datum_ponude ? -1 : 1; });
+    var prihv = ponude.filter(function (p) { return ['prihvacena', 'racun', 'djelomicno', 'placeno'].indexOf(p.stanje) >= 0 && (p.isporuka_do || p.isporuka_od || '9') >= danas; });
+    var tj = (st.tjedni || []).slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+    var zt = tj[tj.length - 1];
+    var od28 = P.dodajDane(danas, -28);
+    var up28 = tj.filter(function (t) { return t.od >= od28; }).reduce(function (s, t) { return s + (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); }, 0);
+    var pon28 = ponude.filter(function (p) { return p.datum_ponude && p.datum_ponude >= od28; }).length;
+    $('#kpi').innerHTML = kpi('Poslane ponude', String(poslane.length), stare.length ? stare.length + ' čeka odgovor dulje od 7 dana' : 'sve su mlađe od 7 dana', 'Parra') +
+      kpi('Prihvaćene, nadolazeće', String(prihv.length), eur(prihv.reduce(function (s, p) { return s + (p.iznos || 0); }, 0)) + ' · datumi rezervirani', 'Parra') +
+      kpi('Upiti, zadnji tjedan', zt ? String((+zt.upitiBanner || 0) + (+zt.upitiIgraonica || 0)) : '–', zt ? 'banneri ' + (+zt.upitiBanner || 0) + ' · igraonica ' + (+zt.upitiIgraonica || 0) : 'još nema tjednog unosa', 'ručni unos') +
+      kpi('Iz upita u ponudu', up28 ? Math.round(pon28 / up28 * 100) + ' %' : '–', pon28 + ' ponuda iz ' + up28 + ' upita u 28 dana', 'Parra i tjedni unos');
+
+    var poSt = {}; ponude.forEach(function (p) { (poSt[p.stanje] = poSt[p.stanje] || { n: 0, iznos: 0 }); poSt[p.stanje].n++; poSt[p.stanje].iznos += p.iznos || 0; });
+    var maxI = Math.max.apply(null, Object.keys(poSt).map(function (k) { return poSt[k].iznos; }).concat([1]));
+    $('#ponude').innerHTML = d.parra.spojeno ? Object.keys(NAZ).map(function (k) { var x = poSt[k] || { n: 0, iznos: 0 }; return traka(NAZ[k], x.iznos / maxI * 100, x.n + ' · ' + eur(x.iznos)); }).join('') +
+      (ponude.some(function (p) { return !p.isporuka_od; }) ? '<p class="napomena">Ponude bez datuma isporuke ne ulaze u kalendar: upiši datum u Parri.</p>' : '') : '<p class="prazno">Parra još nije spojena.</p>';
+
+    // sljedeća 4 vikenda
+    var sub = danas, wd = new Date(danas + 'T12:00:00Z').getUTCDay(); sub = P.dodajDane(danas, (6 - wd + 7) % 7);
+    var vik = [0, 1, 2, 3].map(function (i) { var s = P.dodajDane(sub, i * 7); return [s, P.dodajDane(s, 1)]; });
+    $('#vikendi').innerHTML = vik.map(function (v) {
+      var stv = d.narudzbe.filter(function (n) { return n.usluga === 'igraonica' && n.termin_od && ['otkazano', 'upit'].indexOf(n.stanje) < 0 && n.termin_od.slice(0, 10) >= v[0] && n.termin_od.slice(0, 10) <= v[1]; })
+        .map(function (n) { return n.sifra + (n.stanje === 'opcija' ? ' (opcija)' : ''); });
+      ponude.forEach(function (p) { if (p.usluga === 'igraonica' && p.isporuka_od && p.isporuka_od <= v[1] && (p.isporuka_do || p.isporuka_od) >= v[0]) stv.push('Parra ' + p.broj + (p.stanje === 'poslana' ? ' (poslana)' : '')); });
+      var chip = stv.length ? '<span class="chip pozor">zauzeto</span>' : '<span class="chip ok">slobodno</span>';
+      return '<div class="red-traka" style="grid-template-columns:110px minmax(0,1fr) auto"><span>' + P.datum(v[0]) + '–' + P.datum(v[1]) + '</span><span class="sitno" style="color:var(--ink-mid)">' + esc(stv.join(', ') || 'nema termina') + '</span>' + chip + '</div>';
+    }).join('');
+
+    $('#odgovor').innerHTML = stare.length ? stare.map(function (p) {
+      return '<div class="stavka-z"><div class="tijelo"><b>' + esc(p.broj) + (p.opis ? ' · ' + esc(p.opis) : '') + '</b><span class="sitno">poslana ' + P.datum(p.datum_ponude) + ' · prije ' + dana(p.datum_ponude) + ' dana · ' + eur(p.iznos) + '</span></div><span class="chip ' + esc(p.usluga) + '">' + (p.usluga === 'igraonica' ? 'Igraonica' : 'Šivanje') + '</span></div>';
+    }).join('') : '<p class="prazno">Nema ponuda koje čekaju odgovor dulje od 7 dana.</p>';
+
+    var zadnjih = tj.slice(-8), maxU = Math.max.apply(null, zadnjih.map(function (t) { return (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); }).concat([1]));
+    $('#upiti').innerHTML = zadnjih.length ? zadnjih.map(function (t) { var n = (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); return traka('tjedan od ' + P.datum(t.od), n / maxU * 100, n + ' (b ' + (+t.upitiBanner || 0) + ' · i ' + (+t.upitiIgraonica || 0) + ')'); }).join('') : '<p class="prazno">Još nema tjednog unosa.</p>';
+
+    var odjelAgenti = PL.AGENTI.filter(function (a) { return a.odjeli.indexOf('prodaja') >= 0; }).map(function (a) { return a.id; });
+    var VRSTA_PRODAJA = ['naplata', 'opcija', 'termin', 'rok', 'plan', 'sukob'];
+    var redovi = d.upozorenja.filter(function (u) { return VRSTA_PRODAJA.indexOf(u.vrsta) >= 0; }).map(function (u) { return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip kriticno">Upozorenje</span></div><span>' + esc(u.tekst) + '</span></div><a class="btn malo" href="/kalendar.html">Kalendar</a></div>'; })
+      .concat((st.odluke || []).filter(function (o) { return o.status === 'ceka' && odjelAgenti.indexOf(o.agent) >= 0; }).map(function (o) { return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip tamno">Odluka</span><span class="chip neutral">' + esc((PL.AG[o.agent] || {}).naziv || o.agent) + '</span></div><b>' + esc(o.naslov) + '</b></div><a class="btn malo" href="/#odluke">Odluči</a></div>'; }));
+    $('#zadaci').innerHTML = redovi.length ? redovi.join('') : '<p class="prazno">Ništa ne čeka tebe u Prodaji.</p>';
+  }).catch(function (e) { $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+})();
+</script>
