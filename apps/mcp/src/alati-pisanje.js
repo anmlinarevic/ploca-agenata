@@ -116,7 +116,7 @@ export const PISANJE = [
       const stari = await jedan(env, `SELECT * FROM zadaci WHERE tenant_id = ? AND id = ?`, ctx.tenantId, a.id);
       if (!stari) throw new Error('Zadatak ne postoji');
       if (!jeKoordinator(ctx) && stari.agent !== ctx.agent) throw new Error('Zadatak je dodijeljen drugom agentu');
-      const rezultat = tekst(a.rezultat, 'rezultat', 1000) ?? stari.rezultat;
+      const rezultat = tekst(a.rezultat, 'rezultat', 20000) ?? stari.rezultat;
       const poveznica = tekst(a.poveznica, 'poveznica', 500) ?? stari.poveznica;
       const sesija = tekst(a.sesija, 'sesija', 500) ?? stari.sesija;
       await env.DB.batch([

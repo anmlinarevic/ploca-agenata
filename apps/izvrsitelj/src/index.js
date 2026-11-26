@@ -2,7 +2,7 @@
  * a Cron ga budi ponedjeljkom. Posao ide u Queue (jedan po jedan), rezultat i trošak u D1.
  * Piše samo u `pokretanja`, `zadaci` (status izvođenja) i `audit_log`; sve ostalo agent radi kroz MCP. */
 import { AGENTI, LANCI } from '../../../packages/agenti/index.js';
-import { pokreniAgenta } from './agent.js';
+import { MAX_ZNAKOVA_ODGOVORA, pokreniAgenta, skrati } from './agent.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 const sada = () => new Date().toISOString();
@@ -41,7 +41,7 @@ async function zatvoriZadatak(env, tenant, zadatakId, status, rezultat) {
   if (!zadatakId) return;
   await env.DB.batch([
     env.DB.prepare(`UPDATE zadaci SET status = ?, rezultat = ?, version = version + 1 WHERE tenant_id = ? AND id = ?`)
-      .bind(status, (rezultat || '').slice(0, 1000), tenant, zadatakId),
+      .bind(status, skrati(rezultat || '', MAX_ZNAKOVA_ODGOVORA), tenant, zadatakId),
     nadzor(env, tenant, 'zadatak_izvrsen', 'zadaci', zadatakId, { status }),
   ]);
 }

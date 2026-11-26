@@ -33,6 +33,8 @@ if (faza === 'faza1') {
   let s = await stanje();
   const zad = s.zadaci.find((q) => q.id === z.id);
   ok(zad.status === 'gotovo' && zad.rezultat.includes('Sažetak'), 'zadatak je gotov s rezultatom agenta');
+  ok(zad.rezultat.endsWith('KRAJ SAŽETKA') && p1.rezultat.endsWith('KRAJ SAŽETKA'),
+    `dug rezultat agenta spremljen je cijeli, i u zadatku i u pokretanju (${zad.rezultat.length} znakova)`);
   ok(s.izvjestaji.some((x) => x.naslov === 'Konkurencija (test)' && x.agent === 'konkurencija'), 'izvještaj je spremljen kroz MCP');
   ok(s.konkurenti.find((k) => k.id === 'imemojemalo').napomena === 'Lažna provjera', 'registar konkurenata ažuriran kroz MCP');
   ok(s.potrosnja.potroseno > 0 && s.potrosnja.limit === 20, 'potrošnja i limit u sažetku');
