@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="hr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>Objave</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="poslovanje.css">
+<script src="ploca.js"></script>
+<style>
+/* Objave: Claude predlaže (MCP), vlasnik odobrava. Ništa ne ide van dok status nije „odobreno”. */
+main.omot { display: flex; flex-direction: column; gap: 28px; padding-block: 26px 60px; }
+.blok { display: flex; flex-direction: column; gap: 12px; }
+.blok > h2 { font-size: 24px; }
+.plan { padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.plan h3 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0; }
+.plan .tekst { white-space: pre-wrap; font-size: 14.6px; line-height: 1.55; color: var(--ink-mid); max-height: 22em; overflow: auto; margin: 0; }
+.redak { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filteri { display: flex; flex-wrap: wrap; gap: 8px; }
+.filteri button { min-height: 38px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--line); background: var(--white); color: var(--ink-mid); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.filteri button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.mreza-objava { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 18px; align-items: start; }
+.objava { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.mediji { background: #1f1b24; display: flex; justify-content: center; }
+.mediji video { display: block; width: 100%; max-height: 520px; aspect-ratio: 9 / 16; object-fit: contain; background: #1f1b24; }
+.slajdovi { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px; width: 100%; }
+.slajdovi img { flex: 0 0 82%; max-height: 480px; aspect-ratio: 9 / 16; object-fit: cover; scroll-snap-align: start; border-radius: 3px; background: #2c2832; }
+.tijelo { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+.tijelo h3 { font-family: var(--font-display); font-weight: 600; font-size: 18.5px; margin: 0; line-height: 1.25; overflow-wrap: anywhere; }
+.opis { white-space: pre-wrap; font-size: 14.4px; line-height: 1.5; background: var(--accent-soft); border-radius: 3px; padding: 10px 12px; margin: 0; overflow-wrap: anywhere; }
+.komentar { font-size: 14px; border-left: 3px solid var(--line-strong); padding: 4px 0 4px 10px; color: var(--ink-mid); white-space: pre-wrap; }
+details summary { cursor: pointer; font-size: 14px; color: var(--ink-mid); }
+details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: var(--ink-mid); margin: 8px 0 0; }
+.akcije { display: flex; flex-wrap: wrap; gap: 8px; }
+.forma-k { display: flex; flex-direction: column; gap: 8px; }
+.forma-k textarea, .forma-k input { width: 100%; border: 1px solid var(--line-strong); border-radius: 3px; padding: 9px 11px; font: inherit; font-size: 14.5px; }
+.forma-k textarea { min-height: 84px; resize: vertical; }
+.chip.ceka { background: #fbf0d9; color: #7a5200; }
+.chip.ai { background: #ece9ef; color: #3a3540; }
+.knj-veza { padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; text-decoration: none; color: inherit; }
+</style>
+
+<header class="zaglavlje">
+  <div class="omot">
+    <div class="red-zaglavlja">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span class="nadnaslov">Mreže i marketing · <span id="zakupac">objave</span></span>
+        <h1>Objave</h1>
+        <span class="sitno">Claude izrađuje tjedni plan i objave. Ništa ne ide van dok ga ne odobriš. Ako nešto treba promijeniti, vrati s komentarom; Claude ispravlja u sljedećoj sesiji.</span>
+      </div>
+      <a class="btn" href="/knjiznica.html">Knjižnica materijala</a>
+    </div>
+  </div>
+</header>
+
+<main class="omot">
+  <p class="poruka" id="poruka" aria-live="polite" style="margin:0"></p>
+
+  <section class="blok" aria-labelledby="h-plan">
+    <h2 id="h-plan">Plan tjedna</h2>
+    <div id="planovi"><p class="prazno">Učitavam…</p></div>
+  </section>
+
+  <section class="blok" aria-labelledby="h-objave">
+    <h2 id="h-objave">Objave</h2>
+    <div class="filteri" role="group" aria-label="Prikaži" id="filteri"></div>
+    <div class="mreza-objava" id="objave"></div>
+  </section>
+
+  <a class="kartica knj-veza" href="/knjiznica.html" id="knj-veza">
+    <span><b>Knjižnica materijala</b><br><span class="sitno" id="knj-opis">Snimke i fotografije koje Claude smije koristiti.</span></span>
+    <span class="btn malo">Učitaj snimke</span>
+  </a>
+</main>
+
+<script src="zajednicko.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = P.esc;
+  var TEN = null; try { TEN = localStorage.getItem('tenant'); } catch (e) {}
+  var podaci = { planovi: [], objave: [], knjiznica: { ukupno: 0, slobodno: 0 } };
+  var filter = 'ceka';
+  try { filter = sessionStorage.getItem('objave-filter') || 'ceka'; } catch (e) {}
+  var otvoreno = {}; // id → 'vrati' | 'odbaci' | 'objavljeno'
+
+  var STATUS = { ceka: ['Čeka tebe', 'ceka'], odobreno: ['Odobreno, za objaviti', 'ok'], vraceno: ['Vraćeno Claudeu', 'nepoznato'], odbaceno: ['Odbačeno', 'nepoznato'], objavljeno: ['Objavljeno', 'ok'] };
+  var SERIJA = { imena: 'Imena', 'iza-sava': 'Iza šava', proslave: 'Proslave', igraonica: 'Igraonica', ostalo: 'Ostalo' };
+  var KANAL = { tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook' };
+  var DANI = ['ned', 'pon', 'uto', 'sri', 'čet', 'pet', 'sub'];
+
+  function medij(k, preuzmi) {
+    var q = [];
+    if (TEN) q.push('tenant=' + encodeURIComponent(TEN));
+    if (preuzmi) q.push('preuzmi=' + encodeURIComponent(preuzmi));
+    return '/api/mediji/' + k.split('/').map(encodeURIComponent).join('/') + (q.length ? '?' + q.join('&') : '');
+  }
+  function termin(t) {
+    if (!t) return '';
+    var d = new Date(t); if (isNaN(d)) return '';
+    return DANI[d.getDay()] + ' ' + d.getDate() + '. ' + (d.getMonth() + 1) + '. u ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+  }
+  function poruka(t, v) { P.poruka($('#poruka'), t, v); }
+
+  function crtajPlanove() {
+    var pl = podaci.planovi, el = $('#planovi');
+    if (!pl.length) { el.innerHTML = '<p class="prazno">Još nema plana. Claude ga šalje u ponedjeljak ujutro.</p>'; return; }
+    var prikaz = pl.filter(function (p) { return p.status === 'ceka'; });
+    if (!prikaz.length) prikaz = [pl[0]];
+    el.innerHTML = prikaz.map(function (p) {
+      var st = p.status === 'ceka' ? ['Čeka tebe', 'ceka'] : p.status === 'odobreno' ? ['Odobren', 'ok'] : ['Vraćen Claudeu', 'nepoznato'];
+      var akc = '';
+      if (p.status === 'ceka') {
+        akc = otvoreno['p' + p.id] ? formaKomentara('p' + p.id, 'Što u planu treba promijeniti?', 'Vrati plan')
+          : '<div class="akcije"><button class="btn glavni" data-plan-odobri="' + esc(p.id) + '">Odobri plan</button><button class="btn" data-otvori="p' + esc(p.id) + '">Vrati s komentarom</button></div>';
+      }
+      return '<article class="kartica plan"><div class="redak"><span class="chip ' + st[1] + '">' + st[0] + '</span><span class="sitno">Tjedan ' + esc(p.tjedan) + '</span></div>' +
+        '<h3>' + esc(p.naslov) + '</h3><p class="tekst">' + esc(p.sazetak || '') + '</p>' +
+        (p.komentar ? '<div class="komentar">Tvoj komentar: ' + esc(p.komentar) + '</div>' : '') + akc + '</article>';
+    }).join('');
+  }
+
+  function formaKomentara(kljuc, placeholder, gumb, obavezno) {
+    return '<form class="forma-k" data-forma="' + esc(kljuc) + '"><label class="sitno" for="k-' + esc(kljuc) + '">' + esc(placeholder) + '</label>' +
+      '<textarea id="k-' + esc(kljuc) + '"></textarea><div class="akcije"><button class="btn glavni" type="submit">' + esc(gumb) + '</button>' +
+      '<button class="btn" type="button" data-zatvori="' + esc(kljuc) + '">Odustani</button></div></form>';
+  }
+
+  function broj(st) { return podaci.objave.filter(function (o) { return o.status === st; }).length; }
+  function crtajFiltere() {
+    var f = [['ceka', 'Čeka tebe', broj('ceka')], ['odobreno', 'Za objaviti', broj('odobreno')], ['vraceno', 'Vraćeno', broj('vraceno')], ['objavljeno', 'Objavljeno', broj('objavljeno')], ['sve', 'Sve', podaci.objave.length]];
+    $('#filteri').innerHTML = f.map(function (x) { return '<button type="button" data-filter="' + x[0] + '" aria-pressed="' + (filter === x[0]) + '">' + x[1] + ' (' + x[2] + ')</button>'; }).join('');
+  }
+
+  function karticaObjave(o) {
+    var st = STATUS[o.status] || [o.status, 'nepoznato'];
+    var med = o.vrsta === 'video' && o.mediji[0]
+      ? '<div class="mediji"><video controls playsinline preload="metadata" src="' + esc(medij(o.mediji[0].kljuc)) + '"></video></div>'
+      : '<div class="mediji"><div class="slajdovi">' + o.mediji.map(function (m, i) { return '<img loading="lazy" alt="Slajd ' + (i + 1) + '" src="' + esc(medij(m.kljuc)) + '">'; }).join('') + '</div></div>';
+    var meta = '<div class="redak"><span class="chip ' + st[1] + '">' + st[0] + '</span><span class="chip">' + esc(KANAL[o.kanal] || o.kanal) + '</span>' +
+      (o.serija ? '<span class="chip">' + esc(SERIJA[o.serija] || o.serija) + '</span>' : '') +
+      (o.aiOznaka ? '<span class="chip ai" title="Pri objavi uključi TikTokovu oznaku AI-generated">Uključi oznaku AI</span>' : '') + '</div>';
+    var kad = o.status === 'objavljeno' ? 'Objavljeno ' + termin(o.objavljenoAt) : o.termin ? 'Predloženo: ' + termin(o.termin) : '';
+    var akc = '';
+    if (o.status === 'ceka') {
+      akc = otvoreno[o.id] === 'vrati' ? formaKomentara(o.id, 'Što treba promijeniti?', 'Vrati Claudeu')
+        : otvoreno[o.id] === 'odbaci' ? formaKomentara(o.id, 'Zašto odbacuješ? (nije obavezno)', 'Odbaci objavu')
+        : '<div class="akcije"><button class="btn glavni" data-odobri="' + esc(o.id) + '">Odobri</button><button class="btn" data-vrati="' + esc(o.id) + '">Vrati s komentarom</button><button class="btn malo opasno" data-odbaci="' + esc(o.id) + '">Odbaci</button></div>';
+    } else if (o.status === 'odobreno') {
+      var ext = function (m) { return (m.kljuc.split('.').pop() || 'mp4'); };
+      var preuzmi = o.mediji.map(function (m, i) {
+        var ime = (o.serija || 'objava') + '-' + o.id + (o.mediji.length > 1 ? '-' + (i + 1) : '') + '.' + ext(m);
+        return '<a class="btn" href="' + esc(medij(m.kljuc, ime)) + '">' + (o.vrsta === 'video' ? 'Preuzmi video' : 'Slajd ' + (i + 1)) + '</a>';
+      }).join('');
+      akc = (otvoreno[o.id] === 'objavljeno'
+        ? '<form class="forma-k" data-objavljeno="' + esc(o.id) + '"><label class="sitno" for="pov-' + esc(o.id) + '">Poveznica na objavu (nije obavezno)</label><input id="pov-' + esc(o.id) + '" type="url" placeholder="https://www.tiktok.com/@…"><div class="akcije"><button class="btn glavni" type="submit">Potvrdi</button><button class="btn" type="button" data-zatvori="' + esc(o.id) + '">Odustani</button></div></form>'
+        : '<div class="akcije">' + preuzmi + '<button class="btn" data-kopiraj="' + esc(o.id) + '">Kopiraj opis</button><button class="btn glavni" data-objavio="' + esc(o.id) + '">Označi kao objavljeno</button></div>');
+    } else if (o.status === 'vraceno') {
+      akc = '<span class="sitno">Čeka da Claude ispravi prema tvom komentaru.</span>';
+    } else if (o.status === 'objavljeno' && o.poveznica) {
+      akc = '<a href="' + esc(o.poveznica) + '" target="_blank" rel="noopener">Otvori objavu</a>';
+    }
+    return '<article class="kartica objava" id="o-' + esc(o.id) + '">' + med + '<div class="tijelo">' + meta +
+      '<h3>' + esc(o.naslov) + '</h3>' + (kad ? '<span class="sitno">' + esc(kad) + (o.izmjena > 1 ? ' · ispravljeno (' + o.izmjena + '. inačica)' : '') + '</span>' : (o.izmjena > 1 ? '<span class="sitno">Ispravljeno (' + o.izmjena + '. inačica)</span>' : '')) +
+      '<p class="opis">' + esc(o.opis) + '</p>' +
+      (o.komentar ? '<div class="komentar">Tvoj komentar: ' + esc(o.komentar) + '</div>' : '') +
+      (o.scenarij ? '<details><summary>Scenarij i kadrovi</summary><pre>' + esc(o.scenarij) + '</pre></details>' : '') +
+      akc + '</div></article>';
+  }
+
+  function crtajObjave() {
+    crtajFiltere();
+    var lista = podaci.objave.filter(function (o) { return filter === 'sve' || o.status === filter; });
+    if (filter === 'objavljeno' || filter === 'sve') lista = lista.slice().reverse();
+    $('#objave').innerHTML = lista.length ? lista.map(karticaObjave).join('')
+      : '<p class="prazno">' + (filter === 'ceka' ? 'Nijedna objava ne čeka. Claude šalje nove ponedjeljkom i srijedom ujutro.' : 'Nema objava s ovim statusom.') + '</p>';
+  }
+  function crtaj() {
+    crtajPlanove(); crtajObjave();
+    var k = podaci.knjiznica;
+    $('#knj-opis').textContent = k.ukupno ? k.ukupno + ' u knjižnici, od toga ' + k.slobodno + ' smije u objave.' : 'Još je prazna. Učitaj snimke šivanja i fotografije s mobitela.';
+  }
+  function ucitaj() { return P.api('GET', '/api/objave').then(function (d) { podaci = d; crtaj(); }); }
+
+  function posalji(put, tijelo, uspjeh) {
+    return P.api('POST', put, tijelo).then(function () { poruka(uspjeh, 'ok'); return ucitaj(); })
+      .catch(function (e) { poruka(e.message, 'greska'); return ucitaj().catch(function () {}); });
+  }
+  function nadji(id) { return podaci.objave.filter(function (o) { return o.id === id; })[0]; }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var d = b.dataset;
+    if (d.filter) { filter = d.filter; try { sessionStorage.setItem('objave-filter', filter); } catch (er) {} crtajObjave(); return; }
+    if (d.odobri) { var o = nadji(d.odobri); b.disabled = true; posalji('/api/objave/' + d.odobri + '/odluka', { status: 'odobreno', version: o && o.version }, 'Odobreno. Objava je pod „Za objaviti”.'); return; }
+    if (d.vrati) { otvoreno[d.vrati] = 'vrati'; crtajObjave(); var t = document.getElementById('k-' + d.vrati); if (t) t.focus(); return; }
+    if (d.odbaci) { otvoreno[d.odbaci] = 'odbaci'; crtajObjave(); return; }
+    if (d.objavio) { otvoreno[d.objavio] = 'objavljeno'; crtajObjave(); var p = document.getElementById('pov-' + d.objavio); if (p) p.focus(); return; }
+    if (d.otvori) { otvoreno[d.otvori] = 'vrati'; crtajPlanove(); var tp = document.getElementById('k-' + d.otvori); if (tp) tp.focus(); return; }
+    if (d.zatvori) { delete otvoreno[d.zatvori]; crtaj(); return; }
+    if (d.planOdobri) { b.disabled = true; posalji('/api/planovi-objava/' + d.planOdobri + '/odluka', { status: 'odobreno' }, 'Plan je odobren.'); return; }
+    if (d.kopiraj) {
+      var ob = nadji(d.kopiraj); if (!ob) return;
+      (navigator.clipboard ? navigator.clipboard.writeText(ob.opis) : Promise.reject()).then(function () { poruka('Opis je kopiran. Zalijepi ga u TikTok.', 'ok'); })
+        .catch(function () { poruka('Kopiranje nije uspjelo. Označi tekst opisa i kopiraj ga ručno.', 'greska'); });
+    }
+  });
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (f.dataset.forma) {
+      e.preventDefault();
+      var kljuc = f.dataset.forma, tekst = f.querySelector('textarea').value.trim();
+      if (kljuc.charAt(0) === 'p') {
+        if (tekst.length < 3) { poruka('Napiši što u planu treba promijeniti.', 'greska'); return; }
+        delete otvoreno[kljuc];
+        posalji('/api/planovi-objava/' + kljuc.slice(1) + '/odluka', { status: 'vraceno', komentar: tekst }, 'Plan je vraćen Claudeu s tvojim komentarom.');
+        return;
+      }
+      var nacin = otvoreno[kljuc], o = nadji(kljuc);
+      if (nacin === 'vrati' && tekst.length < 3) { poruka('Napiši što treba promijeniti.', 'greska'); return; }
+      delete otvoreno[kljuc];
+      posalji('/api/objave/' + kljuc + '/odluka', { status: nacin === 'odbaci' ? 'odbaceno' : 'vraceno', komentar: tekst, version: o && o.version },
+        nacin === 'odbaci' ? 'Objava je odbačena.' : 'Vraćeno Claudeu s tvojim komentarom.');
+    } else if (f.dataset.objavljeno) {
+      e.preventDefault();
+      var id = f.dataset.objavljeno, pov = f.querySelector('input').value.trim();
+      delete otvoreno[id];
+      posalji('/api/objave/' + id + '/objavljeno', { poveznica: pov }, 'Označeno kao objavljeno.');
+    }
+  });
+
+  ucitaj().catch(function (e) { $('#planovi').innerHTML = ''; poruka(e.message, 'greska'); });
+})();
+</script>

@@ -43,7 +43,7 @@
     { id: 'analiticar', kod: 'AM', naziv: 'Analitičar mreža', odjeli: ['mreze'], vrsta: 'pravila', opis: 'Brojke s Instagrama i Facebooka i zaključci iz njih. Za sad izračun ploče; tjedni sažetak agenta dolazi kasnije.' },
     { id: 'upiti', kod: 'UP', naziv: 'Upiti', odjeli: ['prodaja'], vrsta: 'planiran', opis: 'Broji upite iz Gmaila i poruka. Kreće kad se spoji Gmail.' },
     { id: 'trendovi', kod: 'TR', naziv: 'Trendovi', odjeli: ['mreze'], vrsta: 'planiran', opis: 'Što raste kod sličnih računa.' },
-    { id: 'kreator', kod: 'KS', naziv: 'Kreator sadržaja', odjeli: ['mreze'], vrsta: 'planiran', opis: 'Ideje i kratki videi iz konfiguratora.' },
+    { id: 'kreator', kod: 'KS', naziv: 'Kreator objava', odjeli: ['mreze'], vrsta: 'planiran', opis: 'Claude u zakazanim sesijama izrađuje tjedni plan i objave za TikTok; ti ih odobravaš na stranici Objave.' },
     { id: 'financije', kod: 'FI', naziv: 'Financije', odjeli: ['financije', 'uprava'], vrsta: 'planiran', opis: 'Troškovi s izvoda banke, dobit i marža. Kreće kad se spoje izvodi.' },
     { id: 'web', kod: 'RS', naziv: 'Razvoj stranice', odjeli: ['web'], vrsta: 'planiran', opis: 'Prijedlozi izmjena stranice kao pull request.' }
   ];
@@ -59,8 +59,8 @@
       if (h === 'napredak') return 'mreze';
       return 'pregled';
     }
-    var m = { '/prodaja.html': 'prodaja', '/skladiste.html': 'proizvodnja', '/mreze.html': 'mreze', '/financije.html': 'financije', '/web.html': 'web', '/kalendar.html': 'kalendar', '/izvori.html': 'izvori' };
-    return m[p] || '';
+    var m = { '/prodaja.html': 'prodaja', '/skladiste.html': 'proizvodnja', '/mreze.html': 'mreze', '/objave.html': 'mreze', '/knjiznica.html': 'mreze', '/financije.html': 'financije', '/web.html': 'web', '/kalendar.html': 'kalendar', '/izvori.html': 'izvori' };
+    return m[p] || m[p + '.html'] || ''; // hosting skida .html (/mreze.html → /mreze)
   }
   function crtaj() {
     var a = aktivno();

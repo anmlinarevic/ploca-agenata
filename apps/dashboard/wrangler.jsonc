@@ -25,6 +25,8 @@
   // Pokretanje agenata: izvršitelj nema javnu adresu, dashboard ga zove preko service bindinga.
   // Secret INTERNI_KLJUC mora biti isti kao na izvršitelju: npx wrangler secret put INTERNI_KLJUC
   "services": [{ "binding": "EXEC", "service": "ploca-izvrsitelj" }],
+  // Mediji objava i knjižnica materijala (isti bucket kao na MCP-u, EU): npx wrangler r2 bucket create ploca-mediji --jurisdiction eu
+  "r2_buckets": [{ "binding": "MEDIJI", "bucket_name": "ploca-mediji", "jurisdiction": "eu" }],
   // Diktiranje u razgovoru s koordinatorom: Whisper preko Workers AI (/api/diktat). I lokalno zove Cloudflare (sitan trošak).
   "ai": { "binding": "AI", "remote": true },
   // Postavke prijave (nisu tajne). Moraju biti ovdje, inače ih deploy briše iz nadzorne ploče.

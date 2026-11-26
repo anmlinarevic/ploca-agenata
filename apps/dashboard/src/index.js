@@ -3,6 +3,7 @@
  * a koordinator ga daje agentima. To je ovdje, ne u MCP-u. */
 import { korisnik } from './auth.js';
 import { apiPoslovanje } from './poslovanje.js';
+import { apiObjave, posluziMedij, ucitajUKnjiznicu } from './objave.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 import { metaPodesena, sinkronizirajMetu } from '../../../packages/poslovanje/meta.js';
 import { gscNaRedu, sinkronizirajGsc } from '../../../packages/poslovanje/gsc.js';
@@ -33,7 +34,7 @@ const dnevnik = (env, tenant, sto) =>
 /** Oblik dokumenata isti je kao u staroj ploči (camelCase), pa front-end ostaje gotovo isti. */
 async function stanje(env, t) {
   const mjesecOd = `${new Date().toISOString().slice(0, 7)}-01T00:00:00.000Z`;
-  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed, poAgentu, pristupi] = await Promise.all([
+  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed, poAgentu, pristupi, objaveCeka] = await Promise.all([
     all(env, `SELECT * FROM odluke WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM zadaci WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM tjedni WHERE tenant_id = ? ORDER BY tjedan`, t),
@@ -49,9 +50,14 @@ async function stanje(env, t) {
     one(env, `SELECT postavke_json FROM tenants WHERE id = ?`, t),
     all(env, `SELECT agent, COUNT(*) AS n, COALESCE(SUM(trosak_usd), 0) AS usd, MAX(kreirano) AS zadnje FROM pokretanja WHERE tenant_id = ? AND kreirano >= ? GROUP BY agent`, t, mjesecOd),
     all(env, `SELECT * FROM pristupi WHERE tenant_id = ? AND (status = 'otvoreno' OR rijeseno >= ?) ORDER BY kreirano DESC`, t, mjesecOd),
+    one(env, `SELECT (SELECT COUNT(*) FROM objave WHERE tenant_id = ?1 AND status = 'ceka') AS objave,
+                     (SELECT COUNT(*) FROM planovi_objava WHERE tenant_id = ?1 AND status = 'ceka') AS planovi,
+                     (SELECT COUNT(*) FROM objave WHERE tenant_id = ?1 AND status = 'odobreno') AS zaObjaviti,
+                     (SELECT MIN(kreirano) FROM objave WHERE tenant_id = ?1 AND status = 'ceka') AS najstarija`, t),
   ]);
   const post = parse(tenantRed?.postavke_json) || {};
   return {
+    objave: { ceka: objaveCeka.objave, planoviCeka: objaveCeka.planovi, zaObjaviti: objaveCeka.zaObjaviti, najstarija: objaveCeka.najstarija },
     potrosnja: { mjesec: mjesecOd.slice(0, 7), potroseno: Math.round(potrosnja.s * 100) / 100, limit: Number.isFinite(+post.limit_usd) ? +post.limit_usd : 20, raspored: post.raspored === true,
       poAgentu: Object.fromEntries(poAgentu.map((x) => [x.agent, { pokretanja: x.n, usd: Math.round(x.usd * 100) / 100, zadnje: x.zadnje }])) },
     pokretanja: pokretanja.map((p) => ({
@@ -109,7 +115,16 @@ async function api(request, env, u, tenant, putanja) {
 
   if (m === 'GET' && putanja === '/api/stanje') return json({ tenant, ...(await stanje(env, tenant)) });
 
+  // Učitavanje u knjižnicu: tijelo je datoteka, ne JSON (zato prije čitanja tijela).
+  if (m === 'PUT' && putanja === '/api/knjiznica/datoteka') {
+    return ucitajUKnjiznicu(request, env, u, tenant, new URL(request.url), { json, greska, audit, dnevnik, novi, sada });
+  }
+
   const body = m === 'GET' ? {} : await request.json().catch(() => ({}));
+
+  // Objave (Claude predlaže preko MCP-a, ovdje se odobravaju) i knjižnica materijala
+  const obj = await apiObjave(request, env, u, tenant, putanja, body, { json, greska, audit, dnevnik, novi, sada });
+  if (obj) return obj;
 
   // Narudžbe, kalendar, skladište i norme (faza B)
   const posl = await apiPoslovanje(request, env, u, tenant, putanja, body, { json, greska, audit, dnevnik, novi, sada });
@@ -310,11 +325,13 @@ export default {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
-    // Zaštita od CSRF-a: pisanje samo JSON-om i samo s istog izvora.
+    // Zaštita od CSRF-a: pisanje samo JSON-om i samo s istog izvora. Iznimka je učitavanje datoteke u knjižnicu,
+    // koje mora imati vlastito zaglavlje (drugi izvor ga ne može poslati bez CORS dopuštenja, a njega nema).
     if (request.method !== 'GET') {
       const origin = request.headers.get('origin');
       if (origin && new URL(origin).host !== url.host) return greska('Zabranjeno', 403);
-      if (!(request.headers.get('content-type') || '').includes('application/json')) return greska('Očekivan JSON', 415);
+      const ucitavanje = request.method === 'PUT' && url.pathname === '/api/knjiznica/datoteka' && request.headers.get('x-ploca-ucitavanje') === '1';
+      if (!ucitavanje && !(request.headers.get('content-type') || '').includes('application/json')) return greska('Očekivan JSON', 415);
     }
 
     const u = await korisnik(request, env);
@@ -329,12 +346,14 @@ export default {
     // Zakupac: vlasnik samo svoj; savjetnik bira (zaglavlje X-Tenant).
     let tenant = u.tenant_id;
     if (u.uloga === 'savjetnik') {
-      tenant = request.headers.get('x-tenant') || tenanti[0]?.id;
+      // <video src> ne šalje zaglavlja, pa mediji nose zakupca u adresi (?tenant=).
+      tenant = request.headers.get('x-tenant') || url.searchParams.get('tenant') || tenanti[0]?.id;
       if (!tenanti.some((t) => t.id === tenant)) return greska('Nepoznat zakupac', 404);
     }
     if (!tenant) return greska('Korisnik nema zakupca', 403);
 
     try {
+      if (request.method === 'GET' && url.pathname.startsWith('/api/mediji/')) return await posluziMedij(request, env, tenant, url);
       return await api(request, env, u, tenant, url.pathname);
     } catch (e) {
       return greska(String(e.message || e), 400);

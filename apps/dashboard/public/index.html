@@ -1123,6 +1123,10 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     (S.pristupi || []).filter(function (p) { return p.status === 'otvoreno'; }).forEach(function (p) {
       out.push({ vrsta: 'pristup', odjel: p.agent ? odjelAg(p.agent) : 'uprava', agent: p.agent || 'koordinator', naslov: 'Daj pristup: ' + p.sto, opis: (p.zasto || '') + (p.kako ? '\nKako: ' + p.kako : ''), kad: p.kreirano, pristupId: p.id });
     });
+    // objave i tjedni plan koje je izradio Claude: odobrava samo vlasnik
+    var ob = S.objave || {};
+    if (ob.ceka || ob.planoviCeka) out.push({ vrsta: 'zaTebe', odjel: 'mreze', agent: 'kreator', naslov: 'Odobri objave: ' + [ob.planoviCeka ? 'plan tjedna' : '', ob.ceka ? brojStavki(ob.ceka, 'objava', 'objave', 'objava') : ''].filter(Boolean).join(' i '), opis: 'Claude je izradio objave. Ništa ne ide van dok ih ne odobriš ili vratiš s komentarom.', kad: ob.najstarija, link: '/objave.html', gumb: 'Objave' });
+    if (ob.zaObjaviti) out.push({ vrsta: 'zaTebe', odjel: 'mreze', agent: 'kreator', naslov: 'Objavi odobreno na TikToku: ' + brojStavki(ob.zaObjaviti, 'objava', 'objave', 'objava'), opis: 'Preuzmi video, kopiraj opis i objavi u aplikaciji, pa označi kao objavljeno.', link: '/objave.html', gumb: 'Objave' });
     // zadaci koji nisu uspjeli ili čekaju pokretanje
     (S.zadaci || []).forEach(function (z) {
       var st = stanjeZad(z);

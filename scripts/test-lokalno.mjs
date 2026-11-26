@@ -53,6 +53,7 @@ const izdaj = (agent, pepper) => {
 const tKoord = izdaj('koordinator', pepperTest);
 const tKonk = izdaj('konkurencija', pepperTest);
 const tSeo = izdaj('seo', pepperTest);
+const tKreator = izdaj('kreator', pepperTest);
 const agentTokeni = { piccolini: Object.fromEntries(['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno'].map((a) => [a, izdaj(a, pepperMcp)])) };
 
 const korisnik = (...a) => spawnSync('node', ['scripts/novi-korisnik.mjs', ...a], { encoding: 'utf8' }).stdout;
@@ -100,6 +101,7 @@ if ((await cekaj(M_URL + '/health')) && (await cekaj(P_URL + '/')) && (await cek
     || node('scripts/parra-test.mjs', { URL: P_URL, PARRA: 'http://localhost:8791' })
     || node('scripts/meta-test.mjs', { URL: P_URL, META: 'http://localhost:8792' })
     || node('scripts/gsc-test.mjs', { URL: P_URL, GSC: 'http://localhost:8793' })
+    || node('scripts/objave-test.mjs', { URL: P_URL, MCP: M_URL, TOKEN_KREATOR: tKreator, TOKEN_KONK: tKonk })
     || node('scripts/izvrsitelj-test.mjs', { URL: P_URL, MCP: M_URL, TOKEN: tKoord }, ['faza1']);
   if (kod === 0) {
     writeFileSync('tenants/piccolini/token-test-limit.sql',
