@@ -16,6 +16,8 @@
       "database_id": "62f241b2-5223-4c6e-94cc-4079f48b0c71",
       "migrations_dir": "../../packages/db/migrations"
     }
-  ]
+  ],
+  // Mediji objava (videi, slajdovi, knjižnica). Isti bucket kao na dashboardu: npx wrangler r2 bucket create ploca-mediji --jurisdiction eu
+  "r2_buckets": [{ "binding": "MEDIJI", "bucket_name": "ploca-mediji", "jurisdiction": "eu" }]
   // Secret (ne ide u repozitorij): npx wrangler secret put TOKEN_PEPPER
 }

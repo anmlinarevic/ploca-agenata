@@ -2,8 +2,9 @@
  * Zakupac i agent dolaze isključivo iz tokena; tenant_id se nikad ne čita iz zahtjeva. */
 import { TOOLS as CITANJE, pozoviAlat } from './alati.js';
 import { PISANJE } from './alati-pisanje.js';
+import { OBJAVE, prijenos } from './alati-objave.js';
 
-const TOOLS = [...CITANJE, ...PISANJE];
+const TOOLS = [...CITANJE, ...PISANJE, ...OBJAVE];
 
 const PROTOCOL = '2025-03-26';
 const json = (obj, status = 200) =>
@@ -34,10 +35,14 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/health') return json({ ok: true });
+    // Jednokratne adrese za medije objava: token u adresi zamjenjuje Bearer (izdaju ih zatrazi_ucitavanje i zatrazi_preuzimanje).
+    const pr = /^\/(ucitaj|preuzmi)\/([\w-]{40,})$/.exec(url.pathname);
+    if (pr) return prijenos(request, env, pr[1] === 'ucitaj' ? 'gore' : 'dolje', pr[2]);
     if (url.pathname !== '/mcp') return new Response('Not found', { status: 404 });
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { allow: 'POST' } });
 
     const ctx = await autentificiraj(request, env);
+    if (ctx) ctx.origin = url.origin;
     if (!ctx) return new Response('Unauthorized', { status: 401, headers: { 'www-authenticate': 'Bearer' } });
 
     let msg;
