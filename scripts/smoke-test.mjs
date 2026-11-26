@@ -56,6 +56,18 @@ if (odobrene.length) {
   ok(r.podaci?.status === 'gotovo', 'odobrena odluka se izvršava');
 }
 
+// --- koordinator raspoređuje posao (samo odbijanja: valjan zadatak bi se kasnije sam pokrenuo i pomaknuo brojke testova) ---
+ok((await poziv('zadaj_zadatak', { agent: 'sadrzaj', opis: 'Napiši nacrt teksta za FAQ o vješanju.' }, TOKEN_KONK)).greska?.includes('ne dopušta'), 'zadaj_zadatak nije dopušten agentu');
+ok((await poziv('zadaj_zadatak', { agent: 'sadrzaj', opis: 'kratko' })).greska?.includes('prekratak'), 'prekratak opis zadatka se odbija');
+ok((await poziv('zadaj_zadatak', { agent: 'koordinator', opis: 'Napiši nacrt teksta za FAQ o vješanju.' })).greska, 'koordinator ne zadaje sam sebi');
+ok((await poziv('zadaj_zadatak', { agent: 'sadrzaj', opis: 'Napiši nacrt teksta za FAQ o vješanju.', odluka_id: otvorene[0].id })).greska?.includes('nije odobrena'), 'zadatak uz neodobrenu odluku se odbija');
+const pr1 = (await poziv('zatrazi_pristup', { sto: 'Test pristup (smoke)', zasto: 'test', kako: 'koraci' })).podaci;
+ok(pr1?.id && pr1.status === 'otvoreno', 'zatrazi_pristup zapisuje zahtjev');
+ok((await poziv('zatrazi_pristup', { sto: 'test PRISTUP (smoke)', zasto: 'opet' })).podaci?.vec_postoji === true, 'isti otvoreni zahtjev se ne ponavlja');
+ok((await poziv('dohvati_pristupe')).podaci.some((p) => p.id === pr1.id), 'dohvati_pristupe');
+ok(Array.isArray((await poziv('dohvati_zadatke', { otvoreni: true })).podaci), 'dohvati_zadatke');
+ok((await poziv('azuriraj_odluku_izvrsenje', { id: 'o6', status: 'u_izradi', ceka_tebe: 'x' })).greska?.includes('nije odobrena'), 'ceka_tebe samo na odobrenoj odluci');
+
 // --- ostalo ---
 ok((await poziv('upisi_mjesecno', { mjesec: '2026-12', aiSpominjanja: 3, aiPitanja: 12 })).podaci?.ai_spominjanja === 3, 'upisi_mjesecno');
 ok((await poziv('upisi_mjesecno', { mjesec: '2026-12', gscKlikovi: 40 })).podaci?.ai_spominjanja === 3, 'upisi_mjesecno čuva ostala polja');

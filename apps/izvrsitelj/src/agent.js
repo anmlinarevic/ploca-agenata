@@ -15,10 +15,12 @@ const MAX_VRIJEME_MS = 12 * 60 * 1000; // consumer ima ograničenje od 15 minuta
 
 const tekstOdgovora = (content) => content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
 
-/** @returns {Promise<{status, rezultat, greska, koraka, zbroj, trosak, model}>} */
-export async function pokreniAgenta({ env, definicija, token, zadatak, preostaloUsd, danas, nazivZakupca }) {
-  const model = env.MODEL || 'claude-sonnet-5-5';
-  const c = cijene(env);
+/** `poruke`: početni razgovor (npr. zadnje poruke vlasnika i koordinatora); bez njega je jedina poruka `zadatak`.
+ * @returns {Promise<{status, rezultat, greska, koraka, zbroj, trosak, model}>} */
+export async function pokreniAgenta({ env, definicija, token, zadatak, poruke: pocetne, preostaloUsd, danas, nazivZakupca }) {
+  const model = definicija.model || env.MODEL || 'claude-sonnet-5-5';
+  const effort = definicija.effort || env.EFFORT || 'medium';
+  const c = cijene(env, model);
   const zbroj = prazanZbroj();
   const izlaz = (status, rezultat, greska, koraka) => ({ status, rezultat, greska, koraka, zbroj, trosak: usd(zbroj, c), model });
 
@@ -31,7 +33,9 @@ export async function pokreniAgenta({ env, definicija, token, zadatak, preostalo
   if (web === true || web === 'dohvat') alati.push({ type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 20 });
 
   const system = `${PREAMBULA}\n\n${definicija.prompt}\n\nDanas je ${danas}. Klijent: ${nazivZakupca}.`;
-  const poruke = [{ role: 'user', content: zadatak }];
+  const poruke = pocetne?.length ? [...pocetne] : [{ role: 'user', content: zadatak }];
+  // Ako model odbije zahtjev, API ga sam ponovi na rezervnom modelu (server-side fallback). FALLBACKS=ne isključuje.
+  const rezerva = env.FALLBACKS === 'ne' ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' };
   const pocetak = Date.now();
   const maxKoraka = definicija.maxKoraka || 15;
 
@@ -41,14 +45,15 @@ export async function pokreniAgenta({ env, definicija, token, zadatak, preostalo
 
     let odgovor;
     try {
-      odgovor = await klijent.messages.create({
+      odgovor = await klijent.beta.messages.create({
         model,
         max_tokens: 16000,
         system,
         tools: alati,
         messages: poruke,
         cache_control: { type: 'ephemeral' }, // petlja šalje sve duži prefiks: čitanje iz cachea je jeftino
-        output_config: { effort: env.EFFORT || 'medium' },
+        output_config: { effort },
+        ...rezerva,
       });
     } catch (e) {
       const poruka = e instanceof Anthropic.APIError ? `API ${e.status ?? ''}: ${e.message}` : String(e.message || e);

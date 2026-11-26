@@ -13,7 +13,7 @@ const odgovor = (content, stop_reason, usage) => ({
 
 // Po jednoj karakterističnoj frazi iz uputa agenta
 const AGENTI = [
-  ['konkurencija', 'praćenje konkurencije'], ['koordinator', 'koordinator marketinga'], ['seo', 'SEO agent obrta'],
+  ['konkurencija', 'praćenje konkurencije'], ['koordinator', 'Vlasnik razgovara samo s tobom'], ['seo', 'SEO agent obrta'],
   ['ai', 'agent za AI vidljivost'], ['sadrzaj', 'agent za sadržaj obrta'], ['lokalno', 'agent za lokalni marketing'], ['oglasi', 'agent za oglase'],
 ];
 const koji = (telo) => {
@@ -40,6 +40,21 @@ function scenarij(telo, agent) {
       { input_tokens: 3000, output_tokens: 300, cache_read_input_tokens: 24000, server_tool_use: { web_search_requests: 2 } });
   }
   if (agent === 'koordinator') {
+    const sve = JSON.stringify(telo.messages);
+    // razgovor s vlasnikom: daje zadatak Sadržaju i traži pristup koji fali
+    if (sve.includes('Razgovor na ploči')) {
+      if (korak === 1) return odgovor([
+        tool('r1', 'zadaj_zadatak', { agent: 'sadrzaj', opis: 'Napiši nacrt vodiča „Poklon za krštenje” (test) i spremi ga kao izvještaj s naslovom „Nacrt vodiča: test”.' }),
+        tool('r2', 'zatrazi_pristup', { sto: 'GitHub token samo za pull request (test)', zasto: 'Bez njega nijedan agent ne može predložiti izmjenu stranice.', kako: 'Napravi fine-grained token za repozitorij stranice.' }),
+      ], 'tool_use', { input_tokens: 4000, output_tokens: 300 });
+      return odgovor([{ type: 'text', text: 'Dao sam Sadržaju da napiše nacrt; javit ću kad bude gotov. Za izmjene stranice treba GitHub pristup.' }], 'end_turn', { input_tokens: 1500, output_tokens: 80 });
+    }
+    // odobrena odluka: daje je Sadržaju uz odluka_id
+    const odl = /odluka_id: ([\w-]+)/.exec(sve);
+    if (odl && sve.includes('Vlasnik je odobrio odluku')) {
+      if (korak === 1) return odgovor([tool('o1', 'zadaj_zadatak', { agent: 'sadrzaj', opis: 'Izvrši odobrenu odluku (test): napiši tekst i spremi ga kao izvještaj.', odluka_id: odl[1] })], 'tool_use', { input_tokens: 3000, output_tokens: 200 });
+      return odgovor([{ type: 'text', text: 'Sadržaj izvršava odluku.' }], 'end_turn', { input_tokens: 1000, output_tokens: 40 });
+    }
     if (korak === 1) return odgovor([tool('k1', 'izvezi_ploca', {})], 'tool_use', { input_tokens: 5000, output_tokens: 200 });
     if (korak === 2) return odgovor([tool('k2', 'spremi_izvjestaj', { naslov: 'Tjedni pregled (test)', tijelo: '## Za odluku\nNema.' })], 'tool_use', { input_tokens: 3000, output_tokens: 600 });
     return odgovor([{ type: 'text', text: 'Za odluku: nema.' }], 'end_turn', { input_tokens: 2000, output_tokens: 100 });
@@ -71,6 +86,7 @@ http.createServer((req, res) => {
       const telo = JSON.parse(tijelo);
       const agent = koji(telo);
       zahtjevi.push({ agent, model: telo.model, alati: (telo.tools || []).map((t) => t.name), cache: !!telo.cache_control, effort: telo.output_config?.effort,
+        fallbacks: telo.fallbacks, beta: req.headers['anthropic-beta'] || null,
         poruka: telo.messages.length, zadnjaPoruka: telo.messages[telo.messages.length - 1] });
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify(scenarij(telo, agent)));

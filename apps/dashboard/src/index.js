@@ -1,5 +1,6 @@
 /* Dashboard: statični front-end (public/) + API (/api/*) iznad iste D1 baze kao MCP.
- * Čovjek je jedini koji odobrava odluke, upisuje tjedne i zadaje zadatke; to je ovdje, ne u MCP-u. */
+ * Čovjek je jedini koji odobrava odluke i upisuje tjedne; posao zadaje porukom koordinatoru (/api/razgovor),
+ * a koordinator ga daje agentima. To je ovdje, ne u MCP-u. */
 import { korisnik } from './auth.js';
 import { apiPoslovanje } from './poslovanje.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
@@ -29,7 +30,7 @@ const dnevnik = (env, tenant, sto) =>
 /** Oblik dokumenata isti je kao u staroj ploči (camelCase), pa front-end ostaje gotovo isti. */
 async function stanje(env, t) {
   const mjesecOd = `${new Date().toISOString().slice(0, 7)}-01T00:00:00.000Z`;
-  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed, poAgentu] = await Promise.all([
+  const [odluke, zadaci, tjedni, mjesecno, faze, stavke, aktivnost, konkurenti, pokretanja, izvjestaji, potrosnja, tenantRed, poAgentu, pristupi] = await Promise.all([
     all(env, `SELECT * FROM odluke WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM zadaci WHERE tenant_id = ?`, t),
     all(env, `SELECT * FROM tjedni WHERE tenant_id = ? ORDER BY tjedan`, t),
@@ -38,12 +39,13 @@ async function stanje(env, t) {
     all(env, `SELECT * FROM napredak_stavke WHERE tenant_id = ? ORDER BY faza_id, red`, t),
     all(env, `SELECT * FROM aktivnost WHERE tenant_id = ? ORDER BY kad DESC LIMIT 40`, t),
     all(env, `SELECT * FROM konkurenti WHERE tenant_id = ? ORDER BY red`, t),
-    all(env, `SELECT id, agent, status, vrsta, opis, kreirano, pocetak, kraj, koraka, pretrage, trosak_usd, greska, rezultat, zadatak_id
+    all(env, `SELECT id, agent, status, vrsta, opis, kreirano, pocetak, kraj, koraka, pretrage, trosak_usd, greska, rezultat, zadatak_id, odluka_id
               FROM pokretanja WHERE tenant_id = ? ORDER BY kreirano DESC LIMIT 50`, t),
     all(env, `SELECT id, agent, kad, naslov FROM izvjestaji WHERE tenant_id = ? ORDER BY kad DESC LIMIT 12`, t),
     one(env, `SELECT COALESCE(SUM(trosak_usd), 0) AS s FROM pokretanja WHERE tenant_id = ? AND kreirano >= ?`, t, mjesecOd),
     one(env, `SELECT postavke_json FROM tenants WHERE id = ?`, t),
     all(env, `SELECT agent, COUNT(*) AS n, COALESCE(SUM(trosak_usd), 0) AS usd, MAX(kreirano) AS zadnje FROM pokretanja WHERE tenant_id = ? AND kreirano >= ? GROUP BY agent`, t, mjesecOd),
+    all(env, `SELECT * FROM pristupi WHERE tenant_id = ? AND (status = 'otvoreno' OR rijeseno >= ?) ORDER BY kreirano DESC`, t, mjesecOd),
   ]);
   const post = parse(tenantRed?.postavke_json) || {};
   return {
@@ -51,17 +53,19 @@ async function stanje(env, t) {
       poAgentu: Object.fromEntries(poAgentu.map((x) => [x.agent, { pokretanja: x.n, usd: Math.round(x.usd * 100) / 100, zadnje: x.zadnje }])) },
     pokretanja: pokretanja.map((p) => ({
       id: p.id, agent: p.agent, status: p.status, vrsta: p.vrsta, opis: p.opis, kreirano: p.kreirano, kraj: p.kraj, koraka: p.koraka,
-      pretrage: p.pretrage, trosak: p.trosak_usd, greska: p.greska, rezultat: p.rezultat, zadatakId: p.zadatak_id,
+      pretrage: p.pretrage, trosak: p.trosak_usd, greska: p.greska, rezultat: p.rezultat, zadatakId: p.zadatak_id, odlukaId: p.odluka_id,
     })),
+    pristupi: pristupi.map((x) => ({ id: x.id, agent: x.agent, sto: x.sto, zasto: x.zasto, kako: x.kako, status: x.status, kreirano: x.kreirano, rijeseno: x.rijeseno })),
     izvjestaji: izvjestaji.map((x) => ({ id: x.id, agent: x.agent, kad: x.kad, naslov: x.naslov })),
     odluke: odluke.map((o) => ({
       id: o.id, naslov: o.naslov, agent: o.agent, razlog: o.razlog, prijedlog: o.prijedlog, poveznica: o.poveznica,
       poveznicaTekst: o.poveznica_tekst, prioritet: o.prioritet, status: o.status, kreirano: o.kreirano,
-      komentar: o.komentar, odlucenoAt: o.odluceno_at, rezultat: o.rezultat,
+      komentar: o.komentar, odlucenoAt: o.odluceno_at, rezultat: o.rezultat, cekaTebe: o.ceka_tebe,
     })),
     zadaci: zadaci.map((z) => ({
       id: z.id, opis: z.opis, agent: z.agent, rok: z.rok, status: z.status, kreirano: z.kreirano,
       sesija: z.sesija ? { url: z.sesija } : null, rezultat: z.rezultat, poveznica: z.poveznica,
+      zadao: z.zadao, odlukaId: z.odluka_id, razgovorId: z.razgovor_id, automatski: !!z.automatski,
     })),
     tjedni: tjedni.map((t2) => ({
       id: t2.tjedan, od: t2.od, upitiBanner: t2.upiti_banner, upitiIgraonica: t2.upiti_igraonica, narudzbe: t2.narudzbe,
@@ -108,7 +112,76 @@ async function api(request, env, u, tenant, putanja) {
   const posl = await apiPoslovanje(request, env, u, tenant, putanja, body, { json, greska, audit, dnevnik, novi, sada });
   if (posl) return posl;
 
-  // Odobri / odbij odluku
+  // Izvršitelj (service binding): pokretanje agenata i koordinatora.
+  const zoviIzvrsitelj = async (put, tijelo) => {
+    if (!env.EXEC || !env.INTERNI_KLJUC) return { ok: false, status: 503, greska: 'Izvršitelj nije spojen.' };
+    const odg = await env.EXEC.fetch(`https://izvrsitelj${put}`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-interni-kljuc': env.INTERNI_KLJUC },
+      body: JSON.stringify({ tenant, ...tijelo }),
+    });
+    const d = await odg.json().catch(() => ({}));
+    if (!odg.ok) return { ok: false, status: odg.status === 403 ? 502 : odg.status, greska: d.greska || `Izvršitelj: greška ${odg.status}` };
+    await env.DB.batch([audit(env, u, tenant, 'pokretanje', 'pokretanja', d.pokretanje_id, null, { put, ...tijelo })]);
+    return { ok: true, pokretanje_id: d.pokretanje_id };
+  };
+  const izvrsitelj = async (put, tijelo) => {
+    const x = await zoviIzvrsitelj(put, tijelo);
+    return x.ok ? json({ ok: true, pokretanje_id: x.pokretanje_id }) : greska(x.greska, x.status);
+  };
+
+  // Razgovor s koordinatorom: vlasnik piše, koordinator odgovara i daje posao agentima.
+  if (m === 'GET' && putanja === '/api/razgovor') {
+    const [poruke, radi, agenti] = await Promise.all([
+      all(env, `SELECT id, kad, tko, tekst FROM razgovor WHERE tenant_id = ? ORDER BY kad DESC LIMIT 60`, tenant),
+      one(env, `SELECT COUNT(*) AS n FROM pokretanja WHERE tenant_id = ? AND agent = 'koordinator' AND status IN ('u_redu', 'radi')`, tenant),
+      one(env, `SELECT COUNT(*) AS n FROM zadaci WHERE tenant_id = ? AND zadao = 'koordinator' AND status IN ('novo', 'u_izradi') AND automatski = 1`, tenant),
+    ]);
+    return json({ poruke: poruke.reverse(), koordinatorRadi: radi.n > 0, agentiRade: agenti.n });
+  }
+  if (m === 'POST' && putanja === '/api/razgovor') {
+    const t = tekst(body.tekst, 'poruka', 4000, true).trim();
+    if (!t) return greska('Poruka je prazna');
+    const id = novi();
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO razgovor (id, tenant_id, kad, tko, tekst, user_id) VALUES (?, ?, ?, 'ti', ?, ?)`).bind(id, tenant, sada(), t, u.id),
+      audit(env, u, tenant, 'poruka_koordinatoru', 'razgovor', id, null, { znakova: t.length }),
+    ]);
+    const x = await zoviIzvrsitelj('/razgovor', { poruka_id: id });
+    return json({ id, pokretanje_id: x.pokretanje_id ?? null, greska: x.ok ? null : `Poruka je spremljena, ali koordinator nije pokrenut: ${x.greska}` });
+  }
+
+  // Zahtjev za pristup: vlasnik ga označi riješenim (dao je pristup) ili odbijenim.
+  if (m === 'POST' && (r = /^\/api\/pristupi\/([\w-]+)\/status$/.exec(putanja))) {
+    if (!['rijeseno', 'odbijeno'].includes(body.status)) return greska('status mora biti rijeseno ili odbijeno');
+    const p = await one(env, `SELECT status, sto FROM pristupi WHERE tenant_id = ? AND id = ?`, tenant, r[1]);
+    if (!p) return greska('Zahtjev ne postoji', 404);
+    if (p.status !== 'otvoreno') return greska('Zahtjev je već riješen', 409);
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE pristupi SET status = ?, rijeseno = ? WHERE tenant_id = ? AND id = ?`).bind(body.status, sada(), tenant, r[1]),
+      audit(env, u, tenant, 'pristup', 'pristupi', r[1], { status: 'otvoreno' }, { status: body.status }),
+      dnevnik(env, tenant, `${body.status === 'rijeseno' ? 'Pristup dan' : 'Pristup odbijen'}: ${p.sto}`),
+    ]);
+    return json({ ok: true });
+  }
+
+  // Odobrena odluka ponovno ide koordinatoru (npr. nakon što je vlasnik dao pristup, ili je zapela prije ove verzije).
+  if (m === 'POST' && (r = /^\/api\/odluke\/([\w-]+)\/rasporedi$/.exec(putanja))) return izvrsitelj('/odluka', { odluka_id: r[1] });
+
+  // Vlasnik je sam napravio ono što je odluka čekala.
+  if (m === 'POST' && (r = /^\/api\/odluke\/([\w-]+)\/napravljeno$/.exec(putanja))) {
+    const o = await one(env, `SELECT status, naslov FROM odluke WHERE tenant_id = ? AND id = ?`, tenant, r[1]);
+    if (!o) return greska('Odluka ne postoji', 404);
+    if (!['odobreno', 'u_izradi'].includes(o.status)) return greska('Odluka nije u izradi', 409);
+    const rez = tekst(body.rezultat, 'rezultat', 1000)?.trim() || 'Napravio vlasnik.';
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE odluke SET status = 'gotovo', rezultat = ?, ceka_tebe = NULL, version = version + 1 WHERE tenant_id = ? AND id = ?`).bind(rez, tenant, r[1]),
+      audit(env, u, tenant, 'odluka_napravljeno', 'odluke', r[1], { status: o.status }, { status: 'gotovo', rezultat: rez }),
+      dnevnik(env, tenant, `Napravljeno: ${o.naslov}`),
+    ]);
+    return json({ ok: true });
+  }
+
+  // Odobri / odbij odluku. Odobrenu odmah dobiva koordinator, koji odlučuje tko je izvršava.
   if (m === 'POST' && (r = /^\/api\/odluke\/([\w-]+)\/odluka$/.exec(putanja))) {
     if (!['odobreno', 'odbijeno'].includes(body.status)) return greska('status mora biti odobreno ili odbijeno');
     const o = await one(env, `SELECT * FROM odluke WHERE tenant_id = ? AND id = ?`, tenant, r[1]);
@@ -125,7 +198,9 @@ async function api(request, env, u, tenant, putanja) {
       audit(env, u, tenant, `odluka_${body.status}`, 'odluke', r[1], { status: 'ceka' }, { status: body.status, komentar }),
       dnevnik(env, tenant, `${body.status === 'odobreno' ? 'Odobreno' : 'Odbijeno'}: ${o.naslov}`),
     ]);
-    return json({ ok: true });
+    if (body.status !== 'odobreno') return json({ ok: true });
+    const x = await zoviIzvrsitelj('/odluka', { odluka_id: r[1] });
+    return json({ ok: true, koordinator: x.ok, poruka: x.ok ? null : x.greska });
   }
 
   // Novi zadatak
@@ -157,18 +232,7 @@ async function api(request, env, u, tenant, putanja) {
     return json({ ok: true });
   }
 
-  // Pokretanje agenta (izvršitelj preko service bindinga)
-  const izvrsitelj = async (put, tijelo) => {
-    if (!env.EXEC || !env.INTERNI_KLJUC) return greska('Izvršitelj nije spojen. Zadatak preuzima koordinator u idućem pregledu.', 503);
-    const odg = await env.EXEC.fetch(`https://izvrsitelj${put}`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-interni-kljuc': env.INTERNI_KLJUC },
-      body: JSON.stringify({ tenant, ...tijelo }),
-    });
-    const d = await odg.json().catch(() => ({}));
-    if (!odg.ok) return greska(d.greska || `Izvršitelj: greška ${odg.status}`, odg.status === 403 ? 502 : odg.status);
-    await env.DB.batch([audit(env, u, tenant, 'pokretanje', 'pokretanja', d.pokretanje_id, null, { put, ...tijelo })]);
-    return json({ ok: true, pokretanje_id: d.pokretanje_id });
-  };
+  // Pokretanje agenta ili pregleda
   if (m === 'POST' && (r = /^\/api\/zadaci\/([\w-]+)\/pokreni$/.exec(putanja))) return izvrsitelj('/zadatak', { zadatak_id: r[1] });
   if (m === 'POST' && putanja === '/api/pregled') return izvrsitelj('/pregled', { vrsta: body.vrsta === 'mjesecni' ? 'mjesecni' : 'tjedni' });
 

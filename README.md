@@ -39,7 +39,7 @@ Kad je server na Cloudflareu, u repozitoriju klijenta `.mcp.json`:
 
 ## Korak 3: dashboard
 `apps/dashboard`: Worker (`/api/*`, prijava preko Cloudflare Accessa JWT-a) + statični front-end (`public/index.html` s početnom „Poslovno” (odjeli), Odlukama, Zadacima i pogledima marketinga te `kalendar.html`, `skladiste.html` i `mreze.html`, u izgledu Piccolini Playa).
-Samo čovjek odobrava odluke, zadaje zadatke, upisuje tjedne i kvačice. Savjetnik bira zakupca (zaglavlje X-Tenant).
+Samo čovjek odobrava odluke, upisuje tjedne i kvačice; posao zadaje porukom koordinatoru. Savjetnik bira zakupca (zaglavlje X-Tenant).
 Lokalno: `apps/dashboard/.dev.vars` s `DEV_USER=tvoj@email` (nikad u produkciji), pa
 `npx wrangler dev --config apps/dashboard/wrangler.jsonc --persist-to apps/mcp/.wrangler/state`.
 Korisnik: `node scripts/novi-korisnik.mjs <email> vlasnik <zakupac>`. Deploy i Access: `docs/DEPLOY-CLOUDFLARE.md`.
@@ -51,6 +51,13 @@ zajednički **Kalendar**, **Svi zadaci** (`/#svi`), **Agenti** (`/#agenti`) i **
 Pregled spaja stvarne brojke: prihod i naplata iz Parre (`GET /api/financije`, `packages/poslovanje/financije.js`), kalendar i skladište,
 Meta, odluke i zadatke („Čeka tebe”), pokretanja agenata i potrošnju po agentu (`/api/stanje` → `potrosnja.poAgentu`).
 Popis agenata i odjela za koje rade je u `ploca.js` (`PL.AGENTI`). Prototip izgleda: `tina-obrt/docs/marketing/ploca/prototip/ploca-tvrtke.html`.
+
+### Koordinator (razgovor na ploči)
+Vlasnik piše samo koordinatoru: gumb „Koordinator” na svakoj stranici (`ploca.js`), `GET/POST /api/razgovor`. Koordinator (Opus) bira agenta
+i daje mu zadatak (`zadaj_zadatak`, MCP); izvršitelj zadatke s `automatski = 1` pokreće čim koordinator završi, a kad agent završi,
+obavijest ide u razgovor i odobrena odluka se zatvara. Odobrena odluka odmah ide koordinatoru (`/odluka` na izvršitelju). Što nitko ne može,
+koordinator zapisuje kao `ceka_tebe` na odluci ili kao zahtjev za pristup (`zatrazi_pristup`, tablica `pristupi`). Migracija 0009.
+Na ploči svako stanje kaže tko je na potezu: ti, koordinator ili agent.
 
 ### Parra (ponude → kalendar)
 Dashboard svakih 30 minuta (cron) i na gumb „Osvježi iz Parre” čita ponude i uplate iz Parre (`packages/poslovanje/parra.js`, API v1.1, samo GET).

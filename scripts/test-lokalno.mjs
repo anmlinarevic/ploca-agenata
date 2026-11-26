@@ -105,7 +105,7 @@ if ((await cekaj(M_URL + '/health')) && (await cekaj(P_URL + '/')) && (await cek
     writeFileSync('tenants/piccolini/token-test-limit.sql',
       `UPDATE tenants SET postavke_json = '{"limit_usd":0.01}' WHERE id = 'piccolini';\n`);
     d1('tenants/piccolini/token-test-limit.sql');
-    kod = node('scripts/izvrsitelj-test.mjs', { URL: P_URL, BROJ_ZAHTJEVA: '27' }, ['faza2']);
+    kod = node('scripts/izvrsitelj-test.mjs', { URL: P_URL }, ['faza2']);
   }
 } else console.error('Serveri se nisu pokrenuli');
 ugasi();
