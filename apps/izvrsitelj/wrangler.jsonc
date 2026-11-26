@@ -36,7 +36,11 @@
     "CENA_CACHE_CITANJE": "0.1",
     "CENA_CACHE_PISANJE": "2.5",
     // USD po jednoj web pretrazi (procjena, provjeri)
-    "CENA_PRETRAGA": "0.01"
+    "CENA_PRETRAGA": "0.01",
+    // Koordinator razgovara s vlasnikom i raspoređuje posao: jači model (cijene Opusa su u src/trosak.js).
+    "MODEL_KOORDINATOR": "claude-opus-5-5",
+    "EFFORT_KOORDINATOR": "medium"
+    // FALLBACKS: "ne" isključuje rezervni model kad glavni odbije zahtjev (zadano uključeno).
   }
   // Secreti (nisu u repozitoriju):
   //   ANTHROPIC_API_KEY   ključ s console.anthropic.com

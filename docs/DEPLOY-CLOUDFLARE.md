@@ -189,3 +189,28 @@ ne u glavnoj mapi). Kad dodaš tkaninu na stranicu, ponovi uvoz: postojeće stan
 4. Kalendar → „+ Narudžba ili rezervacija”. Kad narudžbu označiš „U izradi”, materijal se sam skida sa skladišta.
 
 **Lokalni pregled s izmišljenim podacima:** `npm run demo -- <put/do/dezeni.json>`, pa otvori http://localhost:8797/kalendar.html.
+
+## 11. Koordinator kao jedini sugovornik (razgovor na ploči)
+
+Novo: vlasnik piše samo koordinatoru (gumb „Koordinator” na svakoj stranici). Koordinator (Claude Opus 5.5) bira agenta,
+daje mu zadatak alatom `zadaj_zadatak`, a izvršitelj taj zadatak pokreće sam čim koordinator završi. Kad agent završi, obavijest
+stiže u razgovor. Odobrena odluka odmah ide koordinatoru. Ako posao ne može nijedan agent (npr. izmjena stranice bez GitHub
+pristupa), koordinator to zapiše kao „Čeka tebe” ili kao zahtjev za pristup (`zatrazi_pristup`).
+
+Migracija `0009` (tablice `razgovor` i `pristupi`, nova polja na zadacima, odlukama i pokretanjima). Ne treba novi secret: koordinator
+s tokenom `*` vidi nove alate sam. Redoslijed kao i prije, MCP → izvršitelj → dashboard:
+
+```
+cd C:\Users\AnteMlinarevic\ploca-agenata
+npx wrangler d1 migrations apply ploca --remote --config apps/mcp/wrangler.jsonc
+npx wrangler deploy --config apps/mcp/wrangler.jsonc
+npx wrangler deploy --config apps/izvrsitelj/wrangler.jsonc
+npx wrangler deploy --config apps/dashboard/wrangler.jsonc
+```
+
+**Trošak:** jedna poruka koordinatoru je okvirno 0,05 do 0,15 USD (Opus), plus agent kojem da posao (Sonnet, kao i do sada).
+Mjesečni limit vrijedi za sve. Model i effort koordinatora mijenjaju se varijablama `MODEL_KOORDINATOR` i `EFFORT_KOORDINATOR`
+u `apps/izvrsitelj/wrangler.jsonc`; `FALLBACKS=ne` isključuje rezervni model kad glavni odbije zahtjev.
+
+**Stare odluke:** odobrene odluke bez zadatka (prije ove verzije) stoje pod „Čeka tebe” kao „Nije raspoređeno”; gumb
+„Daj koordinatoru” ih šalje koordinatoru. Odluke koje su čekale „izradu u Claude Codeu” migracija označi kao „Čeka tebe”.

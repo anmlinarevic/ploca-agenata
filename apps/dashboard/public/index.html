@@ -282,7 +282,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
 @media (max-width: 1100px) { .uprava-dva { grid-template-columns: 1fr; } }
 .oznake-z { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .v-odluka { background: var(--accent); color: var(--on-accent); }
-.v-zaTebe { background: #fbf3e3; color: #85570f; }
+.v-zaTebe, .v-pristup { background: #fbf3e3; color: #85570f; }
 .v-upozorenje { background: var(--danger-soft); color: var(--danger); }
 .v-agent { border: 1px solid var(--accent-line); color: var(--ink-mid); background: var(--white); }
 .chip.odjel-oznaka { background: var(--accent-soft); color: var(--ink-mid); }
@@ -421,8 +421,8 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   <!-- ── Svi zadaci: jedan popis odluka, zadataka agentima i upozorenja ── -->
   <section data-pogled="svi" aria-label="Svi zadaci" hidden>
     <div class="okvir-glava">
-      <p class="sitno" style="max-width:70ch;margin:0">Jedan popis za sve: odluke koje agenti predlažu, zadaci koje si dala agentima i upozorenja iz kalendara i skladišta. Svaki redak ima odjel i agenta.</p>
-      <div class="kontrole"><a class="btn" href="#odluke">Odluke detaljno</a><a class="btn glavni" href="#zadaci">Zadaj zadatak agentu</a></div>
+      <p class="sitno" style="max-width:70ch;margin:0">Jedan popis za sve: odluke koje agenti predlažu, posao koji je koordinator dao agentima i upozorenja iz kalendara i skladišta. Stanje kaže tko je na potezu: ti, koordinator ili agent.</p>
+      <div class="kontrole"><a class="btn" href="#odluke">Odluke detaljno</a><button class="btn glavni" type="button" data-koordinator="">Napiši koordinatoru</button></div>
     </div>
     <div class="filtri" id="svi-filtri"></div>
     <section class="kartica okvir"><span class="sitno" id="svi-broj"></span><div id="svi-lista"></div></section>
@@ -452,7 +452,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
           <div class="lista" id="stupac-ceka"><p class="prazno">Učitavam odluke…</p></div>
         </div>
         <div class="stupac">
-          <div class="stupac-glava"><h3>Odobreno, agent radi</h3><span class="broj-chip" id="br-radi">0</span></div>
+          <div class="stupac-glava"><h3>Odobreno, u izradi</h3><span class="broj-chip" id="br-radi">0</span></div>
           <div class="lista" id="stupac-radi"></div>
         </div>
         <div class="stupac">
@@ -480,8 +480,8 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       <div class="zadaci-popis">
         <div class="blok-naslov">
           <div>
-            <h2>Zadaci koje si dao agentima</h2>
-            <p class="sitno">Zadatak je nalog od tebe agentu. Odluke su obrnuto: prijedlozi agenata koje ti odobravaš na Pregledu.</p>
+            <h2>Posao agenata</h2>
+            <p class="sitno">Zadatke agentima daje koordinator, iz tvojih poruka i odobrenih odluka, i pokreće ih sam. Odluke su obrnuto: prijedlozi agenata koje ti odobravaš.</p>
           </div>
         </div>
         <div class="filtri" role="group" aria-label="Filtar zadataka" id="filtri-zadataka"></div>
@@ -489,26 +489,16 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       </div>
       <aside class="zadaci-forma" aria-labelledby="h-novi">
         <form class="kartica forma-zadatka" id="forma-zadatak" novalidate>
-          <div class="forma-glava"><span>Nalog agentu</span><h2 id="h-novi">Novi zadatak</h2></div>
+          <div class="forma-glava"><span>Poruka koordinatoru</span><h2 id="h-novi">Novi posao</h2></div>
           <div class="forma-tijelo">
-            <fieldset>
-              <legend>1. Kome</legend>
-              <div class="izbori" id="izbor-agenta"></div>
-            </fieldset>
-            <div class="info" id="agent-info" aria-live="polite"></div>
             <div class="polje">
-              <label for="z-opis">2. Što treba napraviti</label>
+              <label for="z-opis">Što treba napraviti</label>
               <textarea id="z-opis" placeholder="Npr. Provjeri cijene bannera kod slovenskih prodavača i javi je li se nešto promijenilo."></textarea>
-              <span class="sitno" style="font-size:13px">Jedan zadatak, jedan cilj. Agent ne objavljuje, ne šalje i ne mijenja cijene: rezultat dolazi kao izvještaj ili odluka za tebe.</span>
-            </div>
-            <div class="polje">
-              <label for="z-rok">3. Rok <span style="font-weight:400;color:var(--ink-soft)">(neobavezno)</span></label>
-              <input id="z-rok" type="date">
+              <span class="sitno" style="font-size:13px">Ne moraš znati koji agent to radi: koordinator ga bira, pokreće i javlja rezultat u razgovoru. Ako nekome fali pristup (npr. GitHub), reći će ti što treba.</span>
             </div>
             <p class="poruka" id="z-poruka" aria-live="polite"></p>
             <div class="kontrole">
-              <button class="btn glavni" type="submit" style="flex:1 1 auto">Dodaj zadatak</button>
-              <button class="btn" type="button" id="dodaj-pokreni" style="flex:1 1 auto">Dodaj i pokreni</button>
+              <button class="btn glavni" type="submit" style="flex:1 1 auto">Pošalji koordinatoru</button>
             </div>
           </div>
         </form>
@@ -627,7 +617,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
 </aside>
 
 <footer class="omot">
-  <p>Agenti pišu na ploču pri tjednom i mjesečnom pregledu. Odluku koju odobriš izvršavaju u idućem pregledu ili odmah, ako zadatak pokreneš gumbom.</p>
+  <p>Posao zadaješ porukom koordinatoru. Odluku koju odobriš koordinator odmah daje agentu koji je može izvršiti; ako treba tebe ili pristup koji nitko nema, stoji pod „Čeka tebe”.</p>
   <p>Pravila: agenti ništa ne objavljuju, ne šalju, ne troše novac i ne mijenjaju cijene. Promjene stranice uvijek idu kao PR koji ti spajaš.</p>
 </footer>
 
@@ -636,7 +626,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   'use strict';
   /* Uloge: kod i "tkanina" bloka (svijetli pasteli s piccoliniplay.hr), opis, što agent smije i okvirni trošak jednog zadatka. */
   var AG = {
-    koordinator: { kod: 'KO', ime: 'Koordinator', uloga: 'Sažima tjedan, pazi na rokove', tkanina: '#f2cfc8', alat: 'Bez weba', moze: 'Čita ploču, izvještaje i registre. Ne pretražuje web.', trosak: 'oko 0,03 USD' },
+    koordinator: { kod: 'KO', ime: 'Koordinator', uloga: 'Prima tvoje poruke, raspoređuje posao', tkanina: '#f2cfc8', alat: 'Bez weba', moze: 'Čita ploču, izvještaje i registre, daje zadatke agentima i javlja što fali. Ne pretražuje web.', trosak: 'oko 0,05–0,15 USD po poruci' },
     konkurencija: { kod: 'KN', ime: 'Konkurencija', uloga: 'Cijene i ponuda drugih', tkanina: '#cfe5d6', alat: 'Web pretraga', moze: 'Pretražuje web i čita stranice konkurenata.', trosak: 'oko 0,05–0,10 USD' },
     seo: { kod: 'SEO', ime: 'SEO', uloga: 'Ključne riječi i Google', tkanina: '#f5eee2', alat: 'Čita stranice', moze: 'Čita javne stranice (bez pretrage) i registar ključnih riječi.', trosak: 'oko 0,03–0,06 USD' },
     ai: { kod: 'AI', ime: 'AI vidljivost', uloga: 'Spominju li nas asistenti', tkanina: '#f2cfc8', alat: 'Web pretraga', moze: 'Pretražuje web. Rezultate testova u asistentima upisuješ ti.', trosak: 'oko 0,05–0,10 USD' },
@@ -648,7 +638,6 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     ti: { kod: 'TI', ime: 'Ti', tkanina: '#ffffff' }
   };
   var ULOGE = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'materijal', 'oglasi'];
-  var IZBOR = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'materijal', 'oglasi', 'claude'];
   var PRIO = { 1: 'Hitno', 2: 'Ovaj tjedan', 3: 'Može čekati' };
   var KORACI = ['Zadano', 'U redu', 'Agent radi', 'Gotovo'];
   var IZVORI = [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['google', 'Google'], ['ai', 'AI asistent'], ['preporuka', 'Preporuka'], ['ostalo', 'Ostalo']];
@@ -657,7 +646,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   var STARI = { poslovno: 'pregled', aktivnost: 'agenti', izvjestaji: 'agenti' };
   var MARKETING = ['odluke', 'napredak', 'brojke', 'konkurencija', 'agenti'];
   /* Zaglavlje po pogledu: [dio iza imena zakupca, naslov] */
-  var ZAGLAVLJA = { pregled: ['uprava', 'Pregled'], svi: ['zajedničko', 'Svi zadaci'], odluke: ['svi zadaci', 'Odluke'], zadaci: ['svi zadaci', 'Zadaci agentima'], napredak: ['marketing', 'Napredak'], brojke: ['prodaja', 'Tjedne brojke'], konkurencija: ['prodaja i marketing', 'Konkurencija'], agenti: ['zajedničko', 'Agenti'] };
+  var ZAGLAVLJA = { pregled: ['uprava', 'Pregled'], svi: ['zajedničko', 'Svi zadaci'], odluke: ['svi zadaci', 'Odluke'], zadaci: ['svi zadaci', 'Posao agenata'], napredak: ['marketing', 'Napredak'], brojke: ['prodaja', 'Tjedne brojke'], konkurencija: ['prodaja i marketing', 'Konkurencija'], agenti: ['zajedničko', 'Agenti'] };
   var ZAKUPAC = '';
   var TJEDAN = { kratko: '', dugo: '' };
   var DANI_DUGO = ['Nedjelja', 'Ponedjeljak', 'Utorak', 'Srijeda', 'Četvrtak', 'Petak', 'Subota'];
@@ -690,7 +679,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
 
   var mozePisati = true;
   var S = { mreze: null, fin: null, sazetak: null, odluke: null, zadaci: null, tjedni: null, mjesecno: null, napredak: null, aktivnost: null, konkurenti: null, pokretanja: null, izvjestaji: null, potrosnja: null, posl: null, poslGreska: false };
-  var U = { uloga: null, otvorene: {}, sviRijeseni: false, filtarZ: 'aktivni', otvoreniZ: {}, agent: 'konkurencija' };
+  var U = { uloga: null, otvorene: {}, sviRijeseni: false, filtarZ: 'aktivni', otvoreniZ: {} };
 
   function $(s) { return document.querySelector(s); }
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -816,8 +805,11 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     }).join('') : '<p class="prazno">' + (U.uloga ? 'Ništa ne čeka. Sve odluke ove uloge su riješene.' : 'Ništa ne čeka tvoju odluku. Nove odluke agenti dodaju pri pregledu.') + '</p>';
 
     $('#stupac-radi').innerHTML = radi.length ? radi.map(function (o) {
-      var rez = o.rezultat || (o.komentar ? 'Tvoja uputa: „' + o.komentar + '”' : 'Agent to preuzima u idućem pregledu.');
-      return '<article class="kartica odluka">' + vrhKartice(o, '<span class="oznaka-st radi">U izradi</span>') + '<h3>' + esc(o.naslov) + '</h3><p class="rezultat">' + esc(rez) + '</p></article>';
+      var st = stanjeOdl(o);
+      var rez = st[2] || o.rezultat || (o.komentar ? 'Tvoja uputa: „' + o.komentar + '”' : '');
+      return '<article class="kartica odluka" data-id="' + esc(o.id) + '">' + vrhKartice(o, '<span class="chip ' + st[1] + '">' + esc(st[0]) + '</span>') + '<h3>' + esc(o.naslov) + '</h3>' +
+        (rez ? '<p class="rezultat">' + esc(rez) + '</p>' : '') +
+        (st[3].length ? '<div class="kontrole">' + gumbiAkcija(st[3], o.id, st[1] === 'pozor') + '</div><p class="poruka" aria-live="polite"></p>' : '') + '</article>';
     }).join('') : '<p class="prazno">Ništa nije u izradi.</p>';
 
     var prikaz = U.sviRijeseni ? gotovo : gotovo.slice(0, 6);
@@ -891,11 +883,13 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       return '<button class="filtar" type="button" data-filtar-z="' + f[0] + '" aria-pressed="' + (U.filtarZ === f[0]) + '">' + f[1] + ' <b>' + f[2] + '</b></button>';
     }).join('');
     if (!prikaz.length) {
-      $('#nalozi').innerHTML = '<p class="prazno" style="padding:24px 0">' + (svi.length ? 'Nema zadataka u ovom prikazu.' : 'Još nema zadataka. Odaberi agenta desno, napiši što treba i dodaj zadatak.') + '</p>';
+      $('#nalozi').innerHTML = '<p class="prazno" style="padding:24px 0">' + (svi.length ? 'Nema zadataka u ovom prikazu.' : 'Još nema zadataka. Napiši koordinatoru što treba, a on će ga dati agentu.') + '</p>';
       return;
     }
     $('#nalozi').innerHTML = prikaz.map(function (z) {
-      var a = ag(z.agent), st = stanjeZadatka(z), otvoren = !!U.otvoreniZ[z.id];
+      var a = ag(z.agent), st = stanjeZadatka(z), otvoren = !!U.otvoreniZ[z.id], np = stanjeZad(z);
+      if (np[1] === 'pozor' && !st.napomena) st.napomena = np[2];
+      var odl = z.odlukaId ? (S.odluke || []).filter(function (o) { return o.id === z.odlukaId; })[0] : null;
       var sesija = z.sesija && sigurnaVeza(z.sesija.url), link = sigurnaVeza(z.poveznica);
       var put = st.korak < 0 ? '<span class="oznaka-st odbijeno" style="align-self:flex-start">Otkazano</span>' :
         '<div class="put" aria-label="Stanje: ' + KORACI[st.korak] + '">' + KORACI.map(function (t, i) {
@@ -910,22 +904,44 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       else if (z.rezultat) akcija = '<button class="btn malo" type="button" data-rezultat aria-expanded="' + otvoren + '">' + (otvoren ? 'Sakrij rezultat' : 'Pogledaj rezultat') + '</button>';
       return '<article class="kartica nalog" data-id="' + esc(z.id) + '"><span class="mini-blok" style="background:' + a.tkanina + '" aria-hidden="true">' + esc(a.kod) + '</span>' +
         '<div class="nalog-sredina"><div style="display:flex;flex-direction:column;gap:4px"><span class="nalog-agent">' + esc(a.ime) + '</span><h3>' + esc(z.opis) + '</h3></div>' +
-        '<div class="meta"><span>Zadano ' + esc(datumKratko(z.kreirano)) + '</span><span>' + (z.rok ? 'Rok ' + esc(datumKratko(z.rok)) : 'Bez roka') + '</span>' + (a.alat ? '<span>' + esc(a.alat) + '</span>' : '') +
+        '<div class="meta"><span>' + (z.zadao === 'koordinator' ? 'Dao koordinator ' : 'Zadano ') + esc(datumKratko(z.kreirano)) + '</span><span>' + (z.rok ? 'Rok ' + esc(datumKratko(z.rok)) : 'Bez roka') + '</span>' +
+        (odl ? '<span>Za odluku „' + esc(odl.naslov) + '”</span>' : '') + (a.alat ? '<span>' + esc(a.alat) + '</span>' : '') +
         '<span>' + (st.trosak ? usd(st.trosak) : 'još bez troška') + '</span></div>' + put +
         (st.napomena ? '<p class="sitno" style="font-size:13.6px">' + esc(st.napomena) + '</p>' : '') +
-        (z.rezultat && (otvoren || z.status !== 'gotovo' && z.status !== 'odbijeno') ? '<p class="rezultat">' + esc(z.rezultat) + '</p>' : '') +
+        (z.rezultat && (otvoren || z.status !== 'gotovo' && z.status !== 'odbijeno') ? '<p class="rezultat">' + esc(cistTekst(z.rezultat)) + '</p>' : '') +
         (veze.length ? '<p class="meta">' + veze.join(' · ') + '</p>' : '') + '</div>' +
         '<div class="akcija">' + akcija + '<p class="poruka" aria-live="polite"></p></div></article>';
     }).join('');
   }
-  function renderIzborAgenta() {
-    $('#izbor-agenta').innerHTML = IZBOR.map(function (id) {
-      var a = AG[id];
-      return '<button class="izbor" type="button" data-agent="' + id + '" aria-pressed="' + (U.agent === id) + '"><span class="mini-blok" style="background:' + a.tkanina + '" aria-hidden="true">' + esc(a.kod) + '</span>' + esc(a.ime) +
-        '<span class="kv" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button>';
+  /* ── Tko je na potezu ──
+   * Svako stanje je [tekst, klasa chipa, objašnjenje, akcije]. „pozor” znači da čeka tebe; „neutral” da radi koordinator ili agent.
+   * Akcije: rasporedi (odluka ide koordinatoru), napravljeno (sam si napravio), pokreni (zadatak ponovno). */
+  function stanjeZad(z) {
+    if (z.status === 'gotovo') return ['Gotovo', 'ok', '', []];
+    if (z.status === 'odbijeno') return ['Otkazano', 'neutral', '', []];
+    if (z.status === 'u_izradi') return [stanjeZadatka(z).tekst === 'U redu čekanja' ? 'U redu za agenta' : 'Agent radi', 'neutral', '', []];
+    if (z.automatski) return ['U redu za agenta', 'neutral', 'Kreće čim koordinator završi.', []];
+    if (/^Pokretanje nije uspjelo/.test(z.rezultat || '')) return ['Čeka tebe', 'pozor', 'Nije uspjelo: ' + z.rezultat.replace(/^Pokretanje nije uspjelo:\s*/, ''), ['pokreni']];
+    return ['Čeka pokretanje', 'pozor', 'Stari ručni zadatak: pokreni ga ili ga otkaži.', ['pokreni']];
+  }
+  function stanjeOdl(o) {
+    if (o.status === 'ceka') return ['Čeka tvoju odluku', 'pozor', '', []];
+    if (o.status === 'gotovo') return ['Gotovo', 'ok', o.rezultat || '', []];
+    if (o.status === 'odbijeno') return ['Odbijeno', 'neutral', '', []];
+    if (o.cekaTebe) return ['Čeka tebe', 'pozor', o.cekaTebe, ['napravljeno', 'rasporedi']];
+    var zad = (S.zadaci || []).filter(function (z) { return z.odlukaId === o.id && (z.status === 'novo' || z.status === 'u_izradi'); });
+    if (zad.length) { var s = stanjeZad(zad[0]); return [s[0], s[1], 'Radi: ' + zad.map(function (z) { return ag(z.agent).ime; }).join(', ') + '.', s[3]]; }
+    var kp = (S.pokretanja || []).filter(function (p) { return p.odlukaId === o.id; })[0];
+    if (kp && (kp.status === 'u_redu' || kp.status === 'radi')) return ['Koordinator raspoređuje', 'neutral', 'Bira agenta koji to može napraviti.', []];
+    if (kp && kp.status !== 'uspjeh') return ['Čeka tebe', 'pozor', 'Koordinator nije uspio rasporediti: ' + (kp.greska || kp.status) + '.', ['rasporedi']];
+    if (o.status === 'odobreno') return ['Nije raspoređeno', 'pozor', 'Odobreno prije nego što je koordinator preuzimao odluke. Daj je koordinatoru.', ['rasporedi']];
+    return ['U izradi', 'neutral', o.rezultat || '', ['rasporedi']];
+  }
+  var AKCIJE = { rasporedi: 'Daj koordinatoru', napravljeno: 'Napravio sam', pokreni: 'Pokreni ponovno' };
+  function gumbiAkcija(akcije, id, glavna) {
+    return (akcije || []).map(function (a, i) {
+      return '<button class="btn malo' + (glavna !== false && i === 0 ? ' glavni' : '') + '" type="button" data-akcija="' + a + '" data-id="' + esc(id) + '"' + (mozePisati ? '' : ' disabled') + '>' + esc(AKCIJE[a] || a) + '</button>';
     }).join('');
-    var a = AG[U.agent];
-    $('#agent-info').innerHTML = '<strong>' + esc(a.ime) + '</strong><span>' + esc(a.moze) + '</span><span>Procjena troška: ' + esc(a.trosak) + '</span>';
   }
 
   /* ── Brojke ── */
@@ -1041,7 +1057,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       return '<article class="kartica pokretanje"><div class="odluka-vrh"><span class="agent-chip">' + tocka(p.agent) + esc(ag(p.agent).ime) + '</span><span class="oznaka-st ' + s[1] + '">' + esc(s[0]) + '</span>' +
         '<span class="datum">' + esc(datumSat(p.kreirano)) + (p.trosak ? ' · ' + esc(usd(p.trosak)) : '') + (p.pretrage ? ' · ' + p.pretrage + ' pretraga' : '') + '</span></div>' +
         (p.opis ? '<p>' + esc(p.opis) + '</p>' : '') +
-        (p.greska ? '<p class="poruka greska">' + esc(p.greska) + '</p>' : p.rezultat ? '<p class="rezultat">' + esc(p.rezultat) + '</p>' : '') + '</article>';
+        (p.greska ? '<p class="poruka greska">' + esc(p.greska) + '</p>' : p.rezultat ? '<p class="rezultat">' + esc(cistTekst(p.rezultat)) + '</p>' : '') + '</article>';
     }).join('');
     renderIzvjestaji();
   }
@@ -1079,7 +1095,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   function cekaOd(agenti) { return (S.odluke || []).filter(function (o) { return o.status === 'ceka' && agenti.indexOf(o.agent) >= 0; }); }
   /* ── Pregled za upravu: sve brojke su stvarne (Parra, kalendar, skladište, Meta, agenti, tjedni unos) ── */
   var MJESEC_NOM = ['siječanj', 'veljača', 'ožujak', 'travanj', 'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan', 'listopad', 'studeni', 'prosinac'];
-  var VRSTA_Z = { odluka: 'Odluka', zaTebe: 'Za tebe', agent: 'Zadatak agentu', upozorenje: 'Upozorenje' };
+  var VRSTA_Z = { odluka: 'Odluka', zaTebe: 'Za tebe', pristup: 'Pristup', agent: 'Zadatak agentu', upozorenje: 'Upozorenje' };
   function eur(n) { return (Number(n) || 0).toLocaleString('hr-HR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' €'; }
   function tockeBr(n) { return n == null ? '–' : Number(n).toLocaleString('hr-HR'); }
   function postoHtml(p, tekst) { return p == null ? tekst : '<span class="' + (p >= 0 ? 'rast' : 'pad') + '">' + (p >= 0 ? '+' : '') + p + ' %</span> ' + tekst; }
@@ -1098,6 +1114,20 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       .forEach(function (o) {
         out.push({ vrsta: 'odluka', odjel: odjelAg(o.agent), agent: o.agent, naslov: o.naslov, opis: o.prijedlog || o.razlog || '', kad: o.kreirano, odlukaId: o.id, prioritet: o.prioritet });
       });
+    // odobrene odluke koje ne može nijedan agent (izmjena stranice, pristup) ili ih koordinator nije uspio rasporediti
+    (S.odluke || []).filter(function (o) { return o.status === 'odobreno' || o.status === 'u_izradi'; }).forEach(function (o) {
+      var st = stanjeOdl(o);
+      if (st[1] === 'pozor') out.push({ vrsta: 'zaTebe', odjel: odjelAg(o.agent), agent: o.agent, naslov: o.naslov, opis: st[2], kad: o.odlucenoAt, akcije: st[3], akcijaId: o.id });
+    });
+    // pristupi koje je tražio koordinator: bez njih neki posao ne ide
+    (S.pristupi || []).filter(function (p) { return p.status === 'otvoreno'; }).forEach(function (p) {
+      out.push({ vrsta: 'pristup', odjel: p.agent ? odjelAg(p.agent) : 'uprava', agent: p.agent || 'koordinator', naslov: 'Daj pristup: ' + p.sto, opis: (p.zasto || '') + (p.kako ? '\nKako: ' + p.kako : ''), kad: p.kreirano, pristupId: p.id });
+    });
+    // zadaci koji nisu uspjeli ili čekaju pokretanje
+    (S.zadaci || []).forEach(function (z) {
+      var st = stanjeZad(z);
+      if (st[1] === 'pozor') out.push({ vrsta: 'agent', odjel: odjelAg(z.agent), agent: z.agent, naslov: (st[0] === 'Čeka pokretanje' ? 'Pokreni ili otkaži: ' : 'Nije uspjelo: ') + z.opis, opis: st[2], kad: z.kreirano, akcije: st[3], akcijaId: z.id, link: '#zadaci', gumb: 'Zadaci' });
+    });
     if (P) P.upozorenja.filter(function (u) { return u.razina <= 2; }).forEach(function (u) {
       var skl = VRSTA_ODJEL[u.vrsta] === 'proizvodnja';
       out.push({ vrsta: 'upozorenje', razina: u.razina, odjel: VRSTA_ODJEL[u.vrsta] || 'prodaja', agent: skl ? 'skladiste' : 'planer', naslov: u.tekst, link: skl ? '/skladiste.html' : '/kalendar.html', gumb: skl ? 'Proizvodnja' : 'Kalendar' });
@@ -1116,13 +1146,13 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     function vaznost(x) {
       if (x.vrsta === 'odluka') return x.prioritet === 1 ? 0 : x.prioritet === 2 ? 4 : 6;
       if (x.vrsta === 'upozorenje') return x.razina === 1 ? 1 : 2;
-      return x.vrsta === 'zaTebe' ? 3 : 5;
+      return x.vrsta === 'zaTebe' || x.vrsta === 'pristup' ? 3 : 5;
     }
     return out.map(function (x, i) { return [vaznost(x), i, x]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; }).map(function (r) { return r[2]; });
   }
   var PRVIH = 5;
   function brojStavki(n, j, d, m) { return n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? j : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? d : m); }
-  var VRSTE_SAZETAK = [['odluka', 'odluka', 'odluke', 'odluka'], ['upozorenje', 'upozorenje', 'upozorenja', 'upozorenja'], ['zaTebe', 'za tebe', 'za tebe', 'za tebe'], ['agent', 'rezultat', 'rezultata', 'rezultata']];
+  var VRSTE_SAZETAK = [['odluka', 'odluka', 'odluke', 'odluka'], ['upozorenje', 'upozorenje', 'upozorenja', 'upozorenja'], ['zaTebe', 'za tebe', 'za tebe', 'za tebe'], ['pristup', 'pristup', 'pristupa', 'pristupa'], ['agent', 'zadatak', 'zadatka', 'zadataka']];
   /* Tekst agenta za čitanje na ploči: bez Markdown oznaka (##, **), retci ostaju. */
   function cistTekst(t) { return String(t || '').replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/`/g, '').trim(); }
   function feedPokretanje(p) {
@@ -1184,9 +1214,12 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     var a = plAgent(x.agent) || ag(x.agent);
     var gumbi = x.odlukaId
       ? '<button class="btn glavni malo" type="button" data-u-odluka="odobreno" data-id="' + esc(x.odlukaId) + '">Odobri</button><button class="btn malo" type="button" data-u-odluka="odbijeno" data-id="' + esc(x.odlukaId) + '">Odbij</button>'
-      : x.link ? '<a class="btn malo" href="' + esc(x.link) + '">' + esc(x.gumb || 'Otvori') + '</a>' : '';
+      : x.pristupId
+        ? '<button class="btn glavni malo" type="button" data-pristup="rijeseno" data-id="' + esc(x.pristupId) + '">Dao sam pristup</button><button class="btn malo" type="button" data-pristup="odbijeno" data-id="' + esc(x.pristupId) + '">Ne treba</button>'
+        : x.akcije && x.akcije.length ? gumbiAkcija(x.akcije, x.akcijaId)
+          : x.link ? '<a class="btn malo" href="' + esc(x.link) + '">' + esc(x.gumb || 'Otvori') + '</a>' : '';
     return '<div class="stavka-z"><div class="tijelo"><div class="oznake-z"><span class="chip v-' + x.vrsta + '">' + VRSTA_Z[x.vrsta] + '</span><span class="chip odjel-oznaka">' + esc(nazivOdjela(x.odjel)) + '</span>' +
-      (x.prioritet === 1 ? '<span class="chip kriticno">hitno</span>' : '') + '</div><b>' + esc(x.naslov) + '</b>' + (x.opis ? '<span class="sitno" style="color:var(--ink-mid)">' + esc(x.opis) + '</span>' : '') +
+      (x.prioritet === 1 ? '<span class="chip kriticno">hitno</span>' : '') + '</div><b>' + esc(x.naslov) + '</b>' + (x.opis ? '<span class="sitno" style="color:var(--ink-mid);white-space:pre-line">' + esc(x.opis) + '</span>' : '') +
       '<span class="sitno" style="font-size:12.5px">' + esc(a.naziv || a.ime || '') + (x.kad ? ' · ' + esc(datumKratko(x.kad)) : '') + '</span></div><div class="kontrole">' + gumbi + '</div><p class="poruka" style="grid-column:1/-1;margin:0"></p></div>';
   }
 
@@ -1310,13 +1343,12 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   }
 
   /* ── Svi zadaci ── */
-  var STANJE_ODLUKE = { ceka: ['Čeka tebe', 'pozor'], odobreno: ['U radu', 'neutral'], u_izradi: ['U radu', 'neutral'], gotovo: ['Gotovo', 'ok'], odbijeno: ['Odbijeno', 'neutral'] };
-  var STANJE_ZADATKA = { novo: ['Novo', 'neutral'], u_izradi: ['U radu', 'neutral'], gotovo: ['Gotovo', 'ok'], odbijeno: ['Odbijeno', 'neutral'] };
+  /* Stanje u stupcu kaže tko je na potezu (stanjeOdl, stanjeZad); ispod naslova je objašnjenje ili rezultat. */
   function sviRedovi() {
     var r = [];
-    (S.odluke || []).forEach(function (o) { var st = STANJE_ODLUKE[o.status] || [o.status, 'neutral']; r.push({ vrsta: 'odluka', odjel: odjelAg(o.agent), agent: o.agent, naslov: o.naslov, rezultat: o.rezultat, stanje: st, otvoreno: ['ceka', 'odobreno', 'u_izradi'].indexOf(o.status) >= 0, kad: o.odlucenoAt || o.kreirano, link: '#odluke' }); });
-    (S.zadaci || []).forEach(function (z) { var st = STANJE_ZADATKA[z.status] || [z.status, 'neutral']; r.push({ vrsta: 'agent', odjel: odjelAg(z.agent), agent: z.agent, naslov: z.opis, rezultat: z.rezultat, stanje: st, otvoreno: z.status === 'novo' || z.status === 'u_izradi', kad: z.kreirano, link: '#zadaci' }); });
-    stavkeCekaTebe().filter(function (x) { return x.vrsta !== 'odluka' && x.vrsta !== 'agent'; }).forEach(function (x) { r.push({ vrsta: x.vrsta, odjel: x.odjel, agent: x.agent, naslov: x.naslov, rezultat: x.opis, stanje: ['Čeka tebe', 'pozor'], otvoreno: true, kad: '', link: x.link }); });
+    (S.odluke || []).forEach(function (o) { var st = stanjeOdl(o); r.push({ vrsta: 'odluka', odjel: odjelAg(o.agent), agent: o.agent, naslov: o.naslov, rezultat: st[2] || o.rezultat, stanje: st, otvoreno: ['ceka', 'odobreno', 'u_izradi'].indexOf(o.status) >= 0, kad: o.odlucenoAt || o.kreirano, link: '#odluke' }); });
+    (S.zadaci || []).forEach(function (z) { var st = stanjeZad(z); r.push({ vrsta: 'agent', odjel: odjelAg(z.agent), agent: z.agent, naslov: z.opis, rezultat: st[1] === 'pozor' ? st[2] : z.rezultat || st[2], stanje: st, otvoreno: z.status === 'novo' || z.status === 'u_izradi', kad: z.kreirano, link: '#zadaci' }); });
+    stavkeCekaTebe().filter(function (x) { return x.vrsta !== 'odluka' && x.vrsta !== 'agent' && !x.akcijaId; }).forEach(function (x) { r.push({ vrsta: x.vrsta, odjel: x.odjel, agent: x.agent, naslov: x.naslov, rezultat: x.opis, stanje: ['Čeka tebe', 'pozor'], otvoreno: true, kad: x.kad || '', link: x.link }); });
     return r.sort(function (a, b) { return (b.otvoreno - a.otvoreno) || String(b.kad || '').localeCompare(String(a.kad || '')); });
   }
   function renderSvi() {
@@ -1330,7 +1362,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     var agenti = {}; svi.forEach(function (x) { agenti[x.agent] = 1; });
     if (!$('#svi-filtri').dataset.gotovo || zauzet() === false) {
       $('#svi-filtri').innerHTML = sel('stanje', 'Stanje', [['otvoreno', 'Otvoreno'], ['zatvoreno', 'Gotovo i odbijeno'], ['', 'Sve']]) +
-        sel('vrsta', 'Vrsta', [['', 'Sve vrste'], ['odluka', 'Odluke'], ['agent', 'Zadaci agentima'], ['zaTebe', 'Za tebe'], ['upozorenje', 'Upozorenja']]) +
+        sel('vrsta', 'Vrsta', [['', 'Sve vrste'], ['odluka', 'Odluke'], ['agent', 'Zadaci agentima'], ['zaTebe', 'Za tebe'], ['pristup', 'Pristupi'], ['upozorenje', 'Upozorenja']]) +
         sel('odjel', 'Odjel', [['', 'Svi odjeli'], ['uprava', 'Uprava']].concat((window.PL ? window.PL.ODJELI : []).map(function (o) { return [o.id, o.naziv]; }))) +
         sel('agent', 'Agent', [['', 'Svi agenti']].concat(Object.keys(agenti).map(function (id) { var a = plAgent(id) || ag(id); return [id, a.naziv || a.ime]; })));
     }
@@ -1391,7 +1423,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
     var fin = api('GET', '/api/financije').then(function (d) { S.fin = d; }).catch(function () { S.fin = null; });
     return Promise.all([api('GET', '/api/stanje'), posl, mre, fin]).then(function (r) {
       var d = r[0];
-      ['odluke', 'zadaci', 'tjedni', 'mjesecno', 'napredak', 'aktivnost', 'konkurenti', 'pokretanja', 'izvjestaji', 'potrosnja'].forEach(function (k) { S[k] = d[k]; });
+      ['odluke', 'zadaci', 'tjedni', 'mjesecno', 'napredak', 'aktivnost', 'konkurenti', 'pokretanja', 'izvjestaji', 'potrosnja', 'pristupi'].forEach(function (k) { S[k] = d[k]; });
       var t = new Date();
       veza('ok', 'Podaci su ažurni · ' + t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes());
       if (!tiho || !zauzet()) renderSve();
@@ -1437,6 +1469,10 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
         .catch(function (err) { poruka(pu, porukaGreske(err, 'Odluka nije spremljena. Pokušaj ponovno.'), 'greska'); red.querySelectorAll('button').forEach(function (b) { b.disabled = !mozePisati; }); if (err && err.status === 409) ucitaj(); });
       return;
     }
+    var ak = t.closest('[data-akcija]');
+    if (ak) { posaljiAkciju(ak, PUT_AKCIJE[ak.dataset.akcija](encodeURIComponent(ak.dataset.id)), {}, PORUKA_AKCIJE[ak.dataset.akcija]); return; }
+    var pa = t.closest('[data-pristup]');
+    if (pa) { posaljiAkciju(pa, '/api/pristupi/' + encodeURIComponent(pa.dataset.id) + '/status', { status: pa.dataset.pristup }, ''); return; }
     var sr = t.closest('tr[data-href]');
     if (sr && sr.dataset.href) { location.href = sr.dataset.href; return; }
     var od = t.closest('[data-odluka]');
@@ -1456,8 +1492,6 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
 
     var fz = t.closest('[data-filtar-z]');
     if (fz) { U.filtarZ = fz.dataset.filtarZ; renderZadaci(); return; }
-    var ia = t.closest('[data-agent]');
-    if (ia) { U.agent = ia.dataset.agent; renderIzborAgenta(); poruka($('#z-poruka'), ''); return; }
 
     var nalog = t.closest('.nalog');
     if (nalog) {
@@ -1504,22 +1538,41 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       .then(function () { cb.disabled = !mozePisati; });
   });
 
-  function dodajZadatak(pokreni) {
-    var opis = $('#z-opis').value.trim(), por = $('#z-poruka');
-    if (opis.length < 5) { poruka(por, 'Opiši zadatak u barem jednoj rečenici.', 'greska'); $('#z-opis').focus(); return; }
-    var gumbi = $('#forma-zadatak').querySelectorAll('button'); gumbi.forEach(function (b) { b.disabled = true; });
-    api('POST', '/api/zadaci', { opis: opis.slice(0, 2000), agent: U.agent, rok: $('#z-rok').value || '' }).then(function (d) {
-      $('#z-opis').value = ''; $('#z-rok').value = ''; U.filtarZ = 'aktivni';
-      if (!pokreni) { poruka(por, 'Zadatak je dodan na vrh popisa. Koordinator ga preuzima u idućem pregledu, ili ga pokreni odmah.', 'ok'); return ucitaj(); }
-      return api('POST', '/api/zadaci/' + encodeURIComponent(d.id) + '/pokreni', {})
-        .then(function () { poruka(por, 'Zadatak je dodan i agent je pokrenut.', 'ok'); })
-        .catch(function (err) { poruka(por, 'Zadatak je dodan, ali agent nije pokrenut: ' + porukaGreske(err, 'pokušaj „Pokreni sada” na zadatku.'), 'greska'); })
-        .then(function () { return ucitaj(); });
-    }).catch(function (err) { poruka(por, porukaGreske(err, 'Zadatak nije spremljen. Pokušaj ponovno.'), 'greska'); })
-      .then(function () { gumbi.forEach(function (b) { b.disabled = !mozePisati; }); });
+  /* Akcije „tko je na potezu”: odluka ide koordinatoru, vlasnik je sam napravio, zadatak ponovno, pristup riješen. */
+  var PUT_AKCIJE = {
+    rasporedi: function (id) { return '/api/odluke/' + id + '/rasporedi'; },
+    napravljeno: function (id) { return '/api/odluke/' + id + '/napravljeno'; },
+    pokreni: function (id) { return '/api/zadaci/' + id + '/pokreni'; }
+  };
+  var PORUKA_AKCIJE = { rasporedi: 'Koordinator je preuzima.', napravljeno: 'Zatvoreno.', pokreni: 'Agent je u redu čekanja.' };
+  function posaljiAkciju(el, put, tijelo, uspjeh) {
+    var omot = el.closest('.stavka-z, .kartica, tr') || el.parentNode, pu = omot.querySelector('.poruka');
+    omot.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    if (pu) poruka(pu, 'Šaljem…');
+    api('POST', put, tijelo).then(function () { if (pu) poruka(pu, uspjeh, 'ok'); return ucitaj(); })
+      .catch(function (err) {
+        if (pu) poruka(pu, porukaGreske(err, 'Nije uspjelo. Pokušaj ponovno.'), 'greska');
+        omot.querySelectorAll('button').forEach(function (b) { b.disabled = !mozePisati; });
+        if (err && err.status === 409) ucitaj();
+      });
   }
-  $('#forma-zadatak').addEventListener('submit', function (e) { e.preventDefault(); dodajZadatak(false); });
-  $('#dodaj-pokreni').addEventListener('click', function () { dodajZadatak(true); });
+
+  /* Novi posao ide koordinatoru: poruka u razgovor, koordinator bira agenta i javlja se u ladici razgovora. */
+  $('#forma-zadatak').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var opis = $('#z-opis').value.trim(), por = $('#z-poruka'), gumb = e.target.querySelector('button[type="submit"]');
+    if (opis.length < 5) { poruka(por, 'Opiši posao u barem jednoj rečenici.', 'greska'); $('#z-opis').focus(); return; }
+    gumb.disabled = true; poruka(por, 'Šaljem…');
+    api('POST', '/api/razgovor', { tekst: opis.slice(0, 4000) }).then(function (d) {
+      $('#z-opis').value = ''; U.filtarZ = 'aktivni';
+      poruka(por, d.greska || 'Poslano. Koordinator bira agenta; odgovor stiže u razgovoru.', d.greska ? 'greska' : 'ok');
+      if (window.PL && window.PL.otvoriKoordinatora) window.PL.otvoriKoordinatora();
+      return ucitaj();
+    }).catch(function (err) { poruka(por, porukaGreske(err, 'Poruka nije poslana. Pokušaj ponovno.'), 'greska'); })
+      .then(function () { gumb.disabled = !mozePisati; });
+  });
+  // Nova poruka u razgovoru (npr. agent je završio): osvježi zadatke i odluke.
+  document.addEventListener('ploca:razgovor', function () { ucitaj(true); });
 
   $('#forma-tjedan').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -1554,7 +1607,6 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
   document.addEventListener('toggle', function (e) { if (e.target.matches && e.target.matches('#lista-izvjestaja details') && e.target.open) ucitajIzvjestaj(e.target); }, true);
 
   /* ── Tko je prijavljen, koji zakupac ── */
-  renderIzborAgenta();
   api('GET', '/api/ja').then(function (ja) {
     var izbor = $('#tenant-izbor');
     if (ja.tenanti.length > 1) {

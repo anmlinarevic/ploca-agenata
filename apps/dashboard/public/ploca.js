@@ -12,7 +12,8 @@
     kalendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
     zadaci: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/>',
     agenti: '<rect x="5" y="7" width="14" height="12" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9.5 16h5"/>',
-    izvori: '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>'
+    izvori: '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0V7zM12 16v5"/>',
+    razgovor: '<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9.5h8M8 12.5h5"/>'
   };
   function ikona(ime, v) { v = v || 18; return '<svg width="' + v + '" height="' + v + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (IK[ime] || '') + '</svg>'; }
 
@@ -28,7 +29,7 @@
 
   /* Agenti: postojeći (rade preko izvršitelja) i planirani. `vrsta`: 'ai' (Claude), 'pravila' (izračun ploče bez AI-ja), 'planiran'. */
   var AGENTI = [
-    { id: 'koordinator', kod: 'KO', naziv: 'Koordinator', odjeli: ['uprava'], vrsta: 'ai', opis: 'Tjedni sažetak za upravu i odluke za tebe. Postaje jedini sugovornik (razgovor na ploči dolazi u idućem koraku).' },
+    { id: 'koordinator', kod: 'KO', naziv: 'Koordinator', odjeli: ['uprava'], vrsta: 'ai', opis: 'Jedini sugovornik: primi tvoju poruku, da posao agentu koji ga može napraviti i javi rezultat. Piše i tjedni sažetak za upravu.' },
     { id: 'konkurencija', kod: 'KN', naziv: 'Konkurencija', odjeli: ['prodaja', 'mreze'], vrsta: 'ai', opis: 'Cijene i ponuda drugih. Način traženja konkurencije se redefinira.' },
     { id: 'seo', kod: 'SE', naziv: 'SEO', odjeli: ['mreze', 'web'], vrsta: 'ai', opis: 'Ključne riječi i Google.' },
     { id: 'ai', kod: 'AI', naziv: 'AI vidljivost', odjeli: ['mreze'], vrsta: 'ai', opis: 'Spominju li nas AI asistenti.' },
@@ -68,7 +69,8 @@
     if (!el) return;
     el.innerHTML = '<span class="nav-grupa">Uprava</span>' + veza('pregled', 'Pregled', '/', 'pregled') +
       '<span class="nav-grupa">Odjeli</span>' + ODJELI.map(function (o) { return veza(o.id, o.naziv, o.href, o.id); }).join('') +
-      '<span class="nav-grupa">Zajedničko</span>' + veza('kalendar', 'Kalendar', '/kalendar.html', 'kalendar') + veza('svi', 'Svi zadaci', '/#svi', 'zadaci') +
+      '<span class="nav-grupa">Zajedničko</span>' + '<button type="button" class="nav-gumb" data-koordinator="">' + ikona('razgovor') + '<span>Koordinator</span></button>' +
+      veza('kalendar', 'Kalendar', '/kalendar.html', 'kalendar') + veza('svi', 'Svi zadaci', '/#svi', 'zadaci') +
       veza('agenti', 'Agenti', '/#agenti', 'agenti') + veza('izvori', 'Izvori i pravila', '/izvori.html', 'izvori');
   }
   function umetni() {
@@ -83,5 +85,140 @@
   if (document.body) umetni(); else document.addEventListener('DOMContentLoaded', umetni);
   window.addEventListener('hashchange', crtaj);
 
-  window.PL = { ODJELI: ODJELI, NAZIV_ODJELA: NAZIV_ODJELA, AGENTI: AGENTI, AG: AG, odjelAgenta: odjelAgenta, ikona: ikona };
+  /* ── Razgovor s koordinatorom: gumb i ladica na svakoj stranici ──
+   * Vlasnik piše samo koordinatoru; koordinator daje posao agentima, a obavijesti o gotovom poslu stižu ovdje. */
+  var TEN = null;
+  try { TEN = localStorage.getItem('tenant'); } catch (e) {}
+  function api(metoda, put, tijelo) {
+    var h = {};
+    if (tijelo !== undefined) h['content-type'] = 'application/json';
+    if (TEN) h['x-tenant'] = TEN;
+    return fetch(put, { method: metoda, headers: h, credentials: 'same-origin', body: tijelo !== undefined ? JSON.stringify(tijelo) : undefined })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var d = {}; try { d = JSON.parse(t); } catch (e) {}
+          if (!r.ok) throw new Error(d.greska || (r.status === 401 || r.status === 403 ? 'Nemaš pristup. Osvježi stranicu i prijavi se ponovno.' : 'Greška ' + r.status));
+          return d;
+        });
+      });
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  /* Tekst koordinatora: bez HTML-a; **masno** postaje podebljano, oznake naslova (##) se skidaju, retci ostaju. */
+  function oblik(t) { return esc(t).replace(/^#+\s*/gm, '').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/`([^`\n]+)`/g, '$1'); }
+  function kad(k) { var d = new Date(k); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+  function agenataRadi(n) { return n === 1 ? 'Jedan agent radi' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? n + ' agenta rade' : n + ' agenata radi'; }
+
+  var KO = { otvoren: false, poruke: null, radi: false, agenti: 0, timer: null, salje: false, fokus: null, dolje: true, govor: null };
+  var GOVOR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function umetniKoordinatora() {
+    if (document.getElementById('koord')) return;
+    var g = document.createElement('button');
+    g.type = 'button'; g.className = 'koord-gumb'; g.id = 'koord-gumb'; g.setAttribute('data-koordinator', '');
+    g.innerHTML = ikona('razgovor', 18) + '<span>Koordinator</span><i class="koord-tocka" hidden title="Koordinator ili agent radi"></i>';
+    var pr = document.createElement('div'); pr.className = 'koord-prekrivac'; pr.id = 'koord-prekrivac'; pr.hidden = true;
+    var as = document.createElement('aside');
+    as.className = 'koord'; as.id = 'koord'; as.hidden = true;
+    as.setAttribute('role', 'dialog'); as.setAttribute('aria-modal', 'true'); as.setAttribute('aria-labelledby', 'koord-naslov');
+    as.innerHTML = '<div class="koord-glava"><div class="red"><h2 id="koord-naslov">Koordinator</h2><button class="btn malo" type="button" id="koord-zatvori">Zatvori</button></div>' +
+      '<span class="sitno">Napiši što treba napraviti. Koordinator daje posao agentu koji to može, a kad je gotovo, javlja se ovdje. Ništa se ne objavljuje ni ne šalje bez tebe.</span></div>' +
+      '<div class="koord-poruke" id="koord-poruke"></div>' +
+      '<form class="koord-unos" id="koord-forma" novalidate><label class="sitno" for="koord-tekst">Poruka koordinatoru</label>' +
+      '<textarea id="koord-tekst" placeholder="Npr. Napiši nacrt vodiča o poklonu za krštenje i javi mi kad je gotov."></textarea>' +
+      '<div class="koord-dno"><span class="poruka" id="koord-status" aria-live="polite"></span><span class="kontrole">' +
+      (GOVOR ? '<button class="btn" type="button" id="koord-govor" aria-pressed="false" title="Diktiranje preko preglednika">Diktiraj</button>' : '') +
+      '<button class="btn glavni" type="submit" id="koord-posalji">Pošalji</button></span></div></form>';
+    document.body.appendChild(g); document.body.appendChild(pr); document.body.appendChild(as);
+    document.getElementById('koord-forma').addEventListener('submit', function (e) { e.preventDefault(); posalji(); });
+    document.getElementById('koord-tekst').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); posalji(); }
+    });
+    document.getElementById('koord-zatvori').addEventListener('click', zatvoriKoordinatora);
+    pr.addEventListener('click', zatvoriKoordinatora);
+    if (GOVOR) document.getElementById('koord-govor').addEventListener('click', diktiraj);
+    ucitajRazgovor();
+  }
+  function status(t, vrsta) { var el = document.getElementById('koord-status'); if (el) { el.textContent = t || ''; el.className = 'poruka' + (vrsta ? ' ' + vrsta : ''); } }
+
+  function crtajRazgovor() {
+    var t = document.querySelector('#koord-gumb .koord-tocka');
+    if (t) t.hidden = !(KO.radi || KO.agenti);
+    var el = document.getElementById('koord-poruke');
+    if (!el || !KO.otvoren) return;
+    var h = KO.poruke === null ? '<p class="prazno">Učitavam razgovor…</p>' : KO.poruke.length ? KO.poruke.map(function (m) {
+      var tko = m.tko === 'koordinator' ? 'Koordinator · ' : m.tko === 'ploca' ? 'Ploča · ' : '';
+      return '<div class="koord-poruka ' + esc(m.tko) + '">' + oblik(m.tekst) + '<span class="kad">' + tko + esc(kad(m.kad)) + '</span></div>';
+    }).join('') : '<p class="prazno">Još nema poruka. Napiši što treba napraviti; ne moraš znati koji agent to radi.</p>';
+    if (KO.radi) h += '<p class="koord-pise">Koordinator radi…</p>';
+    else if (KO.agenti) h += '<p class="koord-pise">' + agenataRadi(KO.agenti) + ' na tvom zadatku. Javit će se ovdje.</p>';
+    var naDnu = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    el.innerHTML = h;
+    if (naDnu || KO.dolje) { el.scrollTop = el.scrollHeight; KO.dolje = false; }
+  }
+  function planiraj() {
+    clearTimeout(KO.timer);
+    var ms = KO.radi ? 3000 : KO.agenti ? (KO.otvoren ? 8000 : 20000) : KO.otvoren ? 30000 : 0;
+    if (ms) KO.timer = setTimeout(function () { if (!document.hidden) ucitajRazgovor(); else planiraj(); }, ms);
+  }
+  function ucitajRazgovor() {
+    return api('GET', '/api/razgovor').then(function (d) {
+      var bilo = KO.poruke ? KO.poruke.length : -1;
+      KO.poruke = d.poruke || []; KO.radi = !!d.koordinatorRadi; KO.agenti = d.agentiRade || 0;
+      if (KO.poruke.length !== bilo) KO.dolje = true;
+      crtajRazgovor(); planiraj();
+      if (bilo >= 0 && KO.poruke.length !== bilo) document.dispatchEvent(new CustomEvent('ploca:razgovor'));
+    }).catch(function (e) { status(e.message || 'Razgovor se ne može učitati.', 'greska'); planiraj(); });
+  }
+  function otvoriKoordinatora(tekst) {
+    umetniKoordinatora();
+    KO.otvoren = true; KO.dolje = true; KO.fokus = document.activeElement;
+    document.getElementById('koord').hidden = false; document.getElementById('koord-prekrivac').hidden = false;
+    document.documentElement.classList.add('koord-otvoren');
+    var ta = document.getElementById('koord-tekst');
+    if (tekst) ta.value = tekst;
+    crtajRazgovor(); ucitajRazgovor();
+    ta.focus();
+  }
+  function zatvoriKoordinatora() {
+    var as = document.getElementById('koord');
+    if (!as || as.hidden) return;
+    if (KO.govor) KO.govor.stop();
+    KO.otvoren = false; as.hidden = true; document.getElementById('koord-prekrivac').hidden = true;
+    document.documentElement.classList.remove('koord-otvoren');
+    planiraj();
+    if (KO.fokus && KO.fokus.focus) KO.fokus.focus();
+  }
+  function posalji() {
+    var ta = document.getElementById('koord-tekst'), gumb = document.getElementById('koord-posalji'), t = ta.value.trim();
+    if (KO.salje) return;
+    if (!t) { status('Napiši poruku.', 'greska'); ta.focus(); return; }
+    if (KO.govor) KO.govor.stop();
+    KO.salje = true; gumb.disabled = true; status('Šaljem…');
+    api('POST', '/api/razgovor', { tekst: t.slice(0, 4000) }).then(function (d) {
+      ta.value = ''; status(d.greska || '', d.greska ? 'greska' : ''); KO.dolje = true;
+      return ucitajRazgovor();
+    }).catch(function (e) { status(e.message || 'Poruka nije poslana. Pokušaj ponovno.', 'greska'); })
+      .then(function () { KO.salje = false; gumb.disabled = false; });
+  }
+  /* Diktiranje: govor preglednika (hr-HR) upisuje tekst u polje; šalje se tek na „Pošalji”. */
+  function diktiraj() {
+    var gumb = document.getElementById('koord-govor'), ta = document.getElementById('koord-tekst');
+    if (KO.govor) { KO.govor.stop(); return; }
+    var r = new GOVOR(), osnova = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
+    r.lang = 'hr-HR'; r.interimResults = true; r.continuous = true;
+    r.onresult = function (e) { var s = ''; for (var i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; ta.value = osnova + s; };
+    r.onerror = function (e) { status(e.error === 'not-allowed' ? 'Preglednik nema dopuštenje za mikrofon.' : 'Diktiranje je stalo.', 'greska'); };
+    r.onend = function () { KO.govor = null; gumb.setAttribute('aria-pressed', 'false'); gumb.textContent = 'Diktiraj'; };
+    KO.govor = r; gumb.setAttribute('aria-pressed', 'true'); gumb.textContent = 'Zaustavi'; status('');
+    r.start();
+  }
+  document.addEventListener('click', function (e) {
+    var k = e.target.closest && e.target.closest('[data-koordinator]');
+    if (k) { e.preventDefault(); otvoriKoordinatora(k.getAttribute('data-koordinator') || ''); }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && KO.otvoren) zatvoriKoordinatora(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && (KO.otvoren || KO.radi || KO.agenti)) ucitajRazgovor(); });
+  if (document.body) umetniKoordinatora(); else document.addEventListener('DOMContentLoaded', umetniKoordinatora);
+
+  window.PL = { ODJELI: ODJELI, NAZIV_ODJELA: NAZIV_ODJELA, AGENTI: AGENTI, AG: AG, odjelAgenta: odjelAgenta, ikona: ikona, otvoriKoordinatora: otvoriKoordinatora };
 })();

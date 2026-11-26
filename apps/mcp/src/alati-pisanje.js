@@ -4,7 +4,10 @@
  * - NEMA alata za odobravanje/odbijanje odluka, pisanje u `tjedni` ni brisanje: to radi samo čovjek. */
 
 export const AGENTI = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'oglasi', 'materijal'];
+// Agenti koje izvršitelj zna pokrenuti (isti popis kao packages/agenti/index.js, bez koordinatora).
+export const IZVRSNI = ['konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'oglasi'];
 const MAX_ODLUKA_TJEDNO = 3;
+const MAX_ZADATAKA_DNEVNO = 12; // zadaci koje koordinator sam pokreće: strop protiv petlje koja troši novac
 // Tko smije mijenjati koji registar (čitati smiju svi s alatom dohvati_registar)
 const REGISTRI_DOZVOLE = {
   'kljucne-rijeci': ['seo', 'koordinator'],
@@ -79,10 +82,10 @@ export const PISANJE = [
   },
   {
     name: 'azuriraj_odluku_izvrsenje',
-    description: 'Izvršenje ODOBRENE odluke: status "u_izradi" ili "gotovo", uz rezultat (jedna rečenica) i poveznicu. Ne mijenja odobrenje ni komentar.',
+    description: 'Izvršenje ODOBRENE odluke: status "u_izradi" ili "gotovo", uz rezultat (jedna rečenica) i poveznicu. Ako je za izvršenje potreban vlasnik (pristup koji nitko nema, posao samo za čovjeka), status "u_izradi" i `ceka_tebe`: jedna rečenica što točno vlasnik treba napraviti. Ne mijenja odobrenje ni komentar.',
     inputSchema: s({
       id: { type: 'string' }, status: { type: 'string', enum: ['u_izradi', 'gotovo'] },
-      rezultat: { type: 'string' }, poveznica: { type: 'string' }, if_version: { type: 'integer' },
+      rezultat: { type: 'string' }, poveznica: { type: 'string' }, ceka_tebe: { type: 'string' }, if_version: { type: 'integer' },
     }, ['id', 'status']),
     run: async (a, ctx, env) => {
       if (!['u_izradi', 'gotovo'].includes(a.status)) throw new Error('status mora biti u_izradi ili gotovo');
@@ -92,16 +95,74 @@ export const PISANJE = [
       if (a.if_version != null && a.if_version !== stara.version) throw new Error(`Odluka je u međuvremenu promijenjena (verzija ${stara.version})`);
       const rezultat = tekst(a.rezultat, 'rezultat', 1000) ?? stara.rezultat;
       const poveznica = tekst(a.poveznica, 'poveznica', 500) ?? stara.poveznica;
+      // „gotovo” uvijek briše ono što je čekalo vlasnika; „u_izradi” bez ceka_tebe zadržava staro
+      const cekaTebe = a.status === 'gotovo' ? null : (tekst(a.ceka_tebe, 'ceka_tebe', 500)?.trim() || stara.ceka_tebe || null);
       if (a.status === 'gotovo' && !rezultat) throw new Error('Za "gotovo" je obavezan rezultat');
       await env.DB.batch([
         env.DB.prepare(
-          `UPDATE odluke SET status = ?, rezultat = ?, poveznica = ?, version = version + 1
+          `UPDATE odluke SET status = ?, rezultat = ?, poveznica = ?, ceka_tebe = ?, version = version + 1
            WHERE tenant_id = ? AND id = ? AND version = ?`,
-        ).bind(a.status, rezultat, poveznica, ctx.tenantId, a.id, stara.version),
+        ).bind(a.status, rezultat, poveznica, cekaTebe, ctx.tenantId, a.id, stara.version),
         nadzor(env, ctx, 'azuriraj_odluku_izvrsenje', 'odluke', a.id,
-          { status: stara.status, rezultat: stara.rezultat }, { status: a.status, rezultat, poveznica }),
+          { status: stara.status, rezultat: stara.rezultat, ceka_tebe: stara.ceka_tebe }, { status: a.status, rezultat, poveznica, ceka_tebe: cekaTebe }),
       ]);
-      return { id: a.id, status: a.status, version: stara.version + 1 };
+      return { id: a.id, status: a.status, ceka_tebe: cekaTebe, version: stara.version + 1 };
+    },
+  },
+  {
+    name: 'zadaj_zadatak',
+    description: `Samo koordinator: daje zadatak agentu u pozadini (${IZVRSNI.join(', ')}). Zadatak se pokreće sam čim koordinator završi, jer ga je vlasnik već tražio ili odobrio. Agent ne vidi razgovor: opis mora sadržavati sve (što, zašto, gdje spremiti rezultat, npr. izvještaj s naslovom „…”). Ako zadatak izvršava odobrenu odluku, navedi odluka_id: odluka prelazi u izradu i zatvara se kad agent završi.`,
+    inputSchema: s({
+      agent: { type: 'string', enum: IZVRSNI }, opis: { type: 'string' },
+      rok: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, odluka_id: { type: 'string' },
+    }, ['agent', 'opis']),
+    run: async (a, ctx, env) => {
+      if (!jeKoordinator(ctx)) throw new Error('Zadatke agentima daje samo koordinator');
+      if (!IZVRSNI.includes(a.agent)) throw new Error(`Agent nije dostupan. Može: ${IZVRSNI.join(', ')}`);
+      const opis = tekst(a.opis, 'opis', 3000, true).trim();
+      if (opis.length < 15) throw new Error('Opis je prekratak: agent ne vidi razgovor, napiši cijeli zadatak');
+      if (a.rok != null && !/^\d{4}-\d{2}-\d{2}$/.test(a.rok)) throw new Error('rok mora biti GGGG-MM-DD');
+      const danOd = new Date(Date.now() - 864e5).toISOString();
+      const { n } = await jedan(env, `SELECT COUNT(*) AS n FROM zadaci WHERE tenant_id = ? AND zadao = 'koordinator' AND kreirano >= ?`, ctx.tenantId, danOd);
+      if (n >= MAX_ZADATAKA_DNEVNO) throw new Error(`Ograničenje: najviše ${MAX_ZADATAKA_DNEVNO} zadataka agentima u 24 sata. Reci vlasniku da nastavljaš sutra.`);
+      let odluka = null;
+      if (a.odluka_id) {
+        odluka = await jedan(env, `SELECT id, status FROM odluke WHERE tenant_id = ? AND id = ?`, ctx.tenantId, a.odluka_id);
+        if (!odluka) throw new Error('Odluka ne postoji');
+        if (!['odobreno', 'u_izradi'].includes(odluka.status)) throw new Error(`Odluka nije odobrena (status: ${odluka.status})`);
+      }
+      const z = { id: novi(), agent: a.agent, opis, rok: a.rok ?? null, kreirano: sada(), odluka_id: odluka?.id ?? null };
+      const upiti = [
+        env.DB.prepare(`INSERT INTO zadaci (id, tenant_id, opis, agent, rok, status, kreirano, zadao, odluka_id, automatski)
+                        VALUES (?, ?, ?, ?, ?, 'novo', ?, 'koordinator', ?, 1)`)
+          .bind(z.id, ctx.tenantId, z.opis, z.agent, z.rok, z.kreirano, z.odluka_id),
+        nadzor(env, ctx, 'zadaj_zadatak', 'zadaci', z.id, null, z),
+      ];
+      if (odluka) {
+        upiti.push(env.DB.prepare(`UPDATE odluke SET status = 'u_izradi', rezultat = ?, ceka_tebe = NULL, version = version + 1 WHERE tenant_id = ? AND id = ?`)
+          .bind(`Zadano agentu: ${a.agent}.`, ctx.tenantId, odluka.id));
+      }
+      await env.DB.batch(upiti);
+      return { id: z.id, agent: z.agent, status: 'novo', pokrece_se: 'automatski, kad koordinator završi' };
+    },
+  },
+  {
+    name: 'zatrazi_pristup',
+    description: 'Zapiši što vlasnik treba dati da bi agent mogao raditi (pristup, API ključ, token, račun). Vlasnik to vidi pod „Čeka tebe”. `sto`: kratko i točno (npr. „GitHub token samo za pull request u repozitorij stranice”); `zasto`: koji posao bez toga ne ide; `kako`: koraci za vlasnika. Isti otvoreni zahtjev se ne ponavlja.',
+    inputSchema: s({ sto: { type: 'string' }, zasto: { type: 'string' }, kako: { type: 'string' }, agent: { type: 'string' } }, ['sto', 'zasto']),
+    run: async (a, ctx, env) => {
+      const p = {
+        id: novi(), agent: tekst(a.agent, 'agent', 40), sto: tekst(a.sto, 'sto', 200, true).trim(),
+        zasto: tekst(a.zasto, 'zasto', 1000, true), kako: tekst(a.kako, 'kako', 2000), kreirano: sada(),
+      };
+      const isti = await jedan(env, `SELECT id FROM pristupi WHERE tenant_id = ? AND status = 'otvoreno' AND lower(sto) = lower(?)`, ctx.tenantId, p.sto);
+      if (isti) return { id: isti.id, vec_postoji: true };
+      await env.DB.batch([
+        env.DB.prepare(`INSERT INTO pristupi (id, tenant_id, agent, sto, zasto, kako, status, kreirano) VALUES (?, ?, ?, ?, ?, ?, 'otvoreno', ?)`)
+          .bind(p.id, ctx.tenantId, p.agent, p.sto, p.zasto, p.kako, p.kreirano),
+        nadzor(env, ctx, 'zatrazi_pristup', 'pristupi', p.id, null, p),
+      ]);
+      return { id: p.id, status: 'otvoreno' };
     },
   },
   {
@@ -116,7 +177,7 @@ export const PISANJE = [
       const stari = await jedan(env, `SELECT * FROM zadaci WHERE tenant_id = ? AND id = ?`, ctx.tenantId, a.id);
       if (!stari) throw new Error('Zadatak ne postoji');
       if (!jeKoordinator(ctx) && stari.agent !== ctx.agent) throw new Error('Zadatak je dodijeljen drugom agentu');
-      const rezultat = tekst(a.rezultat, 'rezultat', 1000) ?? stari.rezultat;
+      const rezultat = tekst(a.rezultat, 'rezultat', 20000) ?? stari.rezultat;
       const poveznica = tekst(a.poveznica, 'poveznica', 500) ?? stari.poveznica;
       const sesija = tekst(a.sesija, 'sesija', 500) ?? stari.sesija;
       await env.DB.batch([

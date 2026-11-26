@@ -34,12 +34,15 @@ ok(!x.d.odluke.some((o) => o.naslov === 'Tuđa odluka'), 'vlasnik ne može zagla
 // odluke
 const cekaju = st.odluke.filter((o) => o.status === 'ceka');
 const id = cekaju[0].id;
-ok((await zovi('POST', `/api/odluke/${id}/odluka`, { tijelo: { status: 'odobreno', komentar: 'Može.' } })).status === 200, 'odobri odluku');
+const odobri = await zovi('POST', `/api/odluke/${id}/odluka`, { tijelo: { status: 'odobreno', komentar: 'Može.' } });
+ok(odobri.status === 200, 'odobri odluku');
+ok(odobri.d.koordinator === true, 'odobrena odluka odmah ide koordinatoru');
 ok((await zovi('POST', `/api/odluke/${id}/odluka`, { tijelo: { status: 'odbijeno' } })).status === 409, 'dvaput se ne može odlučiti');
 ok((await zovi('POST', `/api/odluke/${cekaju[1].id}/odluka`, { tijelo: { status: 'gotovo' } })).status === 400, 'status "gotovo" ne može postaviti čovjek ovdje');
 const nakon = (await zovi('GET', '/api/stanje')).d;
 const o = nakon.odluke.find((q) => q.id === id);
-ok(o.status === 'odobreno' && o.komentar === 'Može.' && o.odlucenoAt, 'odluka spremljena s komentarom i vremenom');
+// koordinator je možda već preuzeo odluku (u_izradi) ili ju je agent već izvršio (gotovo)
+ok(['odobreno', 'u_izradi', 'gotovo'].includes(o.status) && o.komentar === 'Može.' && o.odlucenoAt, 'odluka spremljena s komentarom i vremenom');
 ok(nakon.aktivnost[0].agent === 'ti' && nakon.aktivnost[0].sto.startsWith('Odobreno'), 'dnevnik bilježi odobrenje');
 
 // zadaci
