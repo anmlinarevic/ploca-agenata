@@ -65,6 +65,12 @@ ok((await zovi('PUT', '/api/tjedni/neispravno', { tijelo: {} })).status === 404,
 ok((await zovi('POST', '/api/napredak/faza0/5', { tijelo: { gotovo: true } })).status === 200, 'kvačica na stavci');
 ok((await zovi('POST', '/api/napredak/faza0/99', { tijelo: { gotovo: true } })).status === 404, 'nepostojeća stavka → 404');
 
+// diktiranje: provjere ulaza (pravi poziv Whispera se ovdje ne radi, jer bi zvao Cloudflare)
+ok((await zovi('POST', '/api/diktat', { tijelo: {} })).status === 400, 'diktat bez snimke → 400');
+ok((await zovi('POST', '/api/diktat', { tijelo: { audio: '@'.repeat(3000) } })).status === 400, 'diktat s neispravno kodiranom snimkom → 400');
+ok((await zovi('POST', '/api/diktat', { tijelo: { audio: 'A'.repeat(5_400_001) } })).status === 413, 'preduga snimka → 413');
+ok((await zovi('POST', '/api/diktat', { korisnik: null, tijelo: { audio: 'A'.repeat(3000) } })).status === 401, 'diktat bez prijave → 401');
+
 // CSRF
 ok((await zovi('POST', '/api/zadaci', { tijelo: { agent: 'seo', opis: 'Tuđi izvor zahtjeva' }, zaglavlja: { origin: 'https://zlo.example' } })).status === 403, 'zahtjev s tuđeg izvora → 403');
 const bezJson = await fetch(URL_ + '/api/zadaci', { method: 'POST', headers: { 'x-dev-user': 'vlasnik@test.hr', 'content-type': 'text/plain' }, body: '{}' });

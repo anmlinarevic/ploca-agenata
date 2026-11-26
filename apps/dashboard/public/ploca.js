@@ -108,8 +108,11 @@
   function kad(k) { var d = new Date(k); return isNaN(d) ? '' : d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
   function agenataRadi(n) { return n === 1 ? 'Jedan agent radi' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? n + ' agenta rade' : n + ' agenata radi'; }
 
-  var KO = { otvoren: false, poruke: null, radi: false, agenti: 0, timer: null, salje: false, fokus: null, dolje: true, govor: null };
-  var GOVOR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var KO = { otvoren: false, poruke: null, radi: false, agenti: 0, timer: null, salje: false, fokus: null, dolje: true, snimka: null, prepisuje: false };
+  // Diktiranje: preglednik samo snima, a govor u tekst pretvara Whisper na Cloudflareu (/api/diktat). Ne ovisi o
+  // ugrađenom prepoznavanju govora u pregledniku, koje u Edgeu, Braveu i na tvrtkinim računalima često ne radi.
+  var MOZE_SNIMATI = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && (window.AudioContext || window.webkitAudioContext));
+  var MAX_SNIMKA_S = 120;
 
   function umetniKoordinatora() {
     if (document.getElementById('koord')) return;
@@ -126,7 +129,7 @@
       '<form class="koord-unos" id="koord-forma" novalidate><label class="sitno" for="koord-tekst">Poruka koordinatoru</label>' +
       '<textarea id="koord-tekst" placeholder="Npr. Napiši nacrt vodiča o poklonu za krštenje i javi mi kad je gotov."></textarea>' +
       '<div class="koord-dno"><span class="poruka" id="koord-status" aria-live="polite"></span><span class="kontrole">' +
-      (GOVOR ? '<button class="btn" type="button" id="koord-govor" aria-pressed="false" title="Diktiranje preko preglednika">Diktiraj</button>' : '') +
+      (MOZE_SNIMATI ? '<button class="btn" type="button" id="koord-govor" aria-pressed="false" title="Snimi govor; tekst se upiše u polje, a šalješ ga ti">Diktiraj</button>' : '') +
       '<button class="btn glavni" type="submit" id="koord-posalji">Pošalji</button></span></div></form>';
     document.body.appendChild(g); document.body.appendChild(pr); document.body.appendChild(as);
     document.getElementById('koord-forma').addEventListener('submit', function (e) { e.preventDefault(); posalji(); });
@@ -135,7 +138,7 @@
     });
     document.getElementById('koord-zatvori').addEventListener('click', zatvoriKoordinatora);
     pr.addEventListener('click', zatvoriKoordinatora);
-    if (GOVOR) document.getElementById('koord-govor').addEventListener('click', diktiraj);
+    if (MOZE_SNIMATI) document.getElementById('koord-govor').addEventListener('click', diktiraj);
     ucitajRazgovor();
   }
   function status(t, vrsta) { var el = document.getElementById('koord-status'); if (el) { el.textContent = t || ''; el.className = 'poruka' + (vrsta ? ' ' + vrsta : ''); } }
@@ -182,7 +185,7 @@
   function zatvoriKoordinatora() {
     var as = document.getElementById('koord');
     if (!as || as.hidden) return;
-    if (KO.govor) KO.govor.stop();
+    zaustaviSnimanje(true);
     KO.otvoren = false; as.hidden = true; document.getElementById('koord-prekrivac').hidden = true;
     document.documentElement.classList.remove('koord-otvoren');
     planiraj();
@@ -191,8 +194,8 @@
   function posalji() {
     var ta = document.getElementById('koord-tekst'), gumb = document.getElementById('koord-posalji'), t = ta.value.trim();
     if (KO.salje) return;
+    if (KO.snimka || KO.prepisuje) { status('Prvo klikni „Gotovo” i pričekaj da se tekst upiše.', 'greska'); return; }
     if (!t) { status('Napiši poruku.', 'greska'); ta.focus(); return; }
-    if (KO.govor) KO.govor.stop();
     KO.salje = true; gumb.disabled = true; status('Šaljem…');
     api('POST', '/api/razgovor', { tekst: t.slice(0, 4000) }).then(function (d) {
       ta.value = ''; status(d.greska || '', d.greska ? 'greska' : ''); KO.dolje = true;
@@ -200,17 +203,90 @@
     }).catch(function (e) { status(e.message || 'Poruka nije poslana. Pokušaj ponovno.', 'greska'); })
       .then(function () { KO.salje = false; gumb.disabled = false; });
   }
-  /* Diktiranje: govor preglednika (hr-HR) upisuje tekst u polje; šalje se tek na „Pošalji”. */
+  /* Diktiranje u tri koraka: snimi (MediaRecorder) → pretvori u WAV 16 kHz mono (Whisper ga sigurno čita) → /api/diktat.
+   * Tekst se dopisuje u polje; poruku šalješ ti, tek na „Pošalji”. */
+  function gumbGovor(tekst, pritisnut, iskljucen) {
+    var g = document.getElementById('koord-govor');
+    if (!g) return;
+    g.textContent = tekst; g.setAttribute('aria-pressed', pritisnut ? 'true' : 'false'); g.disabled = !!iskljucen;
+  }
   function diktiraj() {
-    var gumb = document.getElementById('koord-govor'), ta = document.getElementById('koord-tekst');
-    if (KO.govor) { KO.govor.stop(); return; }
-    var r = new GOVOR(), osnova = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
-    r.lang = 'hr-HR'; r.interimResults = true; r.continuous = true;
-    r.onresult = function (e) { var s = ''; for (var i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; ta.value = osnova + s; };
-    r.onerror = function (e) { status(e.error === 'not-allowed' ? 'Preglednik nema dopuštenje za mikrofon.' : 'Diktiranje je stalo.', 'greska'); };
-    r.onend = function () { KO.govor = null; gumb.setAttribute('aria-pressed', 'false'); gumb.textContent = 'Diktiraj'; };
-    KO.govor = r; gumb.setAttribute('aria-pressed', 'true'); gumb.textContent = 'Zaustavi'; status('');
-    r.start();
+    if (KO.snimka) { zaustaviSnimanje(false); return; }
+    if (KO.prepisuje) return;
+    status('Otvaram mikrofon…');
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (tok) {
+      var dijelovi = [], rec = new MediaRecorder(tok), pocetak = Date.now();
+      var s = { rec: rec, tok: tok, odbaci: false };
+      s.sat = setInterval(function () {
+        var sek = Math.round((Date.now() - pocetak) / 1000);
+        status('Snimam ' + Math.floor(sek / 60) + ':' + ('0' + sek % 60).slice(-2) + ' · pričaj, pa klikni „Gotovo”.');
+        if (sek >= MAX_SNIMKA_S) zaustaviSnimanje(false);
+      }, 500);
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) dijelovi.push(e.data); };
+      rec.onstop = function () {
+        tok.getTracks().forEach(function (t) { t.stop(); });
+        if (!s.odbaci) prepisi(new Blob(dijelovi, { type: rec.mimeType || 'audio/webm' }));
+      };
+      KO.snimka = s;
+      rec.start(1000);
+      gumbGovor('Gotovo', true, false);
+      status('Snimam 0:00 · pričaj, pa klikni „Gotovo”.');
+    }).catch(function (e) {
+      status(e && e.name === 'NotAllowedError' ? 'Preglednik nema dopuštenje za mikrofon. Dopusti ga kod ikone lokota u adresnoj traci.'
+        : e && e.name === 'NotFoundError' ? 'Preglednik ne vidi nijedan mikrofon.' : 'Mikrofon se ne može otvoriti: ' + ((e && e.message) || 'nepoznata greška') + '.', 'greska');
+    });
+  }
+  /* odbaci = true kad se ladica zatvori usred snimanja: snimka se ne šalje. */
+  function zaustaviSnimanje(odbaci) {
+    var s = KO.snimka;
+    if (!s) return;
+    KO.snimka = null; s.odbaci = !!odbaci; clearInterval(s.sat);
+    if (s.rec.state !== 'inactive') s.rec.stop(); else s.tok.getTracks().forEach(function (t) { t.stop(); });
+    gumbGovor('Diktiraj', false, !odbaci);
+    if (odbaci) status('');
+  }
+  function prepisi(blob) {
+    var ta = document.getElementById('koord-tekst'), Ctx = window.AudioContext || window.webkitAudioContext, ctx = new Ctx();
+    KO.prepisuje = true; gumbGovor('Diktiraj', false, true); status('Pretvaram govor u tekst…');
+    var BEZ_ZVUKA = 'Snimka nema zvuka: mikrofon ne daje signal. Provjeri koji je mikrofon odabran u pregledniku (ikona lokota u adresnoj traci) ili u Windowsima.';
+    (blob.size < 500 ? Promise.reject(new Error(BEZ_ZVUKA)) : blob.arrayBuffer())
+      .then(function (buf) { return ctx.decodeAudioData(buf).catch(function () { throw new Error(BEZ_ZVUKA); }); })
+      .then(function (zvuk) { ctx.close(); return uWav(zvuk); })
+      .then(function (wav) {
+        if (wav.tiho) throw new Error(BEZ_ZVUKA);
+        if (wav.sekundi < 0.6) throw new Error('Snimka je prekratka. Klikni „Diktiraj”, pričaj, pa „Gotovo”.');
+        return api('POST', '/api/diktat', { audio: wav.base64 });
+      })
+      .then(function (d) {
+        var t = (d.tekst || '').trim();
+        if (!t) { status('Nisam razumio ništa. Pokušaj ponovno, malo bliže mikrofonu.', 'greska'); return; }
+        ta.value = (ta.value.trim() ? ta.value.replace(/\s*$/, ' ') : '') + t;
+        status('Tekst je upisan. Provjeri ga i klikni „Pošalji”.', 'ok');
+        ta.focus();
+      })
+      .catch(function (e) { try { ctx.close(); } catch (x) { /* već zatvoren */ } status((e && e.message) || 'Diktiranje nije uspjelo.', 'greska'); })
+      .then(function () { KO.prepisuje = false; gumbGovor('Diktiraj', false, false); });
+  }
+  /* Zvuk preglednika → mono 16 kHz, 16-bitni PCM WAV u base64. Javlja i je li snimka tiha (krivi mikrofon). */
+  function uWav(zvuk) {
+    var HZ = 16000, n = Math.max(1, Math.ceil(zvuk.duration * HZ));
+    var Off = window.OfflineAudioContext || window.webkitOfflineAudioContext, off = new Off(1, n, HZ);
+    var izvor = off.createBufferSource(); izvor.buffer = zvuk; izvor.connect(off.destination); izvor.start(0);
+    return off.startRendering().then(function (r) {
+      var uz = r.getChannelData(0), vrh = 0, i;
+      var bajtovi = new Uint8Array(44 + uz.length * 2), dv = new DataView(bajtovi.buffer);
+      function pisi(o, s) { for (var k = 0; k < s.length; k++) dv.setUint8(o + k, s.charCodeAt(k)); }
+      pisi(0, 'RIFF'); dv.setUint32(4, 36 + uz.length * 2, true); pisi(8, 'WAVE'); pisi(12, 'fmt ');
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, HZ, true);
+      dv.setUint32(28, HZ * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); pisi(36, 'data'); dv.setUint32(40, uz.length * 2, true);
+      for (i = 0; i < uz.length; i++) {
+        var v = Math.max(-1, Math.min(1, uz[i])); if (Math.abs(v) > vrh) vrh = Math.abs(v);
+        dv.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+      }
+      var bin = '';
+      for (i = 0; i < bajtovi.length; i += 0x8000) bin += String.fromCharCode.apply(null, bajtovi.subarray(i, i + 0x8000));
+      return { base64: btoa(bin), sekundi: uz.length / HZ, tiho: vrh < 0.01 };
+    });
   }
   document.addEventListener('click', function (e) {
     var k = e.target.closest && e.target.closest('[data-koordinator]');
