@@ -14,6 +14,9 @@ const sada = () => new Date().toISOString();
 const novi = () => crypto.randomUUID().replaceAll('-', '').slice(0, 12);
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
 const AGENTI = ['koordinator', 'konkurencija', 'seo', 'ai', 'sadrzaj', 'lokalno', 'oglasi', 'materijal', 'claude'];
+// Diktiranje (Workers AI, oko 0,0005 USD po minuti zvuka). WAV 16 kHz mono je 32 kB u sekundi; 2 minute u base64 su oko 5,1 MB.
+const DIKTAT_MODEL = '@cf/openai/whisper-large-v3-turbo';
+const DIKTAT_MAX_ZNAKOVA = 5_400_000;
 
 const all = async (env, sql, ...a) => (await env.DB.prepare(sql).bind(...a).all()).results;
 const one = (env, sql, ...a) => env.DB.prepare(sql).bind(...a).first();
@@ -128,6 +131,27 @@ async function api(request, env, u, tenant, putanja) {
     const x = await zoviIzvrsitelj(put, tijelo);
     return x.ok ? json({ ok: true, pokretanje_id: x.pokretanje_id }) : greska(x.greska, x.status);
   };
+
+  // Diktiranje: preglednik pošalje WAV (base64), Whisper na Cloudflareu (Workers AI) vrati tekst. Zvuk se ne sprema.
+  if (m === 'POST' && putanja === '/api/diktat') {
+    if (!env.AI) return greska('Diktiranje nije spojeno (Workers AI).', 503);
+    const audio = typeof body.audio === 'string' ? body.audio : '';
+    if (audio.length < 2000) return greska('Snimka je prazna ili prekratka.');
+    if (audio.length > DIKTAT_MAX_ZNAKOVA) return greska('Snimka je preduga (najviše oko 2 minute).', 413);
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(audio)) return greska('Snimka nije ispravno kodirana.');
+    let r;
+    try {
+      r = await env.AI.run(DIKTAT_MODEL, {
+        audio, language: 'hr', vad_filter: true,
+        initial_prompt: 'Piccolini Play, banner s imenom, girlanda, igraonica, softplay, koordinator, agent, krštenje, rođendan.',
+      });
+    } catch (e) {
+      return greska(`Pretvaranje govora u tekst nije uspjelo: ${String(e.message || e).slice(0, 200)}`, 502);
+    }
+    const t = String(r?.text || '').trim();
+    await env.DB.batch([audit(env, u, tenant, 'diktat', 'razgovor', null, null, { sekundi: Math.round((audio.length * 3) / 4 / 32000), znakova: t.length })]);
+    return json({ tekst: t });
+  }
 
   // Razgovor s koordinatorom: vlasnik piše, koordinator odgovara i daje posao agentima.
   if (m === 'GET' && putanja === '/api/razgovor') {

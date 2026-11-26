@@ -58,6 +58,9 @@ i daje mu zadatak (`zadaj_zadatak`, MCP); izvršitelj zadatke s `automatski = 1`
 obavijest ide u razgovor i odobrena odluka se zatvara. Odobrena odluka odmah ide koordinatoru (`/odluka` na izvršitelju). Što nitko ne može,
 koordinator zapisuje kao `ceka_tebe` na odluci ili kao zahtjev za pristup (`zatrazi_pristup`, tablica `pristupi`). Migracija 0009.
 Na ploči svako stanje kaže tko je na potezu: ti, koordinator ili agent.
+Diktiranje: preglednik snimi govor, pretvori ga u WAV (16 kHz, mono) i pošalje na `POST /api/diktat`; tekst vraća Whisper
+(`@cf/openai/whisper-large-v3-turbo`, Workers AI, binding `AI` na dashboardu, oko 0,0005 USD po minuti, zvuk se ne sprema).
+Ne ovisi o ugrađenom prepoznavanju govora u pregledniku. Lokalni `wrangler dev` dashboarda zato zove Cloudflare (treba `wrangler login`).
 
 ### Parra (ponude → kalendar)
 Dashboard svakih 30 minuta (cron) i na gumb „Osvježi iz Parre” čita ponude i uplate iz Parre (`packages/poslovanje/parra.js`, API v1.1, samo GET).

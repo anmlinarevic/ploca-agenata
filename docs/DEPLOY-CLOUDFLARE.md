@@ -214,3 +214,7 @@ u `apps/izvrsitelj/wrangler.jsonc`; `FALLBACKS=ne` isključuje rezervni model ka
 
 **Stare odluke:** odobrene odluke bez zadatka (prije ove verzije) stoje pod „Čeka tebe” kao „Nije raspoređeno”; gumb
 „Daj koordinatoru” ih šalje koordinatoru. Odluke koje su čekale „izradu u Claude Codeu” migracija označi kao „Čeka tebe”.
+
+**Diktiranje (dopuna):** dashboard ima binding `AI` (Workers AI, Whisper) za `/api/diktat`. Ne treba secret ni ključ; dovoljan je
+`npx wrangler deploy --config apps/dashboard/wrangler.jsonc`. Trošak je oko 0,0005 USD po minuti govora i ulazi u Cloudflareov račun
+(besplatna dnevna kvota Workers AI to obično pokrije). Zvuk se ne sprema; u `audit_log` ide samo trajanje i broj znakova.
