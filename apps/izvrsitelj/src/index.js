@@ -7,7 +7,7 @@
  * daje posao agentima → kad koordinator završi, izvršitelj te zadatke sam stavlja u red → kad agent završi,
  * obavijest ide u razgovor, a odluka se zatvara. */
 import { AGENTI, LANCI } from '../../../packages/agenti/index.js';
-import { pokreniAgenta } from './agent.js';
+import { MAX_ZNAKOVA_ODGOVORA, pokreniAgenta, skrati } from './agent.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
 const sada = () => new Date().toISOString();
@@ -55,7 +55,7 @@ async function stavi(env, { tenant, agent, vrsta, opis, zadatakId = null, lanac 
 
 const zapisiRazgovor = (env, tenant, tko, tekst, pokretanjeId = null) =>
   env.DB.prepare(`INSERT INTO razgovor (id, tenant_id, kad, tko, tekst, pokretanje_id) VALUES (?, ?, ?, ?, ?, ?)`)
-    .bind(novi(), tenant, sada(), tko, String(tekst).slice(0, 6000), pokretanjeId).run();
+    .bind(novi(), tenant, sada(), tko, skrati(String(tekst), MAX_ZNAKOVA_ODGOVORA), pokretanjeId).run();
 
 /** Neuspjeli zadatak se vraća u „novo” i više se ne pokreće sam (inače bi se vrtio u krug): čeka vlasnika. */
 async function zatvoriZadatak(env, tenant, zadatakId, status, rezultat) {
@@ -63,7 +63,7 @@ async function zatvoriZadatak(env, tenant, zadatakId, status, rezultat) {
   await env.DB.batch([
     env.DB.prepare(`UPDATE zadaci SET status = ?, rezultat = ?, automatski = CASE WHEN ? = 'novo' THEN 0 ELSE automatski END, version = version + 1
                     WHERE tenant_id = ? AND id = ?`)
-      .bind(status, (rezultat || '').slice(0, 1000), status, tenant, zadatakId),
+      .bind(status, skrati(rezultat || '', MAX_ZNAKOVA_ODGOVORA), status, tenant, zadatakId),
     nadzor(env, tenant, 'zadatak_izvrsen', 'zadaci', zadatakId, { status }),
   ]);
 }

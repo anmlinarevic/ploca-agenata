@@ -908,7 +908,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
         (odl ? '<span>Za odluku „' + esc(odl.naslov) + '”</span>' : '') + (a.alat ? '<span>' + esc(a.alat) + '</span>' : '') +
         '<span>' + (st.trosak ? usd(st.trosak) : 'još bez troška') + '</span></div>' + put +
         (st.napomena ? '<p class="sitno" style="font-size:13.6px">' + esc(st.napomena) + '</p>' : '') +
-        (z.rezultat && (otvoren || z.status !== 'gotovo' && z.status !== 'odbijeno') ? '<p class="rezultat">' + esc(z.rezultat) + '</p>' : '') +
+        (z.rezultat && (otvoren || z.status !== 'gotovo' && z.status !== 'odbijeno') ? '<p class="rezultat">' + esc(cistTekst(z.rezultat)) + '</p>' : '') +
         (veze.length ? '<p class="meta">' + veze.join(' · ') + '</p>' : '') + '</div>' +
         '<div class="akcija">' + akcija + '<p class="poruka" aria-live="polite"></p></div></article>';
     }).join('');
@@ -1057,7 +1057,7 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       return '<article class="kartica pokretanje"><div class="odluka-vrh"><span class="agent-chip">' + tocka(p.agent) + esc(ag(p.agent).ime) + '</span><span class="oznaka-st ' + s[1] + '">' + esc(s[0]) + '</span>' +
         '<span class="datum">' + esc(datumSat(p.kreirano)) + (p.trosak ? ' · ' + esc(usd(p.trosak)) : '') + (p.pretrage ? ' · ' + p.pretrage + ' pretraga' : '') + '</span></div>' +
         (p.opis ? '<p>' + esc(p.opis) + '</p>' : '') +
-        (p.greska ? '<p class="poruka greska">' + esc(p.greska) + '</p>' : p.rezultat ? '<p class="rezultat">' + esc(p.rezultat) + '</p>' : '') + '</article>';
+        (p.greska ? '<p class="poruka greska">' + esc(p.greska) + '</p>' : p.rezultat ? '<p class="rezultat">' + esc(cistTekst(p.rezultat)) + '</p>' : '') + '</article>';
     }).join('');
     renderIzvjestaji();
   }

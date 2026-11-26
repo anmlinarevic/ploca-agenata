@@ -36,7 +36,8 @@ function scenarij(telo, agent) {
       tool('t3', 'spremi_izvjestaj', { naslov: 'Konkurencija (test)', tijelo: '## Promjene\nBez bitnih promjena.' }),
       tool('t4', 'obrisi_sve', {}), // nepostojeći alat: izvršitelj mora vratiti is_error, ne srušiti se
     ], 'tool_use', { input_tokens: 4000, output_tokens: 800, cache_read_input_tokens: 20000 });
-    return odgovor([{ type: 'text', text: 'Sažetak: bez promjena.' }], 'end_turn',
+    // Dug završni tekst (preko starih granica od 1000 i 4000 znakova): mora stići cijeli do zadatka.
+    return odgovor([{ type: 'text', text: `Sažetak: bez promjena.\n\n${'- **Stavka** s detaljem za provjeru duljine.\n'.repeat(120)}KRAJ SAŽETKA` }], 'end_turn',
       { input_tokens: 3000, output_tokens: 300, cache_read_input_tokens: 24000, server_tool_use: { web_search_requests: 2 } });
   }
   if (agent === 'koordinator') {
