@@ -1,6 +1,8 @@
-/* Instagram i Facebook stranica preko Meta Graph API-ja. Samo čitanje vlastitih računa: ploča ništa ne objavljuje
- * i ne čita poruke ni komentare. Token i id stranice su tajne Workera (META_TOKEN, META_STRANICA); token ide u
- * zaglavlje (ne u adresu), nikad u bazu ni pregledniku. Instagram poslovni račun pronalazi se preko stranice. */
+/* Instagram i Facebook stranice preko Meta Graph API-ja. Samo čitanje vlastitih računa: ploča ništa ne objavljuje
+ * i ne čita poruke ni komentare. Token je tajna Workera (META_TOKEN, token korisnika sustava koji vrijedi za sve stranice koje mu
+ * je dodijeljena imovina); ide u zaglavlje (ne u adresu), nikad u bazu ni pregledniku. Računi (stranice) su u tablici `racuni`;
+ * tajna META_STRANICA se još čita samo za prijelaz sa stare postavke. Instagram poslovni račun pronalazi se preko stranice. */
+import { osiguraStareRacune } from './racuni.js';
 
 const OSNOVA = 'https://graph.facebook.com';
 const VERZIJA = 'v25.0';
@@ -13,9 +15,8 @@ const SVJEZE_DANA = 35;                   // nakon toga se brojke objave više n
 export const SATI = [8, 11, 14, 17, 20, 22];
 export const DANI = ['ponedjeljak', 'utorak', 'srijeda', 'četvrtak', 'petak', 'subota', 'nedjelja'];
 
-/** Je li Meta podešena za ovog zakupca. */
-export const metaPodesena = (env, tenant) =>
-  !!(env.META_TOKEN && env.META_STRANICA && (env.META_ZAKUPAC || 'piccolini') === tenant);
+/** Je li Meta podešena za ovog zakupca (postoji token). Koje su stranice dodane, vidi se u tablici `racuni`. */
+export const metaPodesena = (env, tenant) => !!(env.META_TOKEN && (env.META_ZAKUPAC || 'piccolini') === tenant);
 
 const datumZg = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb' }).format(d);
 const parse = (s) => { try { return s == null ? null : JSON.parse(s); } catch { return null; } };
@@ -40,7 +41,8 @@ function vrijednost(x, zadnja = true) {
 }
 const poImenu = (odg) => Object.fromEntries((odg?.data || []).map((x) => [x.name, x]));
 
-class GreskaMete extends Error {}
+/** `fatalno`: problem je zajednički za sve stranice (token, dozvole, ograničenje brzine, Metina greška), pa se krug prekida. */
+class GreskaMete extends Error { constructor(poruka, fatalno = false) { super(poruka); this.fatalno = fatalno; } }
 
 function klijent(env, fetchFn) {
   const osnova = `${(env.META_URL || OSNOVA).replace(/\/$/, '')}/${env.META_VERZIJA || VERZIJA}`;
@@ -59,39 +61,68 @@ function klijent(env, fetchFn) {
     const e = d?.error || {}, kod = +e.code;
     // Isti kod 190 Meta šalje i kad treba stranični token; to nije istekao token.
     if (kod === 190 && /page access token/i.test(e.message || '')) return { meka: 'Meta traži stranični token za ovaj podatak.' };
-    if (kod === 190 || odg.status === 401) throw new GreskaMete(`Meta ne prihvaća token (istekao ili opozvan)${e.message ? `: ${String(e.message).slice(0, 120).replace(/\.+$/, '')}` : ''}. Napravi novi i upiši ga: npx wrangler secret put META_TOKEN`);
-    if (kod === 10 || (kod >= 200 && kod < 300) || odg.status === 403) throw new GreskaMete('Tokenu nedostaje dozvola za čitanje uvida (instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights).');
-    if ([4, 17, 32, 613].includes(kod) || odg.status === 429) throw new GreskaMete('Meta je privremeno ograničila broj zahtjeva. Nastavlja se u idućem krugu.');
-    if (kod === 803 || (kod === 100 && /node|exist|unknown path/i.test(e.message || '') && put === String(env.META_STRANICA).trim()))
-      throw new GreskaMete('Meta ne nalazi tu Facebook stranicu. Provjeri META_STRANICA (id stranice).');
-    if (odg.status >= 500) throw new GreskaMete(`Meta je vratila grešku ${odg.status}. Pokušat će ponovno u idućem krugu.`);
+    if (kod === 190 || odg.status === 401) throw new GreskaMete(`Meta ne prihvaća token (istekao ili opozvan)${e.message ? `: ${String(e.message).slice(0, 120).replace(/\.+$/, '')}` : ''}. Napravi novi i upiši ga: npx wrangler secret put META_TOKEN`, true);
+    if (kod === 10 || (kod >= 200 && kod < 300) || odg.status === 403) throw new GreskaMete('Tokenu nedostaje dozvola za čitanje uvida (instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights).', true);
+    if ([4, 17, 32, 613].includes(kod) || odg.status === 429) throw new GreskaMete('Meta je privremeno ograničila broj zahtjeva. Nastavlja se u idućem krugu.', true);
+    if (kod === 803 || (kod === 100 && /node|exist|unknown path/i.test(e.message || '') && /^\d+$/.test(put)))
+      throw new GreskaMete('Meta ne nalazi tu Facebook stranicu. Provjeri ID stranice računa i je li stranica dodijeljena korisniku sustava.');
+    if (odg.status >= 500) throw new GreskaMete(`Meta je vratila grešku ${odg.status}. Pokušat će ponovno u idućem krugu.`, true);
     return { meka: String(e.message || `greška ${odg.status}`).slice(0, 200) };
   };
   return { get, iskoristeno: () => zahtjeva, ima: (n = 1) => zahtjeva + n <= NAJVISE_ZAHTJEVA };
 }
 
-/** Jedan krug: stranica i Instagram račun, zbrojevi za 28 dana, nove objave i uvidi objava. */
-export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = () => new Date() } = {}) {
+/** Jedan krug: svaka dodana Facebook stranica i njezin Instagram račun, zbrojevi za 28 dana, nove objave i uvidi objava.
+ *  Stranice se obrađuju jedna po jedna, najprije one koje su najdulje čekale; greška jedne stranice ne zaustavlja ostale,
+ *  osim problema zajedničkih svima (token, dozvole, ograničenje brzine). `racunId` ograničava krug na stranicu tog računa. */
+export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = () => new Date(), racunId = null } = {}) {
   if (!metaPodesena(env, tenant)) return { ok: false, greska: 'Meta nije spojena za ovog zakupca.' };
-  const db = env.DB, k = klijent(env, fetchFn), stranica = String(env.META_STRANICA).trim();
-  const sad = sada(), sadIso = sad.toISOString(), danas = datumZg(sad);
+  const db = env.DB;
+  await osiguraStareRacune(env, tenant);
+  let racuni = (await db.prepare(`SELECT * FROM racuni WHERE tenant_id = ? AND aktivan = 1 AND mreza IN ('facebook', 'instagram') AND stranica_id IS NOT NULL
+    ORDER BY COALESCE(zadnje, ''), kreirano, id`).bind(tenant).all()).results;
+  if (racunId) {
+    const r = racuni.find((x) => x.id === racunId);
+    if (!r) return { ok: false, greska: 'Račun nije pronađen ili nije Facebook ni Instagram račun.' };
+    racuni = racuni.filter((x) => x.stranica_id === r.stranica_id);
+  }
+  if (!racuni.length) return { ok: false, greska: 'Nema dodanih Facebook ni Instagram računa. Dodaj račun na stranici Mreže.' };
+  const stranice = [...new Set(racuni.map((r) => r.stranica_id))];
+  const k = klijent(env, fetchFn), sad = sada();
+  const zbroj = { objava: 0, uvida: 0, upozorenja: [], greske: [] };
+  for (const [i, stranica] of stranice.entries()) {
+    if (!k.ima(3)) { zbroj.upozorenja.push(`${stranice.length - i} stranica čeka idući krug (ograničenje broja zahtjeva po pozivu).`); break; }
+    const r = await sinkronizirajStranicu(env, tenant, stranica, racuni.filter((x) => x.stranica_id === stranica), k, sad);
+    zbroj.objava += r.objava; zbroj.uvida += r.uvida;
+    zbroj.upozorenja.push(...r.upozorenja);
+    if (r.greska) zbroj.greske.push(r.greska);
+    if (r.fatalno) break;
+  }
+  return { ok: !zbroj.greske.length, greska: zbroj.greske[0] || null, objava: zbroj.objava, uvida: zbroj.uvida, upozorenja: zbroj.upozorenja, zahtjeva: k.iskoristeno() };
+}
+
+/** Jedna Facebook stranica s povezanim Instagramom. Ne baca: greška se zapisuje na račune stranice i vraća. */
+async function sinkronizirajStranicu(env, tenant, stranica, racuniStranice, k, sad) {
+  const db = env.DB, sadIso = sad.toISOString(), danas = datumZg(sad);
+  const fbRacun = racuniStranice.find((r) => r.mreza === 'facebook') || null;
+  let igRacun = racuniStranice.find((r) => r.mreza === 'instagram') || null;
   const upozorenja = [];
   const upozori = (gdje, odg) => { if (odg?.meka) upozorenja.push(`${gdje}: ${odg.meka}`); };
-  let greska = null, ig = null, igIme = null, stranicaIme = null, objava = 0, uvida = 0;
+  let greska = null, fatalno = false, ig = null, igIme = null, stranicaIme = null, objava = 0, uvida = 0;
 
-  const pratitelji = (kanal, n) => n == null ? null : db.prepare(`INSERT INTO meta_pratitelji (tenant_id, kanal, datum, pratitelji) VALUES (?, ?, ?, ?)
-    ON CONFLICT (tenant_id, kanal, datum) DO UPDATE SET pratitelji = excluded.pratitelji`).bind(tenant, kanal, danas, n);
-  const razdoblje = (kanal, oznaka, od, doD, v) => db.prepare(`INSERT INTO meta_razdoblje (tenant_id, kanal, oznaka, od, do, doseg, pregledi, interakcije, spremanja, dijeljenja, azurirano)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (tenant_id, kanal, oznaka) DO UPDATE SET od = excluded.od, do = excluded.do, doseg = excluded.doseg,
+  const pratitelji = (racun, n) => (racun == null || n == null) ? null : db.prepare(`INSERT INTO brojke_dan (tenant_id, racun_id, datum, mjera, vrijednost) VALUES (?, ?, ?, 'pratitelji', ?)
+    ON CONFLICT (tenant_id, racun_id, datum, mjera) DO UPDATE SET vrijednost = excluded.vrijednost`).bind(tenant, racun, danas, n);
+  const razdoblje = (racun, kanal, oznaka, od, doD, v) => racun == null ? null : db.prepare(`INSERT INTO meta_razdoblje (tenant_id, racun_id, kanal, oznaka, od, do, doseg, pregledi, interakcije, spremanja, dijeljenja, azurirano)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (tenant_id, racun_id, oznaka) DO UPDATE SET od = excluded.od, do = excluded.do, doseg = excluded.doseg,
     pregledi = excluded.pregledi, interakcije = excluded.interakcije, spremanja = excluded.spremanja, dijeljenja = excluded.dijeljenja, azurirano = excluded.azurirano`)
-    .bind(tenant, kanal, oznaka, od, doD, v.doseg ?? null, v.pregledi ?? null, v.interakcije ?? null, v.spremanja ?? null, v.dijeljenja ?? null, sadIso);
-  const objavaRed = (kanal, o) => db.prepare(`INSERT INTO meta_objave (tenant_id, kanal, id, vrsta, objavljeno, poveznica, opis, lajkovi, komentari)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (tenant_id, kanal, id) DO UPDATE SET vrsta = excluded.vrsta, poveznica = excluded.poveznica, opis = excluded.opis,
+    .bind(tenant, racun, kanal, oznaka, od, doD, v.doseg ?? null, v.pregledi ?? null, v.interakcije ?? null, v.spremanja ?? null, v.dijeljenja ?? null, sadIso);
+  const objavaRed = (racun, kanal, o) => db.prepare(`INSERT INTO meta_objave (tenant_id, racun_id, kanal, id, vrsta, objavljeno, poveznica, opis, lajkovi, komentari)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (tenant_id, racun_id, id) DO UPDATE SET vrsta = excluded.vrsta, poveznica = excluded.poveznica, opis = excluded.opis,
     lajkovi = COALESCE(excluded.lajkovi, meta_objave.lajkovi), komentari = COALESCE(excluded.komentari, meta_objave.komentari)`)
-    .bind(tenant, kanal, o.id, o.vrsta, o.objavljeno, o.poveznica, o.opis, o.lajkovi ?? null, o.komentari ?? null);
-  const uvidiRed = (kanal, id, v) => db.prepare(`UPDATE meta_objave SET pregledi = COALESCE(?, pregledi), doseg = COALESCE(?, doseg), spremanja = COALESCE(?, spremanja),
-    dijeljenja = COALESCE(?, dijeljenja), klikovi = COALESCE(?, klikovi), lajkovi = COALESCE(?, lajkovi), uvidi_azurirani = ? WHERE tenant_id = ? AND kanal = ? AND id = ?`)
-    .bind(v.pregledi ?? null, v.doseg ?? null, v.spremanja ?? null, v.dijeljenja ?? null, v.klikovi ?? null, v.lajkovi ?? null, sadIso, tenant, kanal, id);
+    .bind(tenant, racun, kanal, o.id, o.vrsta, o.objavljeno, o.poveznica, o.opis, o.lajkovi ?? null, o.komentari ?? null);
+  const uvidiRed = (racun, id, v) => db.prepare(`UPDATE meta_objave SET pregledi = COALESCE(?, pregledi), doseg = COALESCE(?, doseg), spremanja = COALESCE(?, spremanja),
+    dijeljenja = COALESCE(?, dijeljenja), klikovi = COALESCE(?, klikovi), lajkovi = COALESCE(?, lajkovi), uvidi_azurirani = ? WHERE tenant_id = ? AND racun_id = ? AND id = ?`)
+    .bind(v.pregledi ?? null, v.doseg ?? null, v.spremanja ?? null, v.dijeljenja ?? null, v.klikovi ?? null, v.lajkovi ?? null, sadIso, tenant, racun, id);
   const izvrsi = async (naredbe) => { const n = naredbe.filter(Boolean); if (n.length) await db.batch(n); };
 
   // Unix sekunde za 28 + 28 dana (Meta: since/until)
@@ -103,23 +134,34 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
     // 1) stranica + povezani Instagram poslovni račun
     const str = await k.get(stranica, { fields: 'name,followers_count,fan_count,access_token,instagram_business_account{id,username,followers_count}' });
     if (str?.meka) throw new GreskaMete(`Meta ne daje podatke stranice: ${str.meka}`);
+    if (!str) throw new GreskaMete('Ograničenje broja zahtjeva: stranica čeka idući krug.', true);
     stranicaIme = str.name || null;
     // Pregled i objave Facebook stranice traže stranični token, koji se dobiva od stranice (token korisnika sustava ga ne zamjenjuje).
     const stranicniToken = str.access_token || null;
-    if (!stranicniToken) upozorenja.push('Facebook: Meta nije dala stranični token. Provjeri da korisnik sustava ima stranicu s pravom na uvide.');
+    if (fbRacun && !stranicniToken) upozorenja.push('Facebook: Meta nije dala stranični token. Provjeri da korisnik sustava ima stranicu s pravom na uvide.');
     ig = str.instagram_business_account?.id || null;
     igIme = str.instagram_business_account?.username || null;
-    if (!ig) upozorenja.push('Facebook stranica nema povezan Instagram poslovni ili kreatorski račun.');
-    await izvrsi([pratitelji('facebook', broj(str.followers_count ?? str.fan_count)), ig && pratitelji('instagram', broj(str.instagram_business_account.followers_count))]);
+    if (!ig && igRacun) upozorenja.push('Facebook stranica nema povezan Instagram poslovni ili kreatorski račun.');
+    // Stranica ima Instagram, a na ploči nije dodan nijedan Instagram račun za nju (ni uklonjen): dodaje se sam.
+    if (ig && !igRacun) {
+      const bilo = await db.prepare(`SELECT id FROM racuni WHERE tenant_id = ? AND mreza = 'instagram' AND stranica_id = ?`).bind(tenant, stranica).first();
+      if (!bilo) {
+        const id = `instagram-${crypto.randomUUID().slice(0, 8)}`;
+        await db.prepare(`INSERT INTO racuni (id, tenant_id, mreza, naziv, naziv_rucno, usluga, vanjski_id, stranica_id, status, kreirano) VALUES (?, ?, 'instagram', ?, 0, ?, ?, ?, 'ceka', ?)`)
+          .bind(id, tenant, igIme ? `@${igIme}` : 'Instagram račun', fbRacun?.usluga || 'oboje', ig, stranica, sadIso).run();
+        igRacun = { id, mreza: 'instagram', naziv_rucno: 0, usluga: fbRacun?.usluga || 'oboje' };
+      }
+    }
+    await izvrsi([fbRacun && pratitelji(fbRacun.id, broj(str.followers_count ?? str.fan_count)), ig && igRacun && pratitelji(igRacun.id, broj(str.instagram_business_account.followers_count))]);
 
     // 2) Instagram: zbrojevi za zadnjih i prethodnih 28 dana
-    if (ig) {
+    if (ig && igRacun) {
       for (const [oznaka, r] of [['zadnjih', r1], ['prethodnih', r0]]) {
         let odg = await k.get(`${ig}/insights`, { metric: 'reach,views,total_interactions,saves,shares', period: 'day', metric_type: 'total_value', since: s(r.od), until: s(r.do) });
         if (odg?.meka) { upozori(`Instagram (${oznaka} 28 dana)`, odg); odg = await k.get(`${ig}/insights`, { metric: 'reach', period: 'day', metric_type: 'total_value', since: s(r.od), until: s(r.do) }); }
         if (!odg || odg.meka) continue;
         const m = poImenu(odg);
-        await izvrsi([razdoblje('instagram', oznaka, d(r.od), d(r.do), {
+        await izvrsi([razdoblje(igRacun.id, 'instagram', oznaka, d(r.od), d(r.do), {
           doseg: vrijednost(m.reach), pregledi: vrijednost(m.views), interakcije: vrijednost(m.total_interactions), spremanja: vrijednost(m.saves), dijeljenja: vrijednost(m.shares),
         })]);
       }
@@ -127,7 +169,7 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
       const med = await k.get(`${ig}/media`, { fields: 'id,caption,media_type,media_product_type,timestamp,permalink,like_count,comments_count', limit: 30 });
       upozori('Instagram objave', med);
       if (med && !med.meka) {
-        await izvrsi((med.data || []).filter((m) => m.id && m.timestamp).map((m) => objavaRed('instagram', {
+        await izvrsi((med.data || []).filter((m) => m.id && m.timestamp).map((m) => objavaRed(igRacun.id, 'instagram', {
           id: String(m.id), vrsta: vrstaIg(m), objavljeno: new Date(m.timestamp).toISOString(), poveznica: m.permalink || null,
           opis: cistiOpis(m.caption), lajkovi: broj(m.like_count), komentari: broj(m.comments_count),
         })));
@@ -137,7 +179,7 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
 
     // 4) i 5) Facebook stranica (stranični token). Greška ovdje je upozorenje: Instagram i uvidi objava ipak nastavljaju.
     try {
-      if (stranicniToken) {
+      if (stranicniToken && fbRacun) {
         // pregledi i jedinstveni gledatelji (28 dana, klizno)
         const fbt = await k.get(`${stranica}/insights`, { metric: 'page_media_view,page_total_media_view_unique', period: 'days_28', since: s(kraj - 30 * DAN), until: s(kraj) }, stranicniToken);
         upozori('Facebook stranica', fbt);
@@ -145,29 +187,30 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
           const m = poImenu(fbt);
           const prvi = (x) => { const v = x?.values || []; return v.length >= 2 ? vrijednost(x, false) : null; };
           await izvrsi([
-            razdoblje('facebook', 'zadnjih', d(r1.od), d(r1.do), { pregledi: vrijednost(m.page_media_view), doseg: vrijednost(m.page_total_media_view_unique) }),
-            razdoblje('facebook', 'prethodnih', d(r0.od), d(r0.do), { pregledi: prvi(m.page_media_view), doseg: prvi(m.page_total_media_view_unique) }),
+            razdoblje(fbRacun.id, 'facebook', 'zadnjih', d(r1.od), d(r1.do), { pregledi: vrijednost(m.page_media_view), doseg: vrijednost(m.page_total_media_view_unique) }),
+            razdoblje(fbRacun.id, 'facebook', 'prethodnih', d(r0.od), d(r0.do), { pregledi: prvi(m.page_media_view), doseg: prvi(m.page_total_media_view_unique) }),
           ]);
         }
         const fbo = await k.get(`${stranica}/posts`, { fields: 'id,message,created_time,permalink_url,status_type', limit: 20 }, stranicniToken);
         upozori('Facebook objave', fbo);
         if (fbo && !fbo.meka) {
-          await izvrsi((fbo.data || []).filter((p) => p.id && p.created_time).map((p) => objavaRed('facebook', {
+          await izvrsi((fbo.data || []).filter((p) => p.id && p.created_time).map((p) => objavaRed(fbRacun.id, 'facebook', {
             id: String(p.id), vrsta: vrstaFb(p), objavljeno: new Date(p.created_time).toISOString(), poveznica: p.permalink_url || null, opis: cistiOpis(p.message),
           })));
           objava += (fbo.data || []).length;
         }
       }
     } catch (e) {
-      if (!(e instanceof GreskaMete)) throw e;
+      if (!(e instanceof GreskaMete) || e.fatalno) throw e;
       upozorenja.push(`Facebook: ${e.message}`.slice(0, 220));
     }
 
-    // 6) uvidi objava: prvo nikad osvježene, pa najstarije osvježene, samo mlađe od 35 dana (osim prvog puta)
+    // 6) uvidi objava ove stranice: prvo nikad osvježene, pa najstarije osvježene, samo mlađe od 35 dana (osim prvog puta)
+    const idovi = [fbRacun?.id, igRacun?.id].filter(Boolean);
     const granica = new Date(kraj - SVJEZE_DANA * DAN).toISOString(), staro = new Date(kraj - OSVJEZI_UVIDE_MS).toISOString();
-    const red = (await db.prepare(`SELECT kanal, id FROM meta_objave WHERE tenant_id = ?
+    const red = idovi.length ? (await db.prepare(`SELECT racun_id, kanal, id FROM meta_objave WHERE tenant_id = ? AND racun_id IN (${idovi.map(() => '?').join(',')})
         AND (uvidi_azurirani IS NULL OR (objavljeno >= ? AND uvidi_azurirani < ?))
-        ORDER BY uvidi_azurirani IS NOT NULL, uvidi_azurirani, objavljeno DESC LIMIT 60`).bind(tenant, granica, staro).all()).results;
+        ORDER BY uvidi_azurirani IS NOT NULL, uvidi_azurirani, objavljeno DESC LIMIT 60`).bind(tenant, ...idovi, granica, staro).all()).results : [];
     for (const o of red) {
       if (!k.ima()) break;
       let v = null;
@@ -184,21 +227,25 @@ export async function sinkronizirajMetu(env, tenant, { fetchFn = fetch, sada = (
         const m = poImenu(odg.meka ? {} : odg);
         v = { pregledi: vrijednost(m.post_media_view), doseg: vrijednost(m.post_total_media_view_unique), lajkovi: vrijednost(m.post_reactions_by_type_total), klikovi: vrijednost(m.post_clicks) };
       }
-      await izvrsi([uvidiRed(o.kanal, o.id, v)]);
+      await izvrsi([uvidiRed(o.racun_id, o.id, v)]);
       uvida++;
     }
   } catch (e) {
     if (!(e instanceof GreskaMete)) console.error('meta', e);
     greska = e instanceof GreskaMete ? e.message : 'Veza s Metom nije uspjela. Pokušat će ponovno u idućem krugu.';
+    fatalno = !(e instanceof GreskaMete) || e.fatalno;
   }
 
-  await db.prepare(`INSERT INTO meta_sinkronizacija (tenant_id, ig_korisnik, ig_ime, stranica_ime, zadnje, zadnje_uspjesno, greska, upozorenja_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (tenant_id) DO UPDATE SET ig_korisnik = COALESCE(excluded.ig_korisnik, meta_sinkronizacija.ig_korisnik),
-      ig_ime = COALESCE(excluded.ig_ime, meta_sinkronizacija.ig_ime), stranica_ime = COALESCE(excluded.stranica_ime, meta_sinkronizacija.stranica_ime),
-      zadnje = excluded.zadnje, zadnje_uspjesno = COALESCE(excluded.zadnje_uspjesno, meta_sinkronizacija.zadnje_uspjesno),
-      greska = excluded.greska, upozorenja_json = excluded.upozorenja_json`)
-    .bind(tenant, ig, igIme, stranicaIme, sadIso, greska ? null : sadIso, greska, JSON.stringify(upozorenja.slice(0, 8))).run();
-  return { ok: !greska, greska, objava, uvida, upozorenja, zahtjeva: k.iskoristeno() };
+  // Stanje svakog računa stranice. Naziv postavlja Meta samo ako ga nije upisao čovjek.
+  const stanje = (r, naziv, vanjski) => db.prepare(`UPDATE racuni SET zadnje = ?, zadnje_uspjesno = CASE WHEN ? IS NULL THEN ? ELSE zadnje_uspjesno END, greska = ?,
+      status = ?, upozorenja_json = ?, vanjski_id = COALESCE(?, vanjski_id), naziv = CASE WHEN naziv_rucno = 0 AND ? IS NOT NULL THEN ? ELSE naziv END,
+      povijest_od = COALESCE(povijest_od, (SELECT MIN(datum) FROM brojke_dan b WHERE b.tenant_id = racuni.tenant_id AND b.racun_id = racuni.id))
+    WHERE tenant_id = ? AND id = ?`).bind(sadIso, greska, sadIso, greska, greska ? 'greska' : 'spojeno', JSON.stringify(upozorenja.slice(0, 8)), vanjski, naziv, naziv, tenant, r.id);
+  await db.batch([
+    fbRacun && stanje(fbRacun, stranicaIme, stranica),
+    igRacun && stanje(igRacun, igIme ? `@${igIme}` : null, ig),
+  ].filter(Boolean));
+  return { objava, uvida, upozorenja, greska, fatalno };
 }
 
 // ---------- izračun za ekran (bez mreže, testira se zasebno) ----------
@@ -285,26 +332,36 @@ export function izracunajKanal({ objave = [], pratitelji = [], razdoblja = {}, d
   };
 }
 
-/** Sve za ekran Mreže. */
+/** Sve za ekran Mreže: popis računa s brojkama svakog, a `kanali` i `meta` ostaju (prvi račun po mreži) da stari ekran radi dok se ne prebaci. */
 export async function pregledMreza(env, tenant, sada = new Date()) {
   const db = env.DB, danas = datumZg(sada);
-  const [st, objave, prat, raz] = await Promise.all([
-    db.prepare(`SELECT * FROM meta_sinkronizacija WHERE tenant_id = ?`).bind(tenant).first(),
+  const [racuni, objave, prat, raz] = await Promise.all([
+    db.prepare(`SELECT * FROM racuni WHERE tenant_id = ? AND aktivan = 1 AND mreza IN ('facebook', 'instagram') ORDER BY mreza, kreirano, id`).bind(tenant).all(),
     db.prepare(`SELECT * FROM meta_objave WHERE tenant_id = ? AND objavljeno >= ? ORDER BY objavljeno`).bind(tenant, new Date(sada.getTime() - 200 * DAN).toISOString()).all(),
-    db.prepare(`SELECT kanal, datum, pratitelji FROM meta_pratitelji WHERE tenant_id = ? AND datum >= ? ORDER BY datum`).bind(tenant, new Date(sada.getTime() - 40 * DAN).toISOString().slice(0, 10)).all(),
+    db.prepare(`SELECT racun_id, datum, vrijednost AS pratitelji FROM brojke_dan WHERE tenant_id = ? AND mjera = 'pratitelji' AND datum >= ? ORDER BY datum`).bind(tenant, new Date(sada.getTime() - 40 * DAN).toISOString().slice(0, 10)).all(),
     db.prepare(`SELECT * FROM meta_razdoblje WHERE tenant_id = ?`).bind(tenant).all(),
   ]);
-  const kanal = (k) => izracunajKanal({
-    objave: objave.results.filter((o) => o.kanal === k), pratitelji: prat.results.filter((p) => p.kanal === k),
-    razdoblja: Object.fromEntries(raz.results.filter((r) => r.kanal === k).map((r) => [r.oznaka, r])), danas,
+  const podaci = (r) => izracunajKanal({
+    objave: objave.results.filter((o) => o.racun_id === r.id), pratitelji: prat.results.filter((p) => p.racun_id === r.id),
+    razdoblja: Object.fromEntries(raz.results.filter((x) => x.racun_id === r.id).map((x) => [x.oznaka, x])), danas,
   });
+  const lista = racuni.results.map((r) => ({
+    id: r.id, mreza: r.mreza, naziv: r.naziv, usluga: r.usluga, status: r.status, zadnje: r.zadnje, zadnjeUspjesno: r.zadnje_uspjesno,
+    greska: r.greska, upozorenja: parse(r.upozorenja_json) || [], povijestOd: r.povijest_od, podaci: podaci(r),
+  }));
+  const prvi = (m) => lista.find((r) => r.mreza === m) || null;
+  const fb = prvi('facebook'), ig = prvi('instagram');
+  const najnovije = (k) => lista.map((r) => r[k]).filter(Boolean).sort().pop() ?? null;
+  const prazno = () => izracunajKanal({ danas });
   return {
     danas,
     meta: {
-      spojeno: metaPodesena(env, tenant), zadnje: st?.zadnje ?? null, zadnjeUspjesno: st?.zadnje_uspjesno ?? null, greska: st?.greska ?? null,
-      upozorenja: parse(st?.upozorenja_json) || [], igIme: st?.ig_ime ?? null, stranicaIme: st?.stranica_ime ?? null, igSpojen: !!st?.ig_korisnik,
+      spojeno: metaPodesena(env, tenant), zadnje: najnovije('zadnje'), zadnjeUspjesno: najnovije('zadnjeUspjesno'), greska: lista.find((r) => r.greska)?.greska ?? null,
+      upozorenja: lista.flatMap((r) => r.upozorenja).slice(0, 8), igIme: ig ? ig.naziv.replace(/^@/, '') : null, stranicaIme: fb?.naziv ?? null,
+      igSpojen: !!racuni.results.find((r) => r.mreza === 'instagram' && r.vanjski_id),
     },
     sati: SATI, dani: DANI,
-    kanali: { instagram: kanal('instagram'), facebook: kanal('facebook') },
+    racuni: lista,
+    kanali: { instagram: ig ? ig.podaci : prazno(), facebook: fb ? fb.podaci : prazno() },
   };
 }

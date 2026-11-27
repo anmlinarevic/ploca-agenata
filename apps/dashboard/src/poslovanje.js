@@ -7,6 +7,7 @@ import {
 import { narudzbaIzReda, ucitaj, pregled } from '../../../packages/poslovanje/baza.js';
 import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/parra.js';
 import { metaPodesena, sinkronizirajMetu, pregledMreza } from '../../../packages/poslovanje/meta.js';
+import { popisRacuna, dodajRacun, ukloniRacun } from '../../../packages/poslovanje/racuni.js';
 import { pregledFinancija } from '../../../packages/poslovanje/financije.js';
 import { gscPodesen, sinkronizirajGsc, pregledWeba } from '../../../packages/poslovanje/gsc.js';
 
@@ -110,9 +111,28 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
   if (m === 'GET' && putanja === '/api/financije') return json(await pregledFinancija(env, tenant));
   if (m === 'POST' && putanja === '/api/meta/osvjezi') {
     if (!metaPodesena(env, tenant)) return greska('Meta nije spojena. Upiši token: npx wrangler secret put META_TOKEN', 503);
-    const r = await sinkronizirajMetu(env, tenant);
-    await env.DB.batch([audit(env, u, tenant, 'meta_osvjezi', 'meta_objave', null, null, { objava: r.objava, uvida: r.uvida, greska: r.greska })]);
+    const r = await sinkronizirajMetu(env, tenant, { racunId: typeof body?.racun === 'string' ? body.racun : null });
+    await env.DB.batch([audit(env, u, tenant, 'meta_osvjezi', 'meta_objave', body?.racun ?? null, null, { objava: r.objava, uvida: r.uvida, greska: r.greska })]);
     return r.ok ? json(r) : greska(r.greska, 502);
+  }
+
+  // ---- Računi na mrežama: popis, dodavanje i uklanjanje (vlasnik ili savjetnik). Podaci uklonjenog računa ostaju u bazi. ----
+  if (m === 'GET' && putanja === '/api/racuni') return json({ racuni: await popisRacuna(env.DB, tenant) });
+  if (m === 'POST' && putanja === '/api/racuni') {
+    try {
+      const dodano = await dodajRacun(env.DB, tenant, body || {});
+      await env.DB.batch(dodano.map((d) => audit(env, u, tenant, 'racun_dodan', 'racuni', d.id, null, { mreza: d.mreza, naziv: d.naziv, usluga: body.usluga ?? 'oboje' })));
+      return json({ dodano, racuni: await popisRacuna(env.DB, tenant) });
+    } catch (e) {
+      return greska(String(e.message || e), /UNIQUE|već dodan/i.test(String(e.message)) ? 409 : 400);
+    }
+  }
+  const rac = /^\/api\/racuni\/([\w-]{1,40})$/.exec(putanja);
+  if (m === 'DELETE' && rac) {
+    const uklonjen = await ukloniRacun(env.DB, tenant, rac[1]);
+    if (!uklonjen) return greska('Račun ne postoji ili je već uklonjen', 404);
+    await env.DB.batch([audit(env, u, tenant, 'racun_uklonjen', 'racuni', rac[1], null, null)]);
+    return json({ ok: true, racuni: await popisRacuna(env.DB, tenant) });
   }
 
   // ---- Google Search Console: pregled i ručno osvježavanje (inače jednom dnevno preko crona) ----

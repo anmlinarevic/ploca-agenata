@@ -6,6 +6,7 @@
     "migriraj:lokalno": "wrangler d1 migrations apply ploca --local --config apps/mcp/wrangler.jsonc",
     "dev": "wrangler dev --config apps/mcp/wrangler.jsonc",
     "test": "node scripts/test-lokalno.mjs",
+    "test:racuni": "node --no-warnings scripts/racuni-test.mjs",
     "demo": "node scripts/demo.mjs"
   },
   "devDependencies": {
