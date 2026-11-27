@@ -85,7 +85,8 @@
       if (izbor.preset !== 'custom' && dostupno.indexOf(izbor.preset) < 0) nap = ' · Razdoblje „' + (PRESETI.filter(function (p) { return p[0] === izbor.preset; })[0] || ['', ''])[1] + '” ovdje nije moguće. ' + (opcije.razlog || '') + ' Prikazano: ' + (PRESETI.filter(function (p) { return p[0] === ef; })[0] || ['', ''])[1] + '.';
       if (opcije.mjesecno && cust) nap += ' · Prihod se vodi po mjesecu isporuke, pa se razdoblje računa u cijelim mjesecima.';
       if (opcije.napomena) nap += ' · ' + opcije.napomena(r);
-      h += '<p class="info"><strong>' + opis + '</strong>' + usp + esc(nap).replace(/&#39;/g, "'") + '</p>';
+      if (!opcije.skrijRaspon) h += '<p class="info"><strong>' + opis + '</strong>' + usp + esc(nap).replace(/&#39;/g, "'") + '</p>';
+      else if (nap) h += '<p class="info">' + esc(nap.replace(/^ · /, '')) + '</p>';
       el.className = (el.className.replace(/\braz\b/, '') + ' raz').trim();
       el.innerHTML = h;
       return r;
@@ -105,6 +106,7 @@
       else if (od > doV) greska = 'Početak mora biti prije kraja razdoblja.';
       else if (od < lo || doV > hi) greska = 'Podaci postoje samo za zadnjih godinu dana: ' + (m ? mjesecHr(lo) + ' – ' + mjesecHr(hi) : datumHr(lo) + ' – ' + datumHr(hi));
       else if (m && razlikaMjeseci(od, doV) + 1 > 24) greska = 'Najviše 24 mjeseca.';
+      else if (!m && opcije.najmanjeDana && razlikaDana(od, doV) + 1 < opcije.najmanjeDana) greska = 'Razdoblje mora imati barem ' + opcije.najmanjeDana + ' dana.';
       else { greska = ''; if (m) { izbor.odM = od; izbor.doM = doV; } else { izbor.od = od; izbor.do = doV; } izbor.preset = 'custom'; spremi(izbor); }
       javi();
     });

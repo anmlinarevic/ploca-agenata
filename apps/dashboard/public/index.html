@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Rubik:wght@800&display=swap">
 <link rel="stylesheet" href="poslovanje.css">
 <script src="ploca.js"></script>
+<script src="razdoblje.js"></script>
 <style>
 /* Ploča agenata u izgledu Piccolini Playa: mirno sučelje (grafit), tkanina samo na "šivenim" blokovima uloga.
    Pogledi: #pregled (uloge + odluke), #zadaci, #napredak, #brojke, #konkurencija, #agenti. */
@@ -405,7 +406,9 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       </div>
     </div>
     <section class="kartica okvir" aria-labelledby="h-u-lij">
-      <div class="okvir-glava"><div><h2 id="h-u-lij">Od mreža do novca</h2><span class="sitno">Zadnjih 28 dana. Upiti su ručni unos dok se ne spoji Gmail.</span></div></div>
+      <div class="okvir-glava"><div><h2 id="h-u-lij">Od mreža do novca</h2><span class="sitno">Upiti su ručni unos dok se ne spoji Gmail. Odaberi razdoblje.</span></div></div>
+      <div id="u-razdoblje"></div>
+      <p class="sitno" id="u-lijevak-nap" hidden style="margin:0"></p>
       <div id="u-lijevak"></div>
     </section>
     <section class="kartica okvir" aria-labelledby="h-u-tj">
@@ -1227,6 +1230,30 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
       '<span class="sitno" style="font-size:12.5px">' + esc(a.naziv || a.ime || '') + (x.kad ? ' · ' + esc(datumKratko(x.kad)) : '') + '</span></div><div class="kontrole">' + gumbi + '</div><p class="poruka" style="grid-column:1/-1;margin:0"></p></div>';
   }
 
+  var lijevakRaz = null, lijevakBrojac = 0;
+  function ucitajLijevak(r) {
+    var moj = ++lijevakBrojac, q = r.preset === 'custom' ? 'od=' + r.od + '&do=' + r.do : 'dana=' + r.dana;
+    api('GET', '/api/prodaja?' + q).then(function (p) { if (moj === lijevakBrojac) crtajLijevak(p); })
+      .catch(function (e) { if (moj === lijevakBrojac) $('#u-lijevak').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+  }
+  function crtajLijevak(p) {
+    var rz = p.razdoblje, po = p.ponude, pokriveno = p.doseg && p.doseg.vrijednost != null;
+    var koraci = [['Doseg', pokriveno ? p.doseg.vrijednost : null, pokriveno ? 'Instagram i Facebook, zbroj dana' : 'stiže uz povijesne podatke Mete', 'Meta'],
+      ['Upiti', rz.tjedana ? p.upiti.n : null, 'iz tjednog unosa', 'ručno'], ['Ponude', po.poslane.n, 'poslane iz Parre', 'Parra'],
+      ['Prihvaćene', po.prihvacene.n, 'datum rezerviran', 'Parra'], ['Plaćene', po.placene.n, 'plaćeno do kraja', 'Parra']];
+    var max = Math.max.apply(null, koraci.map(function (x) { return x[1] || 0; }).concat([1]));
+    $('#u-lijevak').innerHTML = '<div class="lijevak">' + koraci.map(function (x, i) {
+      var v = x[1] == null ? 0 : Math.max(4, Math.round(Math.log(x[1] + 1) / Math.log(max + 1) * 100));
+      var pr = i > 1 && x[1] != null && koraci[i - 1][1] ? ' · ' + Math.round(x[1] / koraci[i - 1][1] * 100) + ' %' : '';
+      return '<div><div class="stup"><i class="' + (x[3] === 'ručno' ? 'rucno' : '') + '" style="height:' + v + '%"></i></div><b>' + (x[1] == null ? '–' : tockeBr(x[1])) + '</b><span>' + x[0] + pr + '</span><small>' + x[2] + ' · ' + x[3] + '</small></div>';
+    }).join('') + '</div>';
+    var tj = function (n) { return n + (n % 10 === 1 && n % 100 !== 11 ? ' tjedan' : [2, 3, 4].indexOf(n % 10) >= 0 && [12, 13, 14].indexOf(n % 100) < 0 ? ' tjedna' : ' tjedana'); };
+    var dmg = function (iso) { var q = iso.split('-'); return +q[2] + '. ' + +q[1] + '. ' + q[0] + '.'; };
+    var t = ['Razdoblje: ' + dmg(rz.od) + ' – ' + dmg(rz.do) + ' (' + tj(rz.ocekivano) + '), cijeli tjedni jer se upiti upisuju tjedno.'];
+    if (rz.tjedana < rz.ocekivano) t.push('Upisano je ' + rz.tjedana + ' od ' + rz.ocekivano + ' tjedana upita.');
+    t.push('Doseg se broji svaki dan, pa je za dulja razdoblja veći od broja jedinstvenih osoba.');
+    var nap = $('#u-lijevak-nap'); nap.textContent = t.join(' '); nap.hidden = false;
+  }
   function renderUprava() {
     var P = S.posl, M = S.mreze, F = S.fin;
     // sažetak koordinatora (zadnji izvještaj)
@@ -1298,21 +1325,10 @@ section[data-pogled="pregled"], section[data-pogled="svi"] { gap: 24px; }
         '<div class="metar"><i style="width:' + (T.limit ? Math.min(100, Math.round(T.potroseno / T.limit * 100)) : 0) + '%"></i></div>';
     }
 
-    // lijevak (28 dana)
-    var od28 = new Date(Date.now() - 28 * 86400000).toISOString().slice(0, 10);
-    var ponude28 = P ? (P.ponude || []).filter(function (p) { return p.datum_ponude && p.datum_ponude >= od28; }) : [];
-    var prih = ponude28.filter(function (p) { return ['prihvacena', 'racun', 'djelomicno', 'placeno'].indexOf(p.stanje) >= 0; });
-    var plac = ponude28.filter(function (p) { return p.stanje === 'placeno'; });
-    var tj4 = (S.tjedni || []).filter(function (t) { return t.od >= od28; });
-    var upiti = tj4.reduce(function (s, t) { return s + broj(t.upitiBanner) + broj(t.upitiIgraonica); }, 0);
-    var doseg = M && M.meta.zadnje ? (M.kanali.instagram.doseg28 || 0) + (M.kanali.facebook.doseg28 || 0) : null;
-    var koraci = [['Doseg', doseg, 'Instagram i Facebook', 'Meta'], ['Upiti', tj4.length ? upiti : null, 'iz tjednog unosa', 'ručno'], ['Ponude', ponude28.length, 'poslane iz Parre', 'Parra'], ['Prihvaćene', prih.length, 'datum rezerviran', 'Parra'], ['Plaćene', plac.length, 'plaćeno do kraja', 'Parra']];
-    var max = Math.max.apply(null, koraci.map(function (x) { return x[1] || 0; }).concat([1]));
-    $('#u-lijevak').innerHTML = '<div class="lijevak">' + koraci.map(function (x, i) {
-      var v = x[1] == null ? 0 : Math.max(4, Math.round(Math.log(x[1] + 1) / Math.log(max + 1) * 100));
-      var pr = i && x[1] != null && koraci[i - 1][1] ? ' · ' + Math.round(x[1] / koraci[i - 1][1] * 100) + ' %' : '';
-      return '<div><div class="stup"><i class="' + (x[3] === 'ručno' ? 'rucno' : '') + '" style="height:' + v + '%"></i></div><b>' + (x[1] == null ? '–' : tockeBr(x[1])) + '</b><span>' + x[0] + pr + '</span><small>' + x[2] + ' · ' + x[3] + '</small></div>';
-    }).join('') + '</div>';
+    // lijevak: razdoblje je isti filter kao na ostalim ekranima (upiti se upisuju tjedno pa je najkraće 28 dana)
+    if (!lijevakRaz) {
+      lijevakRaz = RAZ.init($('#u-razdoblje'), { dostupno: ['28', '90', '180', '365'], najmanjeDana: 7, skrijRaspon: true, razlog: 'Upiti se upisuju tjedno, pa je najkraće razdoblje 28 dana.', onChange: ucitajLijevak });
+    }
 
     // ovaj tjedan
     if (P) {

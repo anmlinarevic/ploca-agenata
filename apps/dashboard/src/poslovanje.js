@@ -9,6 +9,7 @@ import { parraPodesena, sinkronizirajParru } from '../../../packages/poslovanje/
 import { metaPodesena, sinkronizirajMetu, pregledMreza } from '../../../packages/poslovanje/meta.js';
 import { popisRacuna, dodajRacun, ukloniRacun } from '../../../packages/poslovanje/racuni.js';
 import { pregledFinancija } from '../../../packages/poslovanje/financije.js';
+import { pregledProdaje } from '../../../packages/poslovanje/prodaja.js';
 import { gscPodesen, sinkronizirajGsc, pregledWeba } from '../../../packages/poslovanje/gsc.js';
 
 const DATUM = /^\d{4}-\d{2}-\d{2}$/;
@@ -111,6 +112,11 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
   if (m === 'GET' && putanja === '/api/financije') {
     const q = new URL(request.url).searchParams;
     try { return json(await pregledFinancija(env, tenant, new Date(), { mjeseci: q.get('mjeseci'), od: q.get('od'), do: q.get('do') })); }
+    catch (e) { return greska(String(e.message || e), 400); }
+  }
+  if (m === 'GET' && putanja === '/api/prodaja') {
+    const q = new URL(request.url).searchParams;
+    try { return json(await pregledProdaje(env, tenant, new Date(), { dana: q.get('dana'), od: q.get('od'), do: q.get('do') })); }
     catch (e) { return greska(String(e.message || e), 400); }
   }
   if (m === 'POST' && putanja === '/api/meta/osvjezi') {

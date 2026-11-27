@@ -25,27 +25,33 @@
 </header>
 
 <main class="omot">
+  <div id="razdoblje"></div>
+  <p class="info" id="raz-nap" hidden style="margin:0;font-size:14px;color:var(--ink-soft)"></p>
   <div class="kpi-red" id="kpi"><p class="prazno">Učitavam…</p></div>
   <div class="mreza-2">
-    <section class="kartica okvir" aria-labelledby="h-ponude">
-      <div class="okvir-glava"><div><h2 id="h-ponude">Ponude iz Parre</h2><span class="sitno">Po stanju, iznosi bez kupaca. Ponude s isporukom u zadnjih 120 dana i buduće.</span></div></div>
-      <div class="red-trake" id="ponude"></div>
+    <section class="kartica okvir" aria-labelledby="h-upiti">
+      <div class="okvir-glava"><div><h2 id="h-upiti">Upiti po tjednu</h2><span class="sitno" id="upiti-opis">Ručni unos u Tjednim brojkama dok se ne spoji Gmail.</span></div><a class="sitno" href="/#brojke">Brojke</a></div>
+      <div class="red-trake" id="upiti"></div>
     </section>
-    <section class="kartica okvir" aria-labelledby="h-vikendi">
-      <div class="okvir-glava"><div><h2 id="h-vikendi">Igraonica, sljedeća 4 vikenda</h2><span class="sitno">Iz kalendara i prihvaćenih ponuda.</span></div></div>
-      <div class="red-trake" id="vikendi"></div>
+    <section class="kartica okvir" aria-labelledby="h-izvori">
+      <div class="okvir-glava"><div><h2 id="h-izvori">Upiti po izvoru</h2><span class="sitno">Odgovor na „Kako ste saznali za nas?”. Povezuje mreže s prodajom.</span></div></div>
+      <div class="red-trake" id="izvori"></div>
     </section>
   </div>
   <div class="mreza-2">
+    <section class="kartica okvir" aria-labelledby="h-ponude">
+      <div class="okvir-glava"><div><h2 id="h-ponude">Ponude iz Parre</h2><span class="sitno">Ponude poslane u razdoblju, po stanju. Iznosi bez kupaca.</span></div></div>
+      <div class="red-trake" id="ponude"></div>
+    </section>
     <section class="kartica okvir" aria-labelledby="h-odgovor">
-      <div class="okvir-glava"><div><h2 id="h-odgovor">Ponude bez odgovora</h2><span class="sitno">Poslane ponude starije od 7 dana. Podsjetnik šalješ ti iz Parre.</span></div></div>
+      <div class="okvir-glava"><div><h2 id="h-odgovor">Ponude bez odgovora</h2><span class="sitno">Poslane ponude starije od 7 dana. Podsjetnik šalješ ti iz Parre. Trenutno stanje, ne ovisi o razdoblju.</span></div></div>
       <div id="odgovor"></div>
     </section>
-    <section class="kartica okvir" aria-labelledby="h-upiti">
-      <div class="okvir-glava"><div><h2 id="h-upiti">Upiti po tjednu</h2><span class="sitno">Ručni unos u Tjednim brojkama dok se ne spoji Gmail.</span></div><a class="sitno" href="/#brojke">Brojke</a></div>
-      <div class="red-trake" id="upiti"></div>
-    </section>
   </div>
+  <section class="kartica okvir" aria-labelledby="h-vikendi">
+    <div class="okvir-glava"><div><h2 id="h-vikendi">Igraonica, sljedeća 4 vikenda</h2><span class="sitno">Iz kalendara i prihvaćenih ponuda. Gleda naprijed, pa ne ovisi o razdoblju.</span></div></div>
+    <div class="red-trake" id="vikendi"></div>
+  </section>
   <section class="kartica okvir" aria-labelledby="h-zadaci">
     <div class="okvir-glava"><div><h2 id="h-zadaci">Zadaci odjela</h2><span class="sitno">Upozorenja iz kalendara i odluke agenata koji rade za Prodaju.</span></div><a class="sitno" href="/#svi">Svi zadaci</a></div>
     <div id="zadaci"></div>
@@ -54,6 +60,7 @@
 </main>
 
 <script src="zajednicko.js"></script>
+<script src="razdoblje.js"></script>
 <script>
 (function () {
   'use strict';
@@ -69,21 +76,6 @@
     var poslane = ponude.filter(function (p) { return p.stanje === 'poslana'; });
     var stare = poslane.filter(function (p) { return p.datum_ponude && dana(p.datum_ponude) > 7; }).sort(function (a, b) { return a.datum_ponude < b.datum_ponude ? -1 : 1; });
     var prihv = ponude.filter(function (p) { return ['prihvacena', 'racun', 'djelomicno', 'placeno'].indexOf(p.stanje) >= 0 && (p.isporuka_do || p.isporuka_od || '9') >= danas; });
-    var tj = (st.tjedni || []).slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; });
-    var zt = tj[tj.length - 1];
-    var od28 = P.dodajDane(danas, -28);
-    var up28 = tj.filter(function (t) { return t.od >= od28; }).reduce(function (s, t) { return s + (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); }, 0);
-    var pon28 = ponude.filter(function (p) { return p.datum_ponude && p.datum_ponude >= od28; }).length;
-    $('#kpi').innerHTML = kpi('Poslane ponude', String(poslane.length), stare.length ? stare.length + ' čeka odgovor dulje od 7 dana' : 'sve su mlađe od 7 dana', 'Parra') +
-      kpi('Prihvaćene, nadolazeće', String(prihv.length), eur(prihv.reduce(function (s, p) { return s + (p.iznos || 0); }, 0)) + ' · datumi rezervirani', 'Parra') +
-      kpi('Upiti, zadnji tjedan', zt ? String((+zt.upitiBanner || 0) + (+zt.upitiIgraonica || 0)) : '–', zt ? 'banneri ' + (+zt.upitiBanner || 0) + ' · igraonica ' + (+zt.upitiIgraonica || 0) : 'još nema tjednog unosa', 'ručni unos') +
-      kpi('Iz upita u ponudu', up28 ? Math.round(pon28 / up28 * 100) + ' %' : '–', pon28 + ' ponuda iz ' + up28 + ' upita u 28 dana', 'Parra i tjedni unos');
-
-    var poSt = {}; ponude.forEach(function (p) { (poSt[p.stanje] = poSt[p.stanje] || { n: 0, iznos: 0 }); poSt[p.stanje].n++; poSt[p.stanje].iznos += p.iznos || 0; });
-    var maxI = Math.max.apply(null, Object.keys(poSt).map(function (k) { return poSt[k].iznos; }).concat([1]));
-    $('#ponude').innerHTML = d.parra.spojeno ? Object.keys(NAZ).map(function (k) { var x = poSt[k] || { n: 0, iznos: 0 }; return traka(NAZ[k], x.iznos / maxI * 100, x.n + ' · ' + eur(x.iznos)); }).join('') +
-      (ponude.some(function (p) { return !p.isporuka_od; }) ? '<p class="napomena">Ponude bez datuma isporuke ne ulaze u kalendar: upiši datum u Parri.</p>' : '') : '<p class="prazno">Parra još nije spojena.</p>';
-
     // sljedeća 4 vikenda
     var sub = danas, wd = new Date(danas + 'T12:00:00Z').getUTCDay(); sub = P.dodajDane(danas, (6 - wd + 7) % 7);
     var vik = [0, 1, 2, 3].map(function (i) { var s = P.dodajDane(sub, i * 7); return [s, P.dodajDane(s, 1)]; });
@@ -99,14 +91,57 @@
       return '<div class="stavka-z"><div class="tijelo"><b>' + esc(p.broj) + (p.opis ? ' · ' + esc(p.opis) : '') + '</b><span class="sitno">poslana ' + P.datum(p.datum_ponude) + ' · prije ' + dana(p.datum_ponude) + ' dana · ' + eur(p.iznos) + '</span></div><span class="chip ' + esc(p.usluga) + '">' + (p.usluga === 'igraonica' ? 'Igraonica' : 'Šivanje') + '</span></div>';
     }).join('') : '<p class="prazno">Nema ponuda koje čekaju odgovor dulje od 7 dana.</p>';
 
-    var zadnjih = tj.slice(-8), maxU = Math.max.apply(null, zadnjih.map(function (t) { return (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); }).concat([1]));
-    $('#upiti').innerHTML = zadnjih.length ? zadnjih.map(function (t) { var n = (+t.upitiBanner || 0) + (+t.upitiIgraonica || 0); return traka('tjedan od ' + P.datum(t.od), n / maxU * 100, n + ' (b ' + (+t.upitiBanner || 0) + ' · i ' + (+t.upitiIgraonica || 0) + ')'); }).join('') : '<p class="prazno">Još nema tjednog unosa.</p>';
-
     var odjelAgenti = PL.AGENTI.filter(function (a) { return a.odjeli.indexOf('prodaja') >= 0; }).map(function (a) { return a.id; });
     var VRSTA_PRODAJA = ['naplata', 'opcija', 'termin', 'rok', 'plan', 'sukob'];
     var redovi = d.upozorenja.filter(function (u) { return VRSTA_PRODAJA.indexOf(u.vrsta) >= 0; }).map(function (u) { return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip kriticno">Upozorenje</span></div><span>' + esc(u.tekst) + '</span></div><a class="btn malo" href="/kalendar.html">Kalendar</a></div>'; })
       .concat((st.odluke || []).filter(function (o) { return o.status === 'ceka' && odjelAgenti.indexOf(o.agent) >= 0; }).map(function (o) { return '<div class="stavka-z"><div class="tijelo"><div class="oznake"><span class="chip tamno">Odluka</span><span class="chip neutral">' + esc((PL.AG[o.agent] || {}).naziv || o.agent) + '</span></div><b>' + esc(o.naslov) + '</b></div><a class="btn malo" href="/#odluke">Odluči</a></div>'; }));
     $('#zadaci').innerHTML = redovi.length ? redovi.join('') : '<p class="prazno">Ništa ne čeka tebe u Prodaji.</p>';
   }).catch(function (e) { $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+
+  /* ---- dio koji ovisi o razdoblju: /api/prodaja ---- */
+  var IZVORI = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', google: 'Google', ai: 'AI asistent', preporuka: 'Preporuka', ostalo: 'Ostalo' };
+  var NAZ2 = { poslana: 'Poslana', prihvacena: 'Prihvaćena', racun: 'Račun izdan', djelomicno: 'Djelomično plaćeno', placeno: 'Plaćeno', odbijena: 'Odbijena', istekla: 'Istekla' };
+  var brojac = 0;
+  var pr = function (a, b) { return b ? Math.round((a - b) / b * 100) : null; };
+  var promjena = function (p) { return p == null ? '' : '<span class="' + (p >= 0 ? 'rast' : 'pad') + '">' + (p >= 0 ? '+' : '') + p + ' %</span> naspram prethodnog razdoblja'; };
+  var dm = function (iso) { return P.datum(iso); };
+  function stupci(niz) {
+    var max = Math.max.apply(null, niz.map(function (x) { return x.upiti; }).concat([1])), malo = niz.length > 14;
+    return '<div style="display:flex;align-items:flex-end;gap:' + (malo ? 2 : 8) + 'px;height:150px;border-bottom:1px solid var(--line-strong);padding-top:18px" role="img" aria-label="Upiti po tjednu">' + niz.map(function (x) {
+      return '<div title="' + esc('Tjedan od ' + dm(x.od) + ': ' + x.upiti + ' upita (banneri ' + x.banner + ', igraonica ' + x.igraonica + ')') + '" style="flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px">' +
+        (malo ? '' : '<small style="font-size:11.5px;color:var(--ink-mid)">' + x.upiti + '</small>') + '<i style="display:block;width:100%;max-width:36px;height:' + Math.max(2, Math.round(x.upiti / max * 82)) + '%;background:var(--accent);border-radius:2px 2px 0 0"></i></div>';
+    }).join('') + '</div><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft)"><span>' + dm(niz[0].od) + '</span><span>' + dm(niz[niz.length - 1].od) + '</span></div>';
+  }
+  function crtajRazdoblje(p) {
+    var rz = p.razdoblje, pv = p.prethodno, up = p.upiti, po = p.ponude;
+    var nap = $('#raz-nap'), t = [];
+    var tj = function (n) { return n + (n % 10 === 1 && n % 100 !== 11 ? ' tjedan' : [2, 3, 4].indexOf(n % 10) >= 0 && [12, 13, 14].indexOf(n % 100) < 0 ? ' tjedna' : ' tjedana'); };
+    var dmg = function (iso) { var q = iso.split('-'); return +q[2] + '. ' + +q[1] + '. ' + q[0] + '.'; };
+    t.push('Razdoblje: ' + dmg(rz.od) + ' – ' + dmg(rz.do) + ' (' + tj(rz.ocekivano) + ')' + (pv ? ' · usporedba s ' + dmg(pv.od) + ' – ' + dmg(pv.do) : ' · bez usporedbe: prethodno razdoblje izlazi iz upisanih tjedana'));
+    if (rz.zatrazeno.od !== rz.od || rz.zatrazeno.do !== rz.do) t.push('Upiti se upisuju tjedno, pa je odabrano razdoblje zaokruženo na cijele tjedne.');
+    if (rz.tjedana < rz.ocekivano) t.push('Za upite je upisano ' + rz.tjedana + ' od ' + rz.ocekivano + ' tjedana; ostali nedostaju, ne računaju se kao nula. Upiši ih u Tjednim brojkama.');
+    nap.textContent = t.join(' · '); nap.hidden = false;
+    var puno = rz.tjedana === rz.ocekivano && rz.ocekivano > 0;
+    var usp = function (cur, prije, dostupno) { return pv && dostupno && puno && pv.tjedana === rz.ocekivano ? promjena(pr(cur, prije)) : 'usporedba nije moguća'; };
+    $('#kpi').innerHTML = kpi('Upiti', rz.tjedana ? String(up.n) : '–', usp(up.n, pv && pv.upiti.n, true) + ' · banneri ' + up.banner + ' · igraonica ' + up.igraonica, 'ručni unos') +
+      kpi('Poslane ponude', String(po.poslane.n), usp(po.poslane.n, pv && pv.ponude.poslane.n, pv && pv.ponudeDostupne) + ' · ' + eur(po.poslane.iznos), 'Parra') +
+      kpi('Prihvaćene', String(po.prihvacene.n), (po.poslane.n ? Math.round(po.prihvacene.n / po.poslane.n * 100) + ' % poslanih' : 'nema poslanih') + ' · ' + eur(po.prihvacene.iznos), 'Parra') +
+      kpi('Iz upita u ponudu', p.upitiUPonudu == null ? '–' : p.upitiUPonudu + ' %', po.poslane.n + ' ponuda iz ' + up.n + ' upita', 'Parra i tjedni unos');
+    $('#upiti-opis').textContent = rz.tjedana + ' od ' + rz.ocekivano + ' tjedana upisano. Ručni unos u Tjednim brojkama dok se ne spoji Gmail.';
+    $('#upiti').innerHTML = p.niz.length ? stupci(p.niz) : '<p class="prazno">Za ovo razdoblje nema upisanih tjedana.</p>';
+    var max = Math.max.apply(null, Object.keys(IZVORI).map(function (k) { return up.izvori[k]; }).concat([1]));
+    $('#izvori').innerHTML = up.n ? Object.keys(IZVORI).sort(function (a, b) { return up.izvori[b] - up.izvori[a]; }).map(function (k) {
+      var n = up.izvori[k], pn = pv ? pv.upiti.izvori[k] : null, ch = pn && puno && pv.tjedana === rz.ocekivano ? pr(n, pn) : null;
+      return traka(IZVORI[k], n / max * 100, n + ' · ' + Math.round(n / up.n * 100) + ' %' + (ch == null ? '' : ' <span class="' + (ch >= 0 ? 'rast' : 'pad') + '" style="font-size:12.5px">' + (ch >= 0 ? '+' : '') + ch + ' %</span>'));
+    }).join('') : '<p class="prazno">Za ovo razdoblje nema upisanih upita po izvoru.</p>';
+    var maxI = Math.max.apply(null, Object.keys(po.poStanju).map(function (k) { return po.poStanju[k].iznos; }).concat([1]));
+    $('#ponude').innerHTML = p.parra.spojeno ? (Object.keys(po.poStanju).length ? Object.keys(NAZ2).filter(function (k) { return po.poStanju[k]; }).map(function (k) { var x = po.poStanju[k]; return traka(NAZ2[k], x.iznos / maxI * 100, x.n + ' · ' + eur(x.iznos)); }).join('') : '<p class="prazno">U razdoblju nije poslana nijedna ponuda.</p>') : '<p class="prazno">Parra još nije spojena.</p>';
+  }
+  function ucitajRazdoblje(r) {
+    var moj = ++brojac, q = r.preset === 'custom' ? 'od=' + r.od + '&do=' + r.do : 'dana=' + r.dana;
+    P.api('GET', '/api/prodaja?' + q).then(function (p) { if (moj === brojac) crtajRazdoblje(p); })
+      .catch(function (e) { if (moj === brojac) $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+  }
+  RAZ.init($('#razdoblje'), { dostupno: ['28', '90', '180', '365'], najmanjeDana: 7, skrijRaspon: true, razlog: 'Upiti se upisuju tjedno, a ponude se vode po tjednima, pa je najkraće razdoblje 28 dana.', onChange: ucitajRazdoblje });
 })();
 </script>
