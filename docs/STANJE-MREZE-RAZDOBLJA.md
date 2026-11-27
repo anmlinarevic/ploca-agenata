@@ -13,6 +13,7 @@ Dokument se dopunjuje kako posao napreduje; na dnu je popis onoga što fali.
 | Filter razdoblja (komponenta) | `public/razdoblje.js`, isti izbor na svim ekranima, svaki ekran nudi samo razdoblja koja podaci podržavaju | preglednik |
 | Financije po razdoblju | `GET /api/financije?mjeseci=N` ili `od/do`, usporedba s prethodnim | `npm run test:financije` (24) + preglednik |
 | Objave po računu | migracija 0012 (`racun_id`, `grupa_id`), `predlozi_objavu`/`azuriraj_objavu` primaju račun, novi alat `dohvati_racune`, filter po računu i oznaka računa na stranici Objave, veza s Mreža | `npm run test:objave-racuni` (23) + preglednik |
+| Web po razdoblju | dnevne brojke Search Consolea godinu dana (prije 120 dana), `GET /api/web?dana|od&do`, popisi upita/stranica/zemalja za razdoblje iz Googlea s predmemorijom 12 h (migracija 0013), usporedba samo kad je prethodno razdoblje cijelo u povijesti | `npm run test:web` (31, lažni Google s pravim RS256 potpisom) + preglednik s postojećim `fake-gsc` |
 | Prodaja i Pregled po razdoblju | `GET /api/prodaja`, upiti po izvoru, cijeli tjedni, usporedba, lijevak na Pregledu | `npm run test:prodaja` (30) + preglednik |
 
 ## Što fali (dopunjava se niže)

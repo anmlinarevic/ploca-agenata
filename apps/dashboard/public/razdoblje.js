@@ -30,7 +30,8 @@
   var datumHr = function (s) { var q = s.split('-'); return +q[2] + '. ' + +q[1] + '. ' + q[0] + '.'; };
   var mjesecHr = function (s) { var q = s.split('-'); return MJ[+q[1] - 1] + ' ' + q[0] + '.'; };
   function danasZg() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb' }).format(new Date()); }
-  function zadnjiDan() { return dodaj(danasZg(), -1); }
+  /** Zadnji potpuni dan; `odgoda` su dodatni dani za izvore koji kasne (Search Console ima konačne brojke tek nakon 2–3 dana). */
+  function zadnjiDan(opcije) { return dodaj(danasZg(), -1 - ((opcije && opcije.odgoda) || 0)); }
   function razlikaDana(a, b) { return Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000); }
   function plusMj(mj, k) { var q = mj.split('-').map(Number), d = new Date(Date.UTC(q[0], q[1] - 1 + k, 1)); return d.getUTCFullYear() + '-' + p2(d.getUTCMonth() + 1); }
 
@@ -39,7 +40,7 @@
 
   /** Izračun razdoblja iz izbora. Vraća objekt kao u zaglavlju datoteke. */
   function izracunaj(izbor, opcije) {
-    var kraj = zadnjiDan();
+    var kraj = zadnjiDan(opcije);
     if (opcije.mjesecno) {
       var tekuci = danasZg().slice(0, 7), od, doM, n;
       if (izbor.preset === 'custom') { od = izbor.odM; doM = izbor.doM; n = razlikaMjeseci(od, doM) + 1; }
@@ -58,7 +59,7 @@
     opcije = opcije || {};
     var dostupno = opcije.dostupno || PRESETI.map(function (p) { return p[0]; });
     var izbor = citaj() || { preset: opcije.zadano || (dostupno.indexOf('28') >= 0 ? '28' : dostupno[0]) };
-    var kraj = zadnjiDan(), najranije = dodaj(kraj, -(GODINA - 1));
+    var kraj = zadnjiDan(opcije), najranije = dodaj(kraj, -(GODINA - 1));
     if (!izbor.od || !izbor.do) { izbor.od = dodaj(kraj, -89); izbor.do = kraj; }
     if (!izbor.odM || !izbor.doM) { izbor.odM = plusMj(danasZg().slice(0, 7), -5); izbor.doM = danasZg().slice(0, 7); }
     var greska = '';

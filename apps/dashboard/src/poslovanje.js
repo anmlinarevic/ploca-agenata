@@ -146,7 +146,11 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
   }
 
   // ---- Google Search Console: pregled i ručno osvježavanje (inače jednom dnevno preko crona) ----
-  if (m === 'GET' && putanja === '/api/web') return json(await pregledWeba(env, tenant));
+  if (m === 'GET' && putanja === '/api/web') {
+    const q = new URL(request.url).searchParams;
+    try { return json(await pregledWeba(env, tenant, new Date(), { dana: q.get('dana'), od: q.get('od'), do: q.get('do') })); }
+    catch (e) { return greska(String(e.message || e), 400); }
+  }
   if (m === 'POST' && putanja === '/api/gsc/osvjezi') {
     if (!gscPodesen(env, tenant)) return greska('Search Console nije spojen. Upute: docs/GSC-SPAJANJE.md', 503);
     const r = await sinkronizirajGsc(env, tenant);

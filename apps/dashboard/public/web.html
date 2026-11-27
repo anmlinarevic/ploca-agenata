@@ -83,6 +83,9 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
   </section>
 
   <div id="gsc-stvarno" hidden style="display:flex;flex-direction:column;gap:22px">
+    <div id="razdoblje"></div>
+    <p id="gsc-raz-nap" hidden style="margin:0;font-size:14px;color:var(--ink-soft)"></p>
+    <p id="gsc-popisi-nap" hidden style="margin:0;font-size:14px;background:var(--accent-soft);border-radius:3px;padding:8px 12px;color:var(--ink-mid)"></p>
     <section class="kartica okvir sazetak" aria-labelledby="h-uvidi">
       <h2 id="h-uvidi">Što se vidi iz brojki</h2>
       <span class="sitno" style="font-size:13px">Izračun ploče iz Search Consolea. Prijedloge izmjena stranice radi SEO agent, uz razlog iz ovih brojki.</span>
@@ -110,14 +113,14 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
       <section class="kartica okvir" aria-labelledby="h-upiti" style="gap:8px">
         <div style="display:flex;flex-direction:column;gap:2px">
           <h2 id="h-upiti">Upiti</h2>
-          <span class="sitno" style="font-size:13.6px">Što ljudi upisuju u Google kad se pojavimo, 28 dana. Strelica je pomak pozicije naspram prethodnih 28 dana.</span>
+          <span class="sitno" style="font-size:13.6px">Što ljudi upisuju u Google kad se pojavimo u odabranom razdoblju. Strelica je pomak pozicije naspram prethodnog razdoblja.</span>
         </div>
         <div class="okvir-tablice" id="gsc-upiti"></div>
       </section>
       <section class="kartica okvir" aria-labelledby="h-stranice" style="gap:8px">
         <div style="display:flex;flex-direction:column;gap:2px">
           <h2 id="h-stranice">Stranice</h2>
-          <span class="sitno" style="font-size:13.6px">Koje stranice dovode ljude s Googlea, 28 dana.</span>
+          <span class="sitno" style="font-size:13.6px">Koje stranice dovode ljude s Googlea u odabranom razdoblju.</span>
         </div>
         <div class="okvir-tablice" id="gsc-stranice"></div>
       </section>
@@ -143,6 +146,7 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
 </main>
 
 <script src="zajednicko.js"></script>
+<script src="razdoblje.js"></script>
 <script>
 (function () {
   'use strict';
@@ -173,7 +177,7 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
   function put(url) { return String(url).replace(/^https?:\/\/[^/]+/, '') || '/'; }
   function pomak(x) {
     if (x.pomak == null || Math.abs(x.pomak) < 0.5) return '';
-    return '<span class="pomak ' + (x.pomak > 0 ? 'rast' : 'pad') + '" title="pomak pozicije naspram prethodnih 28 dana">' + (x.pomak > 0 ? '↑' : '↓') + zarez(Math.abs(x.pomak)) + '</span>';
+    return '<span class="pomak ' + (x.pomak > 0 ? 'rast' : 'pad') + '" title="pomak pozicije naspram prethodnog razdoblja">' + (x.pomak > 0 ? '↑' : '↓') + zarez(Math.abs(x.pomak)) + '</span>';
   }
   function tablica(redovi, prvi, prazno) {
     if (!redovi.length) return '<p class="prazno">' + prazno + '</p>';
@@ -198,9 +202,9 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
     $('#gsc-uvidi').innerHTML = d.uvidi.length ? d.uvidi.map(function (u) { return '<div class="uvid">' + (IKONA[u.smjer] || RAVNO) + '<span>' + esc(u.tekst) + '</span></div>'; }).join('')
       : '<p class="prazno">Još premalo podataka za zaključke.</p>';
     $('#gsc-kpi').innerHTML = [
-      ['Klikovi, 28 dana', n(z.klikovi), pr.klikovi == null ? 'posjeti s Googlea' : promjena(pr.klikovi, 'naspram prethodnih 28 dana')],
-      ['Pojavljivanja', n(z.pojavljivanja), pr.pojavljivanja == null ? 'koliko puta smo bili u rezultatima' : promjena(pr.pojavljivanja, 'naspram prethodnih 28 dana')],
-      ['CTR', ctr(z.ctr), pr.ctr == null ? 'udio pojavljivanja koja su postala klik' : promjena(pr.ctr, 'naspram prethodnih 28 dana', ' p. p.')],
+      ['Klikovi', n(z.klikovi), pr.klikovi == null ? 'posjeti s Googlea' : promjena(pr.klikovi, 'naspram prethodnog razdoblja')],
+      ['Pojavljivanja', n(z.pojavljivanja), pr.pojavljivanja == null ? 'koliko puta smo bili u rezultatima' : promjena(pr.pojavljivanja, 'naspram prethodnog razdoblja')],
+      ['CTR', ctr(z.ctr), pr.ctr == null ? 'udio pojavljivanja koja su postala klik' : promjena(pr.ctr, 'naspram prethodnog razdoblja', ' p. p.')],
       ['Prosječna pozicija', zarez(z.pozicija), pr.pozicija == null ? 'manje je bolje; 1–10 je prva stranica' : promjena(pr.pozicija, pr.pozicija >= 0 ? 'mjesta bliže vrhu' : 'mjesta dalje od vrha', '')]
     ].map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('');
 
@@ -210,6 +214,16 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
       return '<i class="' + (x.klikovi ? '' : 'nula') + '" title="' + esc(P.datum(x.datum) + ': ' + x.klikovi + ' klikova, ' + x.pojavljivanja + ' pojavljivanja') + '" style="height:' + Math.max(2, Math.round(x.klikovi / max * 100)) + '%"></i>';
     }).join('') || '<p class="prazno" style="align-self:center">Još nema klikova.</p>';
     g.setAttribute('aria-label', 'Klikovi po danu, ' + z.od + ' do ' + z.do + ', najviše ' + max + ' u danu');
+    var rz = d.razdoblje, nap = $('#gsc-raz-nap'), pn = $('#gsc-popisi-nap');
+    if (rz) {
+      var dmg = function (iso) { var q = iso.split('-'); return +q[2] + '. ' + +q[1] + '. ' + q[0] + '.'; };
+      nap.textContent = 'Razdoblje: ' + dmg(rz.od) + (rz.dana > 1 ? ' – ' + dmg(rz.do) : '') + ' (' + rz.dana + (rz.dana % 10 === 1 && rz.dana % 100 !== 11 ? ' dan' : ' dana') + ')' +
+        (rz.prethodno ? ' · usporedba s ' + dmg(rz.prethodno.od) + (rz.dana > 1 ? ' – ' + dmg(rz.prethodno.do) : '') : ' · bez usporedbe: prethodno razdoblje izlazi iz godine dana povijesti') +
+        ' · Search Console ima konačne brojke s odgodom od 3 dana, pa razdoblje ne ide dalje od ' + dmg(rz.krajPodataka) + (rz.pokriveno < rz.dana ? ' Dnevnih brojki ima za ' + rz.pokriveno + ' od ' + rz.dana + ' dana.' : '');
+      nap.hidden = false;
+      pn.hidden = rz.popisi.tocno;
+      if (!rz.popisi.tocno) pn.textContent = 'Popisi upita, stranica i zemalja nisu za odabrano razdoblje' + (rz.popisi.greska ? ' (' + rz.popisi.greska + ')' : '') + ': prikazani su zadnjih 28 dana.';
+    } else { nap.hidden = true; pn.hidden = true; }
     $('#gsc-dani-opis').textContent = 'Od ' + P.datum(z.od) + ' do ' + P.datum(z.do) + '. Najviše u jednom danu: ' + max + '.';
     $('#gsc-os-od').textContent = P.datum(z.od); $('#gsc-os-do').textContent = P.datum(z.do);
 
@@ -239,13 +253,21 @@ table.gsc td.tekst { overflow-wrap: anywhere; }
     if (sp) renderStatus();
     if (ima) renderStvarno();
   }
-  function ucitaj() { return P.api('GET', '/api/web').then(function (d) { podaci = d; stanjeEkrana(); }); }
+  var upitRazdoblja = '', brojac = 0;
+  function ucitaj() {
+    var moj = ++brojac;
+    return P.api('GET', '/api/web' + (upitRazdoblja ? '?' + upitRazdoblja : '')).then(function (d) { if (moj !== brojac) return; podaci = d; stanjeEkrana(); });
+  }
+  function promijeniRazdoblje(r) {
+    upitRazdoblja = r.preset === 'custom' ? 'od=' + r.od + '&do=' + r.do : 'dana=' + r.dana;
+    ucitaj().catch(function (e) { $('#gsc-najava').insertAdjacentHTML('beforeend', '<p class="poruka greska">' + esc(e.message) + '</p>'); });
+  }
   $('#gsc-osvjezi').onclick = function () {
     var b = this; b.disabled = true; P.poruka($('#gsc-poruka'), 'Čitam Search Console…');
     P.api('POST', '/api/gsc/osvjezi', {}).then(function (r) {
       return ucitaj().then(function () { P.poruka($('#gsc-poruka'), 'Upita, stranica i zemalja: ' + r.stavki + ', provjerenih adresa: ' + r.provjereno + '.', 'ok'); });
     }).catch(function (err) { P.poruka($('#gsc-poruka'), err.message, 'greska'); return ucitaj().catch(function () {}); }).then(function () { b.disabled = false; });
   };
-  ucitaj().catch(function (e) { $('#gsc-najava').insertAdjacentHTML('beforeend', '<p class="poruka greska">' + esc(e.message) + '</p>'); });
+  RAZ.init($('#razdoblje'), { dostupno: ['1', '7', '28', '90', '180', '365'], skrijRaspon: true, odgoda: 2, onChange: promijeniRazdoblje });
 })();
 </script>

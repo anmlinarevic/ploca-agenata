@@ -124,6 +124,8 @@ async function adreseIzSitemapa(putanja, fetchFn, k) {
   }
 }
 
+const kljucStavke = (vrsta, v) => (vrsta === 'upit' ? cistiUpit(v) : vrsta === 'zemlja' ? String(v || '').toLowerCase().slice(0, 3) || null : String(v || '').slice(0, 300) || null);
+
 const zbroj = (x) => ({
   klikovi: broj(x?.clicks) ?? 0, pojavljivanja: broj(x?.impressions) ?? 0,
   ctr: x?.impressions ? dec(x.ctr, 4) : null, pozicija: x?.impressions ? dec(x.position, 1) : null,
@@ -136,7 +138,7 @@ export async function sinkronizirajGsc(env, tenant, { fetchFn = fetch, sada = ()
   const sad = sada(), sadIso = sad.toISOString(), sadMs = sad.getTime();
   const upozorenja = [];
   let greska = null, racun = null, dozvola = null, doDatuma = null, stavki = 0, provjereno = 0, k = null;
-  const izvrsi = async (naredbe) => { const n = naredbe.filter(Boolean); if (n.length) await db.batch(n); };
+  const izvrsi = async (naredbe) => { const n = naredbe.filter(Boolean); for (let i = 0; i < n.length; i += 90) await db.batch(n.slice(i, i + 90)); };
   const site = `/webmasters/v3/sites/${encodeURIComponent(svojstvo)}`;
 
   try {
@@ -164,15 +166,16 @@ export async function sinkronizirajGsc(env, tenant, { fetchFn = fetch, sada = ()
         .bind(tenant, oznaka, r.od, r.do, z.klikovi, z.pojavljivanja, z.ctr, z.pozicija, sadIso)]);
     }
 
-    // 3) po danu, od prvog dana mjeseca prije dva mjeseca; cijeli mjeseci idu i u mjesečne brojke ploče
-    const [g, m] = doDatuma.split('-').map(Number);
-    const odMj = new Date(Date.UTC(g, m - 3, 1)).toISOString().slice(0, 10);
-    const dani = await upit({ od: odMj, do: doDatuma }, ['date'], 200);
+    // 3) po danu, zadnjih 365 dana (jedan zahtjev, najviše 365 redova; Google čuva 16 mjeseci); svaki krug prepisuje i zadnje dane,
+    //    pa se ispravci Googlea (konačne brojke) preuzimaju sami. Cijeli mjeseci idu i u mjesečne brojke ploče.
+    const odGodine = datumZg(kraj - 364 * DAN);
+    const dani = await upit({ od: odGodine, do: doDatuma }, ['date'], 400);
     const redovi = (dani?.rows || []).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.keys?.[0] || ''));
     const poMjesecu = {};
     for (const x of redovi) {
       const mj = x.keys[0].slice(0, 7);
       if (mj >= doDatuma.slice(0, 7)) continue; // tekući mjesec još nije gotov
+      if (mj === odGodine.slice(0, 7) && odGodine.slice(8) !== '01') continue; // prvi mjesec prozora je nepotpun
       const t = (poMjesecu[mj] ||= { klikovi: 0, pojavljivanja: 0 });
       t.klikovi += broj(x.clicks) || 0; t.pojavljivanja += broj(x.impressions) || 0;
     }
@@ -182,11 +185,11 @@ export async function sinkronizirajGsc(env, tenant, { fetchFn = fetch, sada = ()
         .bind(tenant, x.keys[0], z.klikovi, z.pojavljivanja, z.ctr, z.pozicija); }),
       ...Object.entries(poMjesecu).map(([mj, t]) => db.prepare(`INSERT INTO mjesecno (tenant_id, mjesec, gsc_klikovi, gsc_pojavljivanja) VALUES (?, ?, ?, ?)
         ON CONFLICT (tenant_id, mjesec) DO UPDATE SET gsc_klikovi = excluded.gsc_klikovi, gsc_pojavljivanja = excluded.gsc_pojavljivanja`).bind(tenant, mj, t.klikovi, t.pojavljivanja)),
-      db.prepare(`DELETE FROM gsc_dani WHERE tenant_id = ? AND datum < ?`).bind(tenant, datumZg(kraj - 120 * DAN)),
+      db.prepare(`DELETE FROM gsc_dani WHERE tenant_id = ? AND datum < ?`).bind(tenant, datumZg(kraj - 400 * DAN)),
+      db.prepare(`DELETE FROM gsc_popisi WHERE tenant_id = ? AND azurirano < ?`).bind(tenant, new Date(sadMs - 7 * DAN).toISOString()),
     ]);
 
     // 4) najbolji upiti, stranice i zemlje (zadnjih 28 dana) s brojkama prethodnih 28 dana
-    const kljucStavke = (vrsta, v) => (vrsta === 'upit' ? cistiUpit(v) : vrsta === 'zemlja' ? String(v || '').toLowerCase().slice(0, 3) || null : String(v || '').slice(0, 300) || null);
     for (const [vrsta, dim, n] of [['upit', 'query', 25], ['stranica', 'page', 25], ['zemlja', 'country', 10]]) {
       const ovo = await upit(r1, [dim], n);
       if (!ovo) { upozorenja.push('Ponestalo je zahtjeva u ovom krugu; ostatak stiže sutra.'); break; }
@@ -272,7 +275,7 @@ export const ZEMLJE = { hrv: 'Hrvatska', svn: 'Slovenija', bih: 'Bosna i Hercego
 const KLIK = (n) => `${tisuce(n)} ${n % 10 === 1 && n % 100 !== 11 ? 'klik' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'klika' : 'klikova'}`;
 
 /** Brojke i zaključci za ekran Web iz redova baze. */
-export function izracunajWeb({ razdoblja = {}, dani = [], stavke = [], sitemapi = [], adrese = [] }) {
+export function izracunajWeb({ razdoblja = {}, dani = [], stavke = [], sitemapi = [], adrese = [] }, { dana = 28 } = {}) {
   const z = razdoblja.zadnjih || null, p = razdoblja.prethodnih || null;
   const stavka = (x) => ({
     kljuc: x.kljuc, klikovi: x.klikovi, pojavljivanja: x.pojavljivanja, ctr: x.ctr, pozicija: x.pozicija,
@@ -291,7 +294,7 @@ export function izracunajWeb({ razdoblja = {}, dani = [], stavke = [], sitemapi 
   const uvidi = [];
   const pk = posto(z?.klikovi, p?.klikovi);
   if (z) uvidi.push({ smjer: pk == null ? 'ravno' : pk > 5 ? 'gore' : pk < -5 ? 'dolje' : 'ravno',
-    tekst: `Google je u 28 dana donio ${KLIK(z.klikovi)}${pk == null ? '' : ` (${pk >= 0 ? '+' : '−'}${Math.abs(pk)} % naspram prethodnih 28 dana)`}, uz ${tisuce(z.pojavljivanja)} pojavljivanja u rezultatima.` });
+    tekst: `Google je u ${dana === 28 ? '28 dana' : dana === 1 ? 'jednom danu' : `razdoblju od ${dana} dana`} donio ${KLIK(z.klikovi)}${pk == null ? '' : ` (${pk >= 0 ? '+' : '−'}${Math.abs(pk)} % naspram ${dana === 28 ? 'prethodnih 28 dana' : 'prethodnog razdoblja'})`}, uz ${tisuce(z.pojavljivanja)} pojavljivanja u rezultatima.` });
   const nisu = indeks.filter((a) => a.presuda && !a.uIndeksu);
   if (nisu.length) uvidi.push({ smjer: 'dolje', tekst: `${nisu.length} od ${indeks.length} stranica iz sitemapa nije u Googleovom indeksu: ${nisu.slice(0, 3).map((a) => a.url.replace(/^https?:\/\/[^/]+/, '') || '/').join(', ')}${nisu.length > 3 ? '…' : ''}.` });
   const prag = upiti.filter((x) => x.pozicija > 10 && x.pozicija <= 20 && x.pojavljivanja >= 10).sort((a, b) => b.pojavljivanja - a.pojavljivanja)[0];
@@ -320,9 +323,71 @@ export function izracunajWeb({ razdoblja = {}, dani = [], stavke = [], sitemapi 
   };
 }
 
-/** Sve za ekran Web. */
-export async function pregledWeba(env, tenant) {
+/** Razdoblje za Search Console iz upita: `dana=N` (1 do 366, do zadnjeg dana s konačnim brojkama) ili `od` i `do`. Baca Error za neispravan unos. */
+export function razdobljeWeba(upit = {}, kraj) {
+  const DATUM = /^\d{4}-\d{2}-\d{2}$/;
+  const dod = (iso, k) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10); };
+  const razl = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / DAN);
+  if (upit.od || upit.do) {
+    const od = String(upit.od || ''), doD = String(upit.do || kraj);
+    if (!DATUM.test(od) || !DATUM.test(doD)) throw new Error('Razdoblje: od i do kao YYYY-MM-DD');
+    if (od > doD) throw new Error('Početak razdoblja mora biti prije kraja');
+    if (doD > kraj) throw new Error(`Search Console ima konačne brojke do ${kraj}`);
+    const dana = razl(od, doD) + 1;
+    if (dana > 366) throw new Error('Razdoblje: najviše 366 dana');
+    return { od, do: doD, dana, kraj, dod };
+  }
+  const dana = upit.dana == null ? 28 : Number(upit.dana);
+  if (!Number.isInteger(dana) || dana < 1 || dana > 366) throw new Error('Razdoblje: 1 do 366 dana');
+  return { od: dod(kraj, -(dana - 1)), do: kraj, dana, kraj, dod };
+}
+
+const POPIS_VRIJEME_MS = 12 * 3600000;
+/** Popisi upita, stranica i zemalja za razdoblje: iz predmemorije (12 h) ili izravno iz Search Consolea. Vraća { stavke, izvor, greska }. */
+async function popisiZaRazdoblje(env, tenant, r, pr, { fetchFn, sadMs }) {
+  const db = env.DB, sadIso = new Date(sadMs).toISOString();
+  const spremljeno = (await db.prepare(`SELECT vrsta, podaci_json, azurirano FROM gsc_popisi WHERE tenant_id = ? AND od = ? AND do = ?`).bind(tenant, r.od, r.do).all()).results;
+  if (spremljeno.length === 3 && spremljeno.every((x) => Date.parse(x.azurirano) > sadMs - POPIS_VRIJEME_MS))
+    return { stavke: spremljeno.flatMap((x) => (parse(x.podaci_json) || []).map((y) => ({ ...y, vrsta: x.vrsta }))), izvor: 'predmemorija' };
+  if (!gscPodesen(env, tenant)) return { stavke: [], izvor: null, greska: 'Search Console nije spojen.' };
+  try {
+    const svojstvo = String(env.GSC_SVOJSTVO).trim(), site = `/webmasters/v3/sites/${encodeURIComponent(svojstvo)}`;
+    const kljuc = procitajKljuc(env);
+    const token = await pristupniToken(kljuc, env.GSC_TOKEN_URL || TOKEN_URL, fetchFn, sadMs);
+    const k = klijent(env, fetchFn, token, kljuc, svojstvo);
+    const upit = (raspon, dim, n) => k.zovi('POST', `${site}/searchAnalytics/query`, { startDate: raspon.od, endDate: raspon.do, dimensions: [dim], rowLimit: n, type: 'web' });
+    const stavke = [], naredbe = [];
+    for (const [vrsta, dim, n] of [['upit', 'query', 25], ['stranica', 'page', 25], ['zemlja', 'country', 10]]) {
+      const ovo = await upit(r, dim, n), prije = pr ? await upit(pr, dim, 250) : null;
+      if (!ovo) throw new GreskaGsc('Ponestalo je zahtjeva; popisi stižu pri idućem otvaranju.');
+      const mapaPrije = new Map((prije?.rows || []).map((x) => [kljucStavke(vrsta, x.keys?.[0]), zbroj(x)]));
+      const lista = [];
+      for (const x of ovo.rows || []) {
+        const kl = kljucStavke(vrsta, x.keys?.[0]); if (!kl) continue;
+        const a = zbroj(x), b = mapaPrije.get(kl);
+        lista.push({ kljuc: kl, klikovi: a.klikovi, pojavljivanja: a.pojavljivanja, ctr: a.ctr, pozicija: a.pozicija,
+          klikovi_prije: b?.klikovi ?? null, pojavljivanja_prije: b?.pojavljivanja ?? null, pozicija_prije: b?.pozicija ?? null });
+      }
+      stavke.push(...lista.map((y) => ({ ...y, vrsta })));
+      naredbe.push(db.prepare(`INSERT INTO gsc_popisi (tenant_id, od, do, vrsta, podaci_json, azurirano) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (tenant_id, od, do, vrsta) DO UPDATE SET podaci_json = excluded.podaci_json, azurirano = excluded.azurirano`).bind(tenant, r.od, r.do, vrsta, JSON.stringify(lista), sadIso));
+    }
+    await db.batch(naredbe);
+    return { stavke, izvor: 'zivo' };
+  } catch (e) {
+    if (!(e instanceof GreskaGsc)) console.error('gsc popisi', e);
+    return { stavke: [], izvor: null, greska: e instanceof GreskaGsc ? e.message : 'Popisi se trenutno ne mogu dohvatiti iz Search Consolea.' };
+  }
+}
+
+/**
+ * Sve za ekran Web. Bez `upit` (ili s praznim): zadnjih 28 dana kao do sada. S `upit` ({ dana } ili { od, do }): zbrojevi i graf iz
+ * dnevnih brojki za to razdoblje, usporedba s prethodnim istim po duljini (samo ako je cijelo u povijesti) i popisi upita, stranica i
+ * zemalja za razdoblje (iz Search Consolea, kratko u predmemoriji; ako se ne mogu dohvatiti, ostaju popisi zadnjih 28 dana s oznakom).
+ */
+export async function pregledWeba(env, tenant, sada = new Date(), upit = null, { fetchFn = fetch } = {}) {
   const db = env.DB;
+  const razdoblje = upit && (upit.dana != null || upit.od || upit.do) ? razdobljeWeba(upit, datumZg(sada.getTime() - KASNI_DANA * DAN)) : null;
   const [st, raz, dani, stavke, sm, adrese] = await Promise.all([
     db.prepare(`SELECT * FROM gsc_sinkronizacija WHERE tenant_id = ?`).bind(tenant).first(),
     db.prepare(`SELECT * FROM gsc_razdoblje WHERE tenant_id = ?`).bind(tenant).all(),
@@ -337,9 +402,32 @@ export async function pregledWeba(env, tenant) {
       zadnje: st?.zadnje ?? null, zadnjeUspjesno: st?.zadnje_uspjesno ?? null, greska: st?.greska ?? null,
       upozorenja: parse(st?.upozorenja_json) || [], doDatuma: st?.do_datuma ?? null,
     },
-    ...izracunajWeb({
+    ...(razdoblje ? await izracunajZaRazdoblje() : izracunajWeb({
       razdoblja: Object.fromEntries(raz.results.map((r) => [r.oznaka, r])), dani: dani.results, stavke: stavke.results,
       sitemapi: sm.results, adrese: adrese.results,
-    }),
+    })),
   };
+
+  async function izracunajZaRazdoblje() {
+    const r = razdoblje, prOd = r.dod(r.od, -r.dana), prDo = r.dod(r.od, -1), prviDatum = dani.results[0]?.datum ?? null;
+    const zbrojDana = (od, doD) => {
+      const red = dani.results.filter((d) => d.datum >= od && d.datum <= doD);
+      const klikovi = red.reduce((x, d) => x + (d.klikovi || 0), 0), poj = red.reduce((x, d) => x + (d.pojavljivanja || 0), 0);
+      const poz = poj ? red.reduce((x, d) => x + (d.pozicija || 0) * (d.pojavljivanja || 0), 0) / poj : null;
+      return { od, do: doD, klikovi, pojavljivanja: poj, ctr: poj ? Math.round(klikovi / poj * 10000) / 10000 : null, pozicija: poz == null ? null : Math.round(poz * 10) / 10, dana: red.length };
+    };
+    const ovo = zbrojDana(r.od, r.do);
+    const imaPrethodno = prviDatum != null && prOd >= prviDatum && zbrojDana(prOd, prDo).dana === r.dana;
+    const prije = imaPrethodno ? zbrojDana(prOd, prDo) : null;
+    const popisi = await popisiZaRazdoblje(env, tenant, r, imaPrethodno ? { od: prOd, do: prDo } : null, { fetchFn, sadMs: sada.getTime() });
+    const tocno = popisi.izvor != null;
+    const rezultat = izracunajWeb({
+      razdoblja: { zadnjih: ovo, prethodnih: prije }, dani: dani.results,
+      stavke: tocno ? popisi.stavke : stavke.results, sitemapi: sm.results, adrese: adrese.results,
+    }, { dana: r.dana });
+    return { ...rezultat, razdoblje: {
+      od: r.od, do: r.do, dana: r.dana, pokriveno: ovo.dana, prethodno: prije ? { od: prOd, do: prDo } : null, krajPodataka: r.kraj,
+      popisi: { tocno, izvor: popisi.izvor, greska: popisi.greska ?? null, od: tocno ? r.od : null, do: tocno ? r.do : null },
+    } };
+  }
 }
