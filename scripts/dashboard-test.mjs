@@ -19,7 +19,8 @@ ok((await zovi('GET', '/api/stanje', { korisnik: 'nepoznat@test.hr' })).status =
 const idx = await fetch(URL_ + '/');
 ok(idx.status === 200 && (await idx.text()).includes('Poslovna ploča'), 'statična stranica se poslužuje');
 const mreze = await fetch(URL_ + '/mreze.html');
-ok(mreze.status === 200 && (await mreze.text()).includes('još nisu spojeni'), 'zaslon Mreže se poslužuje');
+const mrezeJs = await fetch(URL_ + '/mreze.js');
+ok(mreze.status === 200 && mrezeJs.status === 200 && (await mrezeJs.text()).includes('još nisu spojeni'), 'zaslon Mreže se poslužuje (HTML i mreze.js)');
 
 // vlasnik
 const ja = await zovi('GET', '/api/ja');
