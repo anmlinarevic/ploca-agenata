@@ -76,3 +76,15 @@ export async function posluziObjekt(bucket, kljuc, request, { preuzmi = null } =
   h.set('content-length', String(obj.size));
   return new Response(obj.body, { headers: h });
 }
+
+/**
+ * Gdje je koji materijal iz knjižnice korišten: { materijal_id: [{ racunId, kanal, n }] }. Odbačene objave se ne broje.
+ * Objava iz vremena prije računa ima racunId null; ekran je prikazuje pod nazivom mreže.
+ */
+export async function koristenjeMaterijala(db, tenant) {
+  const redovi = (await db.prepare(`SELECT j.value AS materijal, o.racun_id AS racun_id, o.kanal AS kanal, COUNT(*) AS n
+    FROM objave o, json_each(o.knjiznica_json) j WHERE o.tenant_id = ? AND o.status <> 'odbaceno' GROUP BY j.value, o.racun_id, o.kanal ORDER BY n DESC`).bind(tenant).all()).results;
+  const out = {};
+  for (const r of redovi) (out[r.materijal] ||= []).push({ racunId: r.racun_id ?? null, kanal: r.kanal, n: r.n });
+  return out;
+}

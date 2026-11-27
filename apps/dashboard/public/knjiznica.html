@@ -78,6 +78,9 @@ main.omot { display: flex; flex-direction: column; gap: 28px; padding-block: 26p
   var TEN = null; try { TEN = localStorage.getItem('tenant'); } catch (e) {}
   var stavke = [], brisanje = null;
   var USLUGA = { banneri: 'Banneri', igraonica: 'Igraonica', oboje: 'Oboje' };
+  var MREZE = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
+  var racuni = [], otvorena = null, izbor = {};
+  function racunPo(id) { return racuni.filter(function (r) { return r.id === id; })[0] || null; }
   var PO_NASTAVKU = { mp4: 'video/mp4', mov: 'video/quicktime', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', heic: 'image/heic' };
 
   function medij(k) { return '/api/mediji/' + k.split('/').map(encodeURIComponent).join('/') + (TEN ? '?tenant=' + encodeURIComponent(TEN) : ''); }
@@ -144,7 +147,24 @@ main.omot { display: flex; flex-direction: column; gap: 28px; padding-block: 26p
     var brisi = brisanje === k.id
       ? '<button class="btn malo opasno" type="button" data-brisi-potvrda="' + esc(k.id) + '">Potvrdi brisanje</button><button class="btn malo" type="button" data-odustani="1">Odustani</button>'
       : '<button class="btn malo" type="button" data-brisi="' + esc(k.id) + '">Obriši</button>';
-    return '<article class="kartica stavka-k"><div class="prikaz">' + prikaz + '</div><div class="tijelo">' + znakovi +
+    var kor = (k.koristeno || []).map(function (x) { var r = x.racunId ? racunPo(x.racunId) : null; return esc(r ? r.naziv : (MREZE[x.kanal] || x.kanal)) + ' <b>' + x.n + '</b>'; });
+    var koristeno = '<div class="sitno" style="font-size:13px;color:var(--ink-mid)">Korišteno u objavama: ' + (kor.length ? kor.join(' · ') : 'još nigdje') + '</div>';
+    var napravi = '';
+    if (k.slobodno) {
+      if (otvorena !== k.id) napravi = '<div class="akcije"><button class="btn malo" type="button" data-napravi="' + esc(k.id) + '">Napravi objavu iz ovoga</button></div>';
+      else {
+        var iz = izbor[k.id] || {};
+        var grupe = ['facebook', 'instagram', 'tiktok'].map(function (m) {
+          var rs = racuni.filter(function (r) { return r.mreza === m; });
+          return rs.length ? '<span class="sitno" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11.5px;margin-top:4px">' + MREZE[m] + '</span>' + rs.map(function (r) { return '<label class="kvacica"><input type="checkbox" data-iz="' + esc(k.id) + ':' + esc(r.id) + '"' + (iz[r.id] ? ' checked' : '') + '><span>' + esc(r.naziv) + ' <span class="chip">' + esc(USLUGA[r.usluga] || r.usluga) + '</span></span></label>'; }).join('') : '';
+        }).join('');
+        var n = Object.keys(iz).filter(function (x) { return iz[x]; }).length;
+        napravi = racuni.length ? '<div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px"><span class="sitno" style="font-weight:600;color:var(--ink-mid)">Za koje račune</span>' + grupe +
+          '<div class="akcije" style="margin-top:6px"><button class="btn malo glavni" type="button" data-zatrazi="' + esc(k.id) + '"' + (n ? '' : ' disabled') + '>Zatraži od koordinatora' + (n ? ' (' + n + ')' : '') + '</button><button class="btn malo" type="button" data-napravi-zatvori="1">Odustani</button></div></div>'
+          : '<p class="sitno">Prvo dodaj račune na stranici Mreže.</p>';
+      }
+    } else napravi = '<p class="sitno" style="color:var(--danger)">Ne ide u objave dok nije označeno da smije.</p>';
+    return '<article class="kartica stavka-k"><div class="prikaz">' + prikaz + '</div><div class="tijelo">' + znakovi + koristeno + napravi +
       '<form data-uredi="' + esc(k.id) + '"><input type="text" name="opis" maxlength="500" aria-label="Što je na snimci" value="' + esc(k.opis || '') + '" placeholder="Što je na snimci">' +
       '<select name="usluga" aria-label="Za što je">' + Object.keys(USLUGA).map(function (u) { return '<option value="' + u + '"' + (u === k.usluga ? ' selected' : '') + '>' + USLUGA[u] + '</option>'; }).join('') + '</select>' +
       '<label class="kvacica"><input type="checkbox" name="djeca"' + (k.imaDjece ? ' checked' : '') + '><span>Prepoznatljivo dijete</span></label>' +
@@ -156,9 +176,10 @@ main.omot { display: flex; flex-direction: column; gap: 28px; padding-block: 26p
   function crtaj() {
     $('#stavke').innerHTML = stavke.length ? stavke.map(karta).join('') : '<p class="prazno">Knjižnica je prazna. Učitaj prve snimke šivanja, pakiranja ili postavljanja igraonice.</p>';
   }
-  function ucitaj() { return P.api('GET', '/api/knjiznica').then(function (d) { stavke = d.stavke; crtaj(); }); }
+  function ucitaj() { return P.api('GET', '/api/knjiznica').then(function (d) { stavke = d.stavke; racuni = d.racuni || []; crtaj(); }); }
 
   document.addEventListener('change', function (e) {
+    if (e.target.dataset && e.target.dataset.iz) { var q = e.target.dataset.iz.split(':'); izbor[q[0]] = izbor[q[0]] || {}; izbor[q[0]][q[1]] = e.target.checked; crtaj(); return; }
     var f = e.target.closest('form[data-uredi]'); if (!f) return;
     uskladi(f.elements.djeca, f.elements.pristanak, f.elements.slobodno, null);
   });
@@ -172,7 +193,22 @@ main.omot { display: flex; flex-direction: column; gap: 28px; padding-block: 26p
   });
   document.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.brisi) { brisanje = b.dataset.brisi; crtaj(); }
+    if (b.dataset.napravi) { otvorena = b.dataset.napravi; crtaj(); }
+    else if (b.dataset.napraviZatvori) { otvorena = null; crtaj(); }
+    else if (b.dataset.zatrazi) {
+      var mat = stavke.filter(function (s) { return s.id === b.dataset.zatrazi; })[0], iz2 = izbor[b.dataset.zatrazi] || {};
+      var odabrani = racuni.filter(function (r) { return iz2[r.id]; });
+      if (!mat || !odabrani.length) return;
+      var tekst = 'Napravi objavu iz materijala u knjižnici „' + (mat.opis || mat.naziv || 'bez opisa') + '” (id ' + mat.id + ') za ove račune: ' +
+        odabrani.map(function (r) { return r.naziv + ' (' + MREZE[r.mreza] + ', racun_id ' + r.id + ')'; }).join('; ') +
+        '. Za svaki račun napravi zasebnu objavu s vlastitim opisom, a sve objave iste ideje označi istim grupa_id. Predloži ih na odobrenje.';
+      b.disabled = true;
+      P.api('POST', '/api/razgovor', { tekst: tekst }).then(function (r) {
+        izbor[mat.id] = {}; otvorena = null; crtaj();
+        P.poruka($('#poruka'), r.greska ? r.greska : 'Zahtjev je poslan koordinatoru za ' + odabrani.length + (odabrani.length === 1 ? ' račun' : ' računa') + '. Objave stižu na stranicu Objave na odobrenje.', r.greska ? 'greska' : 'ok');
+      }).catch(function (er) { b.disabled = false; P.poruka($('#poruka'), er.message, 'greska'); });
+    }
+    else if (b.dataset.brisi) { brisanje = b.dataset.brisi; crtaj(); }
     else if (b.dataset.odustani) { brisanje = null; crtaj(); }
     else if (b.dataset.brisiPotvrda) {
       P.api('POST', '/api/knjiznica/' + b.dataset.brisiPotvrda + '/obrisi', {})

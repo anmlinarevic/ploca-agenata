@@ -3,6 +3,7 @@
 import { d1, primijeni, nova } from './d1-sqlite.mjs';
 import { OBJAVE } from '../apps/mcp/src/alati-objave.js';
 import { dodajRacun, ukloniRacun, odrediRacunObjave } from '../packages/poslovanje/racuni.js';
+import { koristenjeMaterijala } from '../packages/poslovanje/objave.js';
 
 let pali = 0;
 const ok = (c, m) => { if (!c) { console.error('PAO:', m); pali++; process.exitCode = 1; } else console.log('ok  ', m); };
@@ -70,5 +71,17 @@ await baca(() => alat('predlozi_objavu').run(objava({ kanal: 'instagram', racun_
 ok(!(await racuni('instagram')).some((x) => x.id === igA.id) && (await racuni('instagram')).length === 1, 'dohvati_racune ne vraća uklonjene');
 o = await alat('predlozi_objavu').run(objava({ kanal: 'instagram' }), ctx, E);
 ok(o.racun_id === igB.id, 'nakon uklanjanja ostaje jedan račun pa se uzima bez navođenja');
+// ---- korištenje materijala iz knjižnice po računima ----
+db.prepare(`INSERT INTO knjiznica (id, tenant_id, kljuc, vrsta, mime, velicina, usluga, slobodno, kreirano) VALUES ('m1', 't1', 't1/knjiznica/a.jpg', 'foto', 'image/jpeg', 10, 'oboje', 1, 'x'), ('m2', 't1', 't1/knjiznica/b.jpg', 'foto', 'image/jpeg', 10, 'oboje', 1, 'x')`).run();
+const kor1 = await alat('predlozi_objavu').run(objava({ kanal: 'instagram', racun_id: igB.id, knjiznica: ['m1'] }), ctx, E);
+await alat('predlozi_objavu').run(objava({ kanal: 'instagram', racun_id: igB.id, knjiznica: ['m1', 'm2'] }), ctx, E);
+await alat('predlozi_objavu').run(objava({ kanal: 'tiktok', knjiznica: ['m1'] }), ctx, E);
+const odbacena = await alat('predlozi_objavu').run(objava({ kanal: 'instagram', racun_id: igB.id, knjiznica: ['m2'] }), ctx, E);
+db.prepare(`UPDATE objave SET status = 'odbaceno' WHERE id = ?`).run(odbacena.id);
+const kor = await koristenjeMaterijala(E.DB, 't1');
+ok(kor.m1.find((x) => x.racunId === igB.id).n === 2 && kor.m1.find((x) => x.racunId === tt.id).n === 1, 'korištenje materijala: broj objava po računu');
+ok(kor.m2.length === 1 && kor.m2[0].n === 1, 'odbačena objava se ne broji kao korištenje');
+ok(Object.keys(await koristenjeMaterijala(E.DB, 't2')).length === 0, 'drugi zakupac ne vidi tuđe korištenje');
+void kor1;
 await baca(() => alat('dohvati_racune').run({ mreza: 'twitter' }, ctx, E), /mreza:/, 'dohvati_racune: nepoznata mreža');
 console.log(pali ? `\n${pali} provjera nije prošlo` : '\nSve provjere su prošle');

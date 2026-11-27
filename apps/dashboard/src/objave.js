@@ -1,7 +1,7 @@
 /* Objave i knjižnica materijala na ploči. Claude objave predlaže preko MCP-a; ovdje ih čovjek odobrava,
  * vraća s komentarom, odbacuje i označava kao objavljene. Knjižnicu puni čovjek (učitavanje s mobitela). */
 import {
-  MIME, MAX_BAJTOVA, USLUGE, kljucZa, pripadaZakupcu, planDokument, objavaDokument, knjiznicaDokument, posluziObjekt,
+  MIME, MAX_BAJTOVA, USLUGE, kljucZa, pripadaZakupcu, planDokument, objavaDokument, knjiznicaDokument, posluziObjekt, koristenjeMaterijala,
 } from '../../../packages/poslovanje/objave.js';
 import { popisRacuna } from '../../../packages/poslovanje/racuni.js';
 
@@ -136,7 +136,9 @@ export async function apiObjave(request, env, u, tenant, putanja, body, h) {
   // Knjižnica: popis, oznake, brisanje.
   if (m === 'GET' && putanja === '/api/knjiznica') {
     const stavke = await all(env, `SELECT * FROM knjiznica WHERE tenant_id = ? ORDER BY kreirano DESC LIMIT 300`, tenant);
-    return json({ stavke: stavke.map(knjiznicaDokument) });
+    const [koristeno, racuni] = await Promise.all([koristenjeMaterijala(env.DB, tenant), popisRacuna(env.DB, tenant)]);
+    return json({ stavke: stavke.map((k) => ({ ...knjiznicaDokument(k), koristeno: koristeno[k.id] ?? [] })),
+      racuni: racuni.map((r) => ({ id: r.id, mreza: r.mreza, naziv: r.naziv, usluga: r.usluga })) });
   }
   if (m === 'POST' && (r = /^\/api\/knjiznica\/([\w-]+)$/.exec(putanja))) {
     const k = await one(env, `SELECT * FROM knjiznica WHERE tenant_id = ? AND id = ?`, tenant, r[1]);

@@ -64,3 +64,28 @@ Poruka se vidi na Mrežama ispod naslova:
 - „Meta ne nalazi tu Facebook stranicu”: krivi id u `META_STRANICA`.
 - „Facebook stranica nema povezan Instagram”: korak 1.
 - Neke brojke Meta daje tek od **100 pratitelja** (uvidi stranice, demografija). Do tada su ta polja prazna.
+
+## Više računa (od migracije 0011)
+
+Ploča može čitati **više Facebook stranica i Instagram računa**. Isti token (korisnik sustava iz koraka 3) vrijedi za sve stranice kojima
+je dodijeljena imovina: za novu stranicu u Meta Business Suiteu dodijeli stranicu (i njezin Instagram) istom korisniku sustava.
+
+- Račun se dodaje na ploči: **Mreže, Facebook ili Instagram, „+ Dodaj račun”**, i upiše se ID Facebook stranice. Instagram se dodaje preko
+  stranice na koju je povezan; njegovo korisničko ime ploča pronađe sama pri prvom osvježavanju.
+- `META_STRANICA` više nije potrebna. Ako postoji, čita se samo jednom za prijelaz (prvi Facebook račun), a račun koji ukloniš ne vraća se zbog nje.
+- Greška na jednoj stranici (npr. stranica nije dodijeljena korisniku sustava) vidi se uz taj račun i ne zaustavlja ostale.
+- Svaki račun ima oznaku posla (banneri, igraonica, oboje).
+
+## Dnevne brojke i povijest (od migracije 0014)
+
+Uz svako osvježavanje ploča povlači **dnevne preglede i doseg** po računu: zadnjih 30 dana i, dok ne dođe do godine dana, do dva starija komada od
+30 dana (prvi krug 90 dana, svaki idući još 60; ukupno šest krugova, oko 1,5 dana uz osvježavanje svakih 6 sati). Račun u međuvremenu piše
+„dnevnih brojki ima za X od Y dana”.
+
+**Ograničenja koja treba provjeriti protiv prave Mete** (u ovom repozitoriju su testirana samo protiv lažne Mete):
+- Meta ne daje svaku metriku kao dnevni niz za svaku vrstu računa. Ako ne da (npr. `views` na Instagramu), krug uspijeva, ostale metrike ostaju, a račun
+  pamti razlog (`racuni.dnevno_greska`) i ekran ga prikazuje.
+- Instagram, koliko znam, daje povijest **pratitelja** samo 30 dana unazad, pa se rast pratitelja za dulja razdoblja broji od prvog osvježavanja.
+- Dan na koji se odnosi dnevna vrijednost uzima se kao 24 sata prije `end_time` (kraj dana). Ako se u stvarnosti pokaže pomak za jedan dan, ispravlja se
+  u jednoj funkciji (`danIzKrajaDana` u `packages/poslovanje/meta.js`).
+- Doseg je po danu; za razdoblje se zbraja pa nije broj jedinstvenih osoba. Ekran to piše.
