@@ -15,7 +15,7 @@ const PRESETI = {
   lokalno: `${CITANJE},spremi_registar,dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
   oglasi: `${CITANJE},dodaj_aktivnost,dodaj_odluku,spremi_izvjestaj`,
   // Claude Code sesije koje izrađuju objave: samo prijedlozi, bez odobravanja (odobrava vlasnik na ploči).
-  kreator: `${CITANJE},dodaj_aktivnost,zatrazi_ucitavanje,predlozi_plan_tjedna,predlozi_objavu,azuriraj_objavu,dohvati_objave,dohvati_knjiznicu,zatrazi_preuzimanje`,
+  kreator: `${CITANJE},dodaj_aktivnost,zatrazi_ucitavanje,predlozi_plan_tjedna,predlozi_objavu,azuriraj_objavu,dohvati_objave,dohvati_racune,dohvati_knjiznicu,zatrazi_preuzimanje`,
 };
 const [zakupac, agent, alatiArg = 'zadano', izlaz] = process.argv.slice(2);
 const alati = alatiArg === 'zadano' ? (PRESETI[agent] ?? CITANJE) : alatiArg;

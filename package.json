@@ -9,6 +9,7 @@
     "test:racuni": "node --no-warnings scripts/racuni-test.mjs",
     "test:financije": "node --no-warnings scripts/financije-razdoblje-test.mjs",
     "test:prodaja": "node --no-warnings scripts/prodaja-razdoblje-test.mjs",
+    "test:objave-racuni": "node --no-warnings scripts/objave-racuni-test.mjs",
     "demo": "node scripts/demo.mjs"
   },
   "devDependencies": {

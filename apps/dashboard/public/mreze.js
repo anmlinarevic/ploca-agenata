@@ -126,7 +126,7 @@
       '<p class="sitno" style="margin:0">' + tekst + '</p>' +
       (jedan && jedan.greska ? '<p class="sitno nedovoljno" style="margin:0;color:var(--danger)">' + esc(jedan.greska) + '</p>' : (!jedan ? greske.map(function (r) { return '<p class="sitno" style="margin:0;color:var(--danger)">' + esc(r.naziv) + ': ' + esc(r.greska) + '</p>'; }).join('') : '')) +
       (up.length ? '<ul class="upozorenja-mete">' + up.map(function (u) { return '<li>' + esc(u) + '</li>'; }).join('') + '</ul>' : '') + '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:8px;flex:0 1 auto;align-items:flex-start"><button class="btn" type="button" data-osvjezi="' + (jedan ? esc(jedan.id) : '') + '">Osvježi ' + (jedan ? 'račun' : MREZE[m]) + '</button>' + ukloni + '</div></section>';
+      '<div style="display:flex;flex-direction:column;gap:8px;flex:0 1 auto;align-items:flex-start"><button class="btn" type="button" data-osvjezi="' + (jedan ? esc(jedan.id) : '') + '">Osvježi ' + (jedan ? 'račun' : MREZE[m]) + '</button>' + (jedan ? '<a class="btn malo" href="/objave.html#' + m + ':' + esc(jedan.id) + '">Objave ovog računa</a>' : '') + ukloni + '</div></section>';
   }
 
   /* ---- tablica računa ---- */

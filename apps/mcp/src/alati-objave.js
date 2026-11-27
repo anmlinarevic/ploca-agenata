@@ -6,6 +6,7 @@ import {
   MIME, MAX_BAJTOVA, KANALI, SERIJE, USLUGE, ISO_TJEDAN, MAX_OPIS,
   kljucZa, pripadaZakupcu, planDokument, objavaDokument, knjiznicaDokument, posluziObjekt,
 } from '../../../packages/poslovanje/objave.js';
+import { odrediRacunObjave, popisRacuna } from '../../../packages/poslovanje/racuni.js';
 
 const novi = () => crypto.randomUUID().replaceAll('-', '').slice(0, 12);
 const sada = () => new Date().toISOString();
@@ -82,6 +83,12 @@ async function provjeriKnjiznicu(env, ctx, ids) {
   return ids;
 }
 
+function provjeriGrupu(g) {
+  if (g == null || g === '') return null;
+  if (typeof g !== 'string' || !/^[\w-]{1,40}$/.test(g)) throw new Error('grupa_id: do 40 znakova (slova, brojke, - i _)');
+  return g;
+}
+
 function provjeriTermin(t) {
   if (t == null || t === '') return null;
   if (typeof t !== 'string' || Number.isNaN(Date.parse(t))) throw new Error('termin mora biti datum i vrijeme (ISO, npr. 2026-12-09T19:00:00+01:00)');
@@ -91,6 +98,8 @@ function provjeriTermin(t) {
 const objavaSchema = {
   tjedan: { type: 'string', pattern: ISO_TJEDAN.source, description: 'Tjedan plana kojem objava pripada (GGGG-Www)' },
   kanal: { type: 'string', enum: KANALI, default: 'tiktok' },
+  racun_id: { type: 'string', description: 'Račun na kojem se objavljuje (id iz dohvati_racune). Obavezno kad zakupac na toj mreži ima više računa; inače se uzima jedini račun.' },
+  grupa_id: { type: 'string', description: 'Ista ideja za više računa: svim objavama te ideje daj isti grupa_id (najviše 40 znakova). Svaka je zasebna objava s vlastitim opisom i terminom.' },
   serija: { type: 'string', enum: SERIJE },
   vrsta: { type: 'string', enum: ['video', 'slajdovi'] },
   naslov: { type: 'string', description: 'Kratki interni naslov, npr. „Imena: Lucija”' },
@@ -169,6 +178,8 @@ export const OBJAVE = [
       if (n >= MAX_OBJAVA_TJEDNO) throw new Error(`Ograničenje: najviše ${MAX_OBJAVA_TJEDNO} novih objava u 7 dana`);
       const mediji = await provjeriMedije(env, ctx, a.vrsta, a.mediji);
       const knjiznica = await provjeriKnjiznicu(env, ctx, a.knjiznica);
+      const racunId = await odrediRacunObjave(env.DB, ctx.tenantId, kanal, a.racun_id);
+      const grupaId = provjeriGrupu(a.grupa_id);
       let planId = null;
       if (a.tjedan) {
         if (!ISO_TJEDAN.test(a.tjedan)) throw new Error('tjedan mora biti GGGG-Www');
@@ -178,14 +189,14 @@ export const OBJAVE = [
       const id = novi(), kad = sada();
       await env.DB.batch([
         env.DB.prepare(
-          `INSERT INTO objave (id, tenant_id, plan_id, kanal, serija, vrsta, naslov, opis, scenarij, termin, mediji_json, knjiznica_json, ai_oznaka, status, kreirano, azurirano)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ceka', ?, ?)`,
-        ).bind(id, ctx.tenantId, planId, kanal, a.serija, a.vrsta, naslov, opis, scenarij, termin,
+          `INSERT INTO objave (id, tenant_id, plan_id, kanal, racun_id, grupa_id, serija, vrsta, naslov, opis, scenarij, termin, mediji_json, knjiznica_json, ai_oznaka, status, kreirano, azurirano)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ceka', ?, ?)`,
+        ).bind(id, ctx.tenantId, planId, kanal, racunId, grupaId, a.serija, a.vrsta, naslov, opis, scenarij, termin,
           JSON.stringify(mediji), JSON.stringify(knjiznica), a.ai_oznaka ? 1 : 0, kad, kad),
-        nadzor(env, ctx, 'predlozi_objavu', 'objave', id, null, { kanal, serija: a.serija, vrsta: a.vrsta, naslov, mediji: mediji.length }),
+        nadzor(env, ctx, 'predlozi_objavu', 'objave', id, null, { kanal, racun: racunId, serija: a.serija, vrsta: a.vrsta, naslov, mediji: mediji.length }),
         aktivnost(env, ctx, `Objava čeka odobrenje: ${naslov}`),
       ]);
-      return { id, status: 'ceka', mediji: mediji.length };
+      return { id, status: 'ceka', mediji: mediji.length, racun_id: racunId };
     },
   },
   {
@@ -201,8 +212,11 @@ export const OBJAVE = [
       if (a.vrsta != null && a.vrsta !== o.vrsta && a.mediji == null) throw new Error('Kad mijenjaš vrstu, pošalji i nove medije');
       if (a.kanal != null && !KANALI.includes(a.kanal)) throw new Error(`kanal: ${KANALI.join(', ')}`);
       if (a.serija != null && !SERIJE.includes(a.serija)) throw new Error(`serija: ${SERIJE.join(', ')}`);
+      const kanalNovi = a.kanal ?? o.kanal;
+      // Račun se ponovno određuje kad se mijenja kanal ili račun; inače ostaje kakav je bio (stara objava bez računa ostaje bez njega).
+      const racunNovi = (a.kanal != null && a.kanal !== o.kanal) || a.racun_id != null ? await odrediRacunObjave(env.DB, ctx.tenantId, kanalNovi, a.racun_id) : o.racun_id ?? null;
       const n = {
-        kanal: a.kanal ?? o.kanal, serija: a.serija ?? o.serija, vrsta,
+        kanal: kanalNovi, racun_id: racunNovi, grupa_id: a.grupa_id != null ? provjeriGrupu(a.grupa_id) : o.grupa_id ?? null, serija: a.serija ?? o.serija, vrsta,
         naslov: a.naslov != null ? tekst(a.naslov, 'naslov', 200, true).trim() : o.naslov,
         opis: a.opis != null ? tekst(a.opis, 'opis', MAX_OPIS, true).trim() : o.opis,
         scenarij: a.scenarij != null ? tekst(a.scenarij, 'scenarij', 8000) : o.scenarij,
@@ -213,10 +227,10 @@ export const OBJAVE = [
       };
       const kad = sada();
       const upd = await env.DB.prepare(
-        `UPDATE objave SET kanal = ?, serija = ?, vrsta = ?, naslov = ?, opis = ?, scenarij = ?, termin = ?, mediji_json = ?, knjiznica_json = ?,
+        `UPDATE objave SET kanal = ?, racun_id = ?, grupa_id = ?, serija = ?, vrsta = ?, naslov = ?, opis = ?, scenarij = ?, termin = ?, mediji_json = ?, knjiznica_json = ?,
            ai_oznaka = ?, status = 'ceka', izmjena = izmjena + 1, azurirano = ?, version = version + 1
          WHERE tenant_id = ? AND id = ? AND version = ?`,
-      ).bind(n.kanal, n.serija, n.vrsta, n.naslov, n.opis, n.scenarij, n.termin, n.mediji_json, n.knjiznica_json, n.ai_oznaka, kad,
+      ).bind(n.kanal, n.racun_id, n.grupa_id, n.serija, n.vrsta, n.naslov, n.opis, n.scenarij, n.termin, n.mediji_json, n.knjiznica_json, n.ai_oznaka, kad,
         ctx.tenantId, a.id, o.version).run();
       if (!upd.meta.changes) throw new Error('Objava je u međuvremenu promijenjena, dohvati je ponovno');
       await env.DB.batch([
@@ -224,6 +238,16 @@ export const OBJAVE = [
         aktivnost(env, ctx, `Ispravljena objava čeka odobrenje: ${n.naslov}`),
       ]);
       return { id: a.id, status: 'ceka', izmjena: o.izmjena + 1 };
+    },
+  },
+  {
+    name: 'dohvati_racune',
+    description: 'Računi na društvenim mrežama koje ploča prati (Facebook stranice, Instagram i TikTok računi): id, mreža, naziv i posao (banneri, igraonica, oboje). Id ide u racun_id kad predlažeš objavu. Samo čitanje.',
+    inputSchema: s({ mreza: { type: 'string', enum: KANALI } }),
+    run: async (a, ctx, env) => {
+      if (a.mreza != null && !KANALI.includes(a.mreza)) throw new Error(`mreza: ${KANALI.join(', ')}`);
+      const racuni = await popisRacuna(env.DB, ctx.tenantId, { mreza: a.mreza ?? null });
+      return { racuni: racuni.map((r) => ({ id: r.id, mreza: r.mreza, naziv: r.naziv, usluga: r.usluga, status: r.status })) };
     },
   },
   {

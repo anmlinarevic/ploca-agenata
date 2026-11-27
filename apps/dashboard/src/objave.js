@@ -3,6 +3,7 @@
 import {
   MIME, MAX_BAJTOVA, USLUGE, kljucZa, pripadaZakupcu, planDokument, objavaDokument, knjiznicaDokument, posluziObjekt,
 } from '../../../packages/poslovanje/objave.js';
+import { popisRacuna } from '../../../packages/poslovanje/racuni.js';
 
 const all = async (env, sql, ...a) => (await env.DB.prepare(sql).bind(...a).all()).results;
 const one = (env, sql, ...a) => env.DB.prepare(sql).bind(...a).first();
@@ -72,7 +73,8 @@ export async function apiObjave(request, env, u, tenant, putanja, body, h) {
                 ORDER BY COALESCE(termin, kreirano) LIMIT 200`, tenant, prije),
       one(env, `SELECT COUNT(*) AS n, COALESCE(SUM(slobodno), 0) AS slobodno FROM knjiznica WHERE tenant_id = ?`, tenant),
     ]);
-    return json({ planovi: planovi.map(planDokument), objave: objave.map(objavaDokument), knjiznica: { ukupno: knj.n, slobodno: knj.slobodno } });
+    const racuni = (await popisRacuna(env.DB, tenant)).map((r) => ({ id: r.id, mreza: r.mreza, naziv: r.naziv, usluga: r.usluga }));
+    return json({ planovi: planovi.map(planDokument), objave: objave.map(objavaDokument), racuni, knjiznica: { ukupno: knj.n, slobodno: knj.slobodno } });
   }
 
   // Odobri, vrati s komentarom ili odbaci objavu koja čeka.

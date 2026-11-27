@@ -104,3 +104,22 @@ export async function osiguraStareRacune(env, tenant) {
   if (ig) naredbe.push(db.prepare(`UPDATE racuni SET stranica_id = ? WHERE tenant_id = ? AND id = ?`).bind(stranica, tenant, ig.id));
   await db.batch(naredbe);
 }
+
+/**
+ * Račun za objavu. S `racunId` mora postojati, biti aktivan i biti račun mreže `kanal`. Bez njega: ako zakupac na toj mreži ima
+ * točno jedan aktivan račun, objava ide na njega; ako nema nijednog, vraća se null (mreža bez dodanog računa); ako ih je više,
+ * baca grešku koja ih nabraja, da se račun mora izabrati. Vraća id računa ili null.
+ */
+export async function odrediRacunObjave(db, tenant, kanal, racunId) {
+  if (racunId != null && racunId !== '') {
+    if (typeof racunId !== 'string' || racunId.length > 60) throw new Error('racun_id: neispravan id');
+    const r = await db.prepare(`SELECT id, mreza, naziv FROM racuni WHERE tenant_id = ? AND id = ? AND aktivan = 1`).bind(tenant, racunId).first();
+    if (!r) throw new Error(`Račun ${racunId} ne postoji ili je uklonjen (popis: dohvati_racune)`);
+    if (r.mreza !== kanal) throw new Error(`Račun ${r.naziv} je ${r.mreza} račun, a objava je za ${kanal}`);
+    return r.id;
+  }
+  const lista = (await db.prepare(`SELECT id, naziv FROM racuni WHERE tenant_id = ? AND mreza = ? AND aktivan = 1 ORDER BY kreirano, id`).bind(tenant, kanal).all()).results;
+  if (lista.length === 0) return null;
+  if (lista.length === 1) return lista[0].id;
+  throw new Error(`Na mreži ${kanal} ima ${lista.length} računa: ${lista.map((x) => `${x.naziv} (${x.id})`).join(', ')}. Navedi racun_id.`);
+}

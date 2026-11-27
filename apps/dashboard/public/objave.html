@@ -67,6 +67,7 @@ details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: va
   <section class="blok" aria-labelledby="h-objave">
     <h2 id="h-objave">Objave</h2>
     <div class="filteri" role="group" aria-label="Prikaži" id="filteri"></div>
+    <div class="filteri" role="group" aria-label="Račun" id="filteri-racuni" hidden></div>
     <div class="mreza-objava" id="objave"></div>
   </section>
 
@@ -87,6 +88,9 @@ details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: va
   var filter = 'ceka';
   try { filter = sessionStorage.getItem('objave-filter') || 'ceka'; } catch (e) {}
   var otvoreno = {}; // id → 'vrati' | 'odbaci' | 'objavljeno'
+  var racunFilter = 'sve'; // 'sve' | id računa; može doći iz adrese (#instagram:id) s ekrana Mreže
+  (function () { var h = (location.hash || '').slice(1).split(':'); if (h[1]) racunFilter = h[1]; })();
+  function racunPo(id) { return (podaci.racuni || []).filter(function (r) { return r.id === id; })[0] || null; }
 
   var STATUS = { ceka: ['Čeka tebe', 'ceka'], odobreno: ['Odobreno, za objaviti', 'ok'], vraceno: ['Vraćeno Claudeu', 'nepoznato'], odbaceno: ['Odbačeno', 'nepoznato'], objavljeno: ['Objavljeno', 'ok'] };
   var SERIJA = { imena: 'Imena', 'iza-sava': 'Iza šava', proslave: 'Proslave', igraonica: 'Igraonica', ostalo: 'Ostalo' };
@@ -130,18 +134,35 @@ details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: va
       '<button class="btn" type="button" data-zatvori="' + esc(kljuc) + '">Odustani</button></div></form>';
   }
 
-  function broj(st) { return podaci.objave.filter(function (o) { return o.status === st; }).length; }
+  function broj(st) { return podaci.objave.filter(function (o) { return o.status === st && (racunFilter === 'sve' || o.racunId === racunFilter); }).length; }
   function crtajFiltere() {
-    var f = [['ceka', 'Čeka tebe', broj('ceka')], ['odobreno', 'Za objaviti', broj('odobreno')], ['vraceno', 'Vraćeno', broj('vraceno')], ['objavljeno', 'Objavljeno', broj('objavljeno')], ['sve', 'Sve', podaci.objave.length]];
+    var f = [['ceka', 'Čeka tebe', broj('ceka')], ['odobreno', 'Za objaviti', broj('odobreno')], ['vraceno', 'Vraćeno', broj('vraceno')], ['objavljeno', 'Objavljeno', broj('objavljeno')], ['sve', 'Sve', podaci.objave.filter(function (o) { return racunFilter === 'sve' || o.racunId === racunFilter; }).length]];
     $('#filteri').innerHTML = f.map(function (x) { return '<button type="button" data-filter="' + x[0] + '" aria-pressed="' + (filter === x[0]) + '">' + x[1] + ' (' + x[2] + ')</button>'; }).join('');
   }
 
+  function istaIdeja(o) {
+    if (!o.grupaId) return '';
+    var drugi = podaci.objave.filter(function (x) { return x.grupaId === o.grupaId && x.id !== o.id; });
+    if (!drugi.length) return '';
+    return '<span class="sitno">Ista ideja i na: ' + drugi.map(function (x) { var r = x.racunId ? racunPo(x.racunId) : null; return '<a href="#o-' + esc(x.id) + '">' + esc((r ? r.naziv : (KANAL[x.kanal] || x.kanal))) + '</a> (' + esc((STATUS[x.status] || [x.status])[0].toLowerCase()) + ')'; }).join(', ') + '</span>';
+  }
+  function crtajFilterRacuna() {
+    var rs = podaci.racuni || [], el = $('#filteri-racuni');
+    if (rs.length < 2) { el.hidden = true; el.innerHTML = ''; racunFilter = 'sve'; return; }
+    if (racunFilter !== 'sve' && !racunPo(racunFilter)) racunFilter = 'sve';
+    el.hidden = false;
+    el.innerHTML = '<button type="button" data-racun="sve" aria-pressed="' + (racunFilter === 'sve') + '">Svi računi</button>' + rs.map(function (r) {
+      var n = podaci.objave.filter(function (o) { return o.racunId === r.id && o.status === 'ceka'; }).length;
+      return '<button type="button" data-racun="' + esc(r.id) + '" aria-pressed="' + (racunFilter === r.id) + '">' + esc(r.naziv) + ' · ' + esc(KANAL[r.mreza] || r.mreza) + (n ? ' (' + n + ' čeka)' : '') + '</button>';
+    }).join('');
+  }
   function karticaObjave(o) {
     var st = STATUS[o.status] || [o.status, 'nepoznato'];
     var med = o.vrsta === 'video' && o.mediji[0]
       ? '<div class="mediji"><video controls playsinline preload="metadata" src="' + esc(medij(o.mediji[0].kljuc)) + '"></video></div>'
       : '<div class="mediji"><div class="slajdovi">' + o.mediji.map(function (m, i) { return '<img loading="lazy" alt="Slajd ' + (i + 1) + '" src="' + esc(medij(m.kljuc)) + '">'; }).join('') + '</div></div>';
-    var meta = '<div class="redak"><span class="chip ' + st[1] + '">' + st[0] + '</span><span class="chip">' + esc(KANAL[o.kanal] || o.kanal) + '</span>' +
+    var rac = o.racunId ? racunPo(o.racunId) : null;
+    var meta = '<div class="redak"><span class="chip ' + st[1] + '">' + st[0] + '</span><span class="chip">' + esc(KANAL[o.kanal] || o.kanal) + '</span>' + (rac ? '<span class="chip neutral" title="Račun na kojem se objavljuje">' + esc(rac.naziv) + '</span>' : '') +
       (o.serija ? '<span class="chip">' + esc(SERIJA[o.serija] || o.serija) + '</span>' : '') +
       (o.aiOznaka ? '<span class="chip ai" title="Pri objavi uključi TikTokovu oznaku AI-generated">Uključi oznaku AI</span>' : '') + '</div>';
     var kad = o.status === 'objavljeno' ? 'Objavljeno ' + termin(o.objavljenoAt) : o.termin ? 'Predloženo: ' + termin(o.termin) : '';
@@ -169,12 +190,12 @@ details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: va
       '<p class="opis">' + esc(o.opis) + '</p>' +
       (o.komentar ? '<div class="komentar">Tvoj komentar: ' + esc(o.komentar) + '</div>' : '') +
       (o.scenarij ? '<details><summary>Scenarij i kadrovi</summary><pre>' + esc(o.scenarij) + '</pre></details>' : '') +
-      akc + '</div></article>';
+      istaIdeja(o) + akc + '</div></article>';
   }
 
   function crtajObjave() {
-    crtajFiltere();
-    var lista = podaci.objave.filter(function (o) { return filter === 'sve' || o.status === filter; });
+    crtajFilterRacuna(); crtajFiltere();
+    var lista = podaci.objave.filter(function (o) { return (filter === 'sve' || o.status === filter) && (racunFilter === 'sve' || o.racunId === racunFilter); });
     if (filter === 'objavljeno' || filter === 'sve') lista = lista.slice().reverse();
     $('#objave').innerHTML = lista.length ? lista.map(karticaObjave).join('')
       : '<p class="prazno">' + (filter === 'ceka' ? 'Nijedna objava ne čeka. Claude šalje nove ponedjeljkom i srijedom ujutro.' : 'Nema objava s ovim statusom.') + '</p>';
@@ -195,6 +216,7 @@ details pre { white-space: pre-wrap; font: inherit; font-size: 13.8px; color: va
   document.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     var d = b.dataset;
+    if (d.racun) { racunFilter = d.racun; crtajObjave(); return; }
     if (d.filter) { filter = d.filter; try { sessionStorage.setItem('objave-filter', filter); } catch (er) {} crtajObjave(); return; }
     if (d.odobri) { var o = nadji(d.odobri); b.disabled = true; posalji('/api/objave/' + d.odobri + '/odluka', { status: 'odobreno', version: o && o.version }, 'Odobreno. Objava je pod „Za objaviti”.'); return; }
     if (d.vrati) { otvoreno[d.vrati] = 'vrati'; crtajObjave(); var t = document.getElementById('k-' + d.vrati); if (t) t.focus(); return; }

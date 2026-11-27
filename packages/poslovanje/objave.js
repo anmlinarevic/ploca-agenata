@@ -32,7 +32,7 @@ export const planDokument = (p) => ({
 });
 
 export const objavaDokument = (o) => ({
-  id: o.id, planId: o.plan_id, kanal: o.kanal, serija: o.serija, vrsta: o.vrsta, naslov: o.naslov, opis: o.opis,
+  id: o.id, planId: o.plan_id, kanal: o.kanal, racunId: o.racun_id ?? null, grupaId: o.grupa_id ?? null, serija: o.serija, vrsta: o.vrsta, naslov: o.naslov, opis: o.opis,
   scenarij: o.scenarij, termin: o.termin, mediji: parseJson(o.mediji_json, []), knjiznica: parseJson(o.knjiznica_json, []),
   aiOznaka: !!o.ai_oznaka, status: o.status, komentar: o.komentar, odlucenoAt: o.odluceno_at, objavljenoAt: o.objavljeno_at,
   poveznica: o.poveznica, izmjena: o.izmjena, kreirano: o.kreirano, azurirano: o.azurirano, version: o.version,
