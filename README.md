@@ -78,6 +78,7 @@ naspram prethodnih 5 objava, najbolji dan i sat objave te uvide (reelsi naspram 
 Ploča ne čita poruke ni komentare; opis objave skraćen je na 90 znakova bez @oznaka i brojeva telefona.
 Tablice: `racuni` (jedan red po Facebook stranici, Instagram i TikTok računu; migracija 0011), `brojke_dan` (dnevne brojke po računu), `meta_razdoblje` i `meta_objave` (po računu). `meta_pratitelji` i `meta_sinkronizacija` su zastarjele i više se ne koriste.
 Računi: `GET/POST /api/racuni`, `DELETE /api/racuni/:id`. Meta token (korisnik sustava) vrijedi za sve stranice koje mu je dodijeljena imovina; `META_STRANICA` se čita samo za prijelaz sa stare postavke. Test: `npm run test:racuni` (bez wranglera).
+Razdoblje: zajednički filter `public/razdoblje.js` (1 dan do godina, prilagođeno); svaki ekran nudi samo razdoblja koja njegovi podaci podržavaju. Financije: `GET /api/financije?mjeseci=3|6|12` ili `?od=YYYY-MM&do=YYYY-MM` (prihod se vodi po mjesecu isporuke). Test: `npm run test:financije`.
 Tajne upisuje vlasnik: `npx wrangler secret put META_TOKEN --config apps/dashboard/wrangler.jsonc` (token stranice ili
 system usera s dozvolama instagram_basic, instagram_manage_insights, pages_read_engagement, read_insights, pages_show_list)
 i `npx wrangler secret put META_STRANICA --config apps/dashboard/wrangler.jsonc` (id Facebook stranice). Upute korak po korak:

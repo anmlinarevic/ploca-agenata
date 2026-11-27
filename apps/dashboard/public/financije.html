@@ -41,10 +41,11 @@ table.tablica { width: 100%; border-collapse: collapse; font-size: 14px; }
 </header>
 
 <main class="omot">
+  <div id="razdoblje"></div>
   <div class="kpi-red" id="kpi"><p class="prazno">Učitavam…</p></div>
   <div class="mreza-2">
     <section class="kartica okvir" aria-labelledby="h-mj">
-      <div class="okvir-glava"><div><h2 id="h-mj">Prihod i naplata, 6 mjeseci</h2><span class="sitno">Prihvaćene ponude po mjesecu isporuke i koliko je od toga plaćeno.</span></div>
+      <div class="okvir-glava"><div><h2 id="h-mj">Prihod i naplata po mjesecima</h2><span class="sitno">Prihvaćene ponude po mjesecu isporuke i koliko je od toga plaćeno.</span></div>
         <div class="legenda"><span><i style="background:var(--accent)"></i>prihod</span><span><i style="background:var(--kadulja)"></i>naplaćeno</span></div></div>
       <div class="par-stupci" id="stupci" role="img"></div>
       <div class="os" id="os"></div>
@@ -68,6 +69,7 @@ table.tablica { width: 100%; border-collapse: collapse; font-size: 14px; }
 </main>
 
 <script src="zajednicko.js"></script>
+<script src="razdoblje.js"></script>
 <script>
 (function () {
   'use strict';
@@ -76,26 +78,29 @@ table.tablica { width: 100%; border-collapse: collapse; font-size: 14px; }
   var usd = function (n) { return (Number(n) || 0).toFixed(2).replace('.', ',') + ' USD'; };
   var MJ = ['siječanj', 'veljača', 'ožujak', 'travanj', 'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan', 'listopad', 'studeni', 'prosinac'];
   function kpi(n, b, o, izvor, pozor) { return '<div class="kartica kpi' + (pozor ? ' pozor' : '') + '"><span class="naziv">' + n + '</span><span class="broj">' + b + '</span><span class="opis">' + o + '</span>' + (izvor ? '<span class="izvor">' + izvor + '</span>' : '') + '</div>'; }
+  function mjesecHr(m) { return MJ[+m.slice(5) - 1] + ' ' + m.slice(0, 4) + '.'; }
+  var poslovanje = null, brojac = 0;
 
-  Promise.all([P.api('GET', '/api/financije'), P.api('GET', '/api/poslovanje')]).then(function (r) {
-    var f = r[0], d = r[1], mj = MJ[+f.ovaj.mjesec.slice(5) - 1];
-    var pr = f.promjena == null ? 'prihvaćene ponude s isporukom ovaj mjesec' : '<span class="' + (f.promjena >= 0 ? 'rast' : 'pad') + '">' + (f.promjena >= 0 ? '+' : '') + f.promjena + ' %</span> naspram prošlog mjeseca';
-    $('#kpi').innerHTML = kpi('Prihod, ' + mj, eur(f.ovaj.prihod), pr, 'Parra · po datumu isporuke') +
-      kpi('Naplaćeno, ' + mj, eur(f.ovaj.naplaceno), 'od ponuda s isporukom ovaj mjesec', 'Parra · uplate') +
-      kpi('Čeka uplatu', eur(f.cekaUplatu), f.racunaOtvoreno + ' ' + (f.racunaOtvoreno === 1 ? 'račun' : 'računa') + (f.bezRacuna ? ' · ' + f.bezRacuna + ' isporučeno bez računa (' + eur(f.bezRacunaIznos) + ')' : ''), 'Parra · računi', f.cekaUplatu > 0 || f.bezRacuna > 0) +
-      kpi('Agenti, ' + mj, usd(f.ovaj.agenti), 'trošak Claude API-ja iz pokretanja', 'ploča');
+  function crtaj(f, d) {
+    var rz = f.razdoblje, pr = f.prethodno;
+    var usporedba = pr && pr.prihod ? '<span class="' + (rz.prihod >= pr.prihod ? 'rast' : 'pad') + '">' + (rz.prihod >= pr.prihod ? '+' : '') + Math.round((rz.prihod - pr.prihod) / pr.prihod * 100) + ' %</span> naspram prethodnog razdoblja (' + eur(pr.prihod) + ')'
+      : 'usporedba nije moguća' + (f.prviMjesec ? ': najranija ponuda u bazi je iz mjeseca ' + mjesecHr(f.prviMjesec) : '');
+    $('#kpi').innerHTML = kpi('Prihod', eur(rz.prihod), usporedba, 'Parra · po datumu isporuke') +
+      kpi('Naplaćeno', eur(rz.naplaceno), rz.prihod ? Math.round(rz.naplaceno / rz.prihod * 100) + ' % prihoda u razdoblju' : 'nema prihoda u razdoblju', 'Parra · uplate') +
+      kpi('Čeka uplatu', eur(f.cekaUplatu), f.racunaOtvoreno + ' ' + (f.racunaOtvoreno === 1 ? 'račun' : 'računa') + (f.bezRacuna ? ' · ' + f.bezRacuna + ' isporučeno bez računa (' + eur(f.bezRacunaIznos) + ')' : ''), 'Parra · trenutno stanje, ne ovisi o razdoblju', f.cekaUplatu > 0 || f.bezRacuna > 0) +
+      kpi('Agenti', usd(rz.agenti), 'trošak Claude API-ja u razdoblju', 'ploča');
     if (!f.parra.spojeno) $('#kpi').insertAdjacentHTML('beforeend', '<p class="napomena" style="grid-column:1/-1">Parra još nije spojena, pa su prihodi prazni.</p>');
 
-    var max = Math.max.apply(null, f.mjeseci.map(function (m) { return m.prihod; }).concat([1]));
+    var max = Math.max.apply(null, f.mjeseci.map(function (m) { return m.prihod; }).concat([1])), puno = f.mjeseci.length <= 8;
     $('#stupci').setAttribute('aria-label', 'Prihod i naplata po mjesecima');
     $('#stupci').innerHTML = f.mjeseci.map(function (m) {
-      return '<div class="grupa" title="' + esc(m.naziv + ': prihod ' + eur(m.prihod) + ', naplaćeno ' + eur(m.naplaceno)) + '"><small>' + (m.prihod ? eur(Math.round(m.prihod)) : '') + '</small><i class="prihod" style="height:' + Math.round(m.prihod / max * 90) + '%"></i><i class="naplaceno" style="height:' + Math.round(m.naplaceno / max * 90) + '%"></i></div>';
+      return '<div class="grupa" title="' + esc(m.naziv + ' ' + m.mjesec.slice(0, 4) + ': prihod ' + eur(m.prihod) + ', naplaćeno ' + eur(m.naplaceno)) + '"><small>' + (puno && m.prihod ? eur(Math.round(m.prihod)) : '') + '</small><i class="prihod" style="height:' + Math.round(m.prihod / max * 90) + '%"></i><i class="naplaceno" style="height:' + Math.round(m.naplaceno / max * 90) + '%"></i></div>';
     }).join('');
     $('#os').innerHTML = f.mjeseci.map(function (m) { return '<span>' + m.naziv + '</span>'; }).join('');
 
-    var ukS = f.mjeseci.reduce(function (s, m) { return s + m.sivanje; }, 0), ukI = f.mjeseci.reduce(function (s, m) { return s + m.igraonica; }, 0);
-    $('#usluge').innerHTML = '<table class="tablica"><thead><tr><th>Usluga</th><th class="br">' + esc(mj) + '</th><th class="br">6 mjeseci</th><th class="br">Udio</th></tr></thead><tbody>' +
-      [['Šivanje', 'sivanje', f.ovaj.sivanje, ukS], ['Igraonica', 'igraonica', f.ovaj.igraonica, ukI]].map(function (u) {
+    var zadnji = f.mjeseci[f.mjeseci.length - 1], ukS = rz.sivanje, ukI = rz.igraonica;
+    $('#usluge').innerHTML = '<table class="tablica"><thead><tr><th>Usluga</th><th class="br">' + esc(MJ[+zadnji.mjesec.slice(5) - 1]) + '</th><th class="br">Razdoblje</th><th class="br">Udio</th></tr></thead><tbody>' +
+      [['Šivanje', 'sivanje', zadnji.sivanje, ukS], ['Igraonica', 'igraonica', zadnji.igraonica, ukI]].map(function (u) {
         return '<tr><td><span class="chip ' + u[1] + '">' + u[0] + '</span></td><td class="br">' + eur(u[2]) + '</td><td class="br">' + eur(u[3]) + '</td><td class="br">' + ((ukS + ukI) ? Math.round(u[3] / (ukS + ukI) * 100) + ' %' : '–') + '</td></tr>';
       }).join('') + '</tbody></table>';
 
@@ -108,7 +113,18 @@ table.tablica { width: 100%; border-collapse: collapse; font-size: 14px; }
       return '<div class="stavka-z"><div class="tijelo"><b>' + esc(p.broj) + (p.opis ? ' · ' + esc(p.opis) : '') + '</b><span class="sitno">isporuka ' + P.datum(p.isporuka_do || p.isporuka_od) + ' · ' + NAZ[p.stanje] + '</span></div><b>' + eur(dug) + '</b></div>';
     }).join('') : '<p class="prazno">Sve isporučeno je naplaćeno.</p>';
 
-    $('#troskovi').innerHTML = '<div class="red-trake">' + f.mjeseci.map(function (m) { return '<div class="red-traka"><span>Agenti, ' + m.naziv + '</span><span class="t"><i style="width:' + Math.min(100, Math.round(m.agenti / 25 * 100)) + '%"></i></span><b>' + usd(m.agenti) + '</b></div>'; }).join('') + '</div>';
-  }).catch(function (e) { $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+    var maxA = Math.max.apply(null, f.mjeseci.map(function (m) { return m.agenti; }).concat([25]));
+    $('#troskovi').innerHTML = '<div class="red-trake">' + f.mjeseci.map(function (m) { return '<div class="red-traka"><span>Agenti, ' + m.naziv + '</span><span class="t"><i style="width:' + Math.min(100, Math.round(m.agenti / maxA * 100)) + '%"></i></span><b>' + usd(m.agenti) + '</b></div>'; }).join('') + '</div>';
+  }
+
+  function ucitaj(r) {
+    var moj = ++brojac, q = r.preset === 'custom' ? 'od=' + r.od + '&do=' + r.do : 'mjeseci=' + r.n;
+    Promise.all([P.api('GET', '/api/financije?' + q), poslovanje || P.api('GET', '/api/poslovanje')]).then(function (x) {
+      if (moj !== brojac) return; // stigao je noviji izbor
+      poslovanje = x[1]; crtaj(x[0], x[1]);
+    }).catch(function (e) { if (moj === brojac) $('#kpi').innerHTML = '<p class="poruka greska">' + esc(e.message) + '</p>'; });
+  }
+
+  RAZ.init($('#razdoblje'), { mjesecno: true, zadano: '180', dostupno: ['90', '180', '365'], razlog: 'Prihod se vodi po mjesecu isporuke, pa je najkraće razdoblje 3 mjeseca.', onChange: ucitaj });
 })();
 </script>

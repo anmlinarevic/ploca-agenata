@@ -7,6 +7,7 @@
     "dev": "wrangler dev --config apps/mcp/wrangler.jsonc",
     "test": "node scripts/test-lokalno.mjs",
     "test:racuni": "node --no-warnings scripts/racuni-test.mjs",
+    "test:financije": "node --no-warnings scripts/financije-razdoblje-test.mjs",
     "demo": "node scripts/demo.mjs"
   },
   "devDependencies": {

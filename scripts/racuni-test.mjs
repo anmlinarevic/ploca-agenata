@@ -2,7 +2,7 @@
 // Bez wranglera i bez uvoza stare ploče: prave migracije na SQLite bazi (node:sqlite) iza malog D1 adaptera i lažni Meta fetch.
 // Upotreba: node scripts/racuni-test.mjs
 import { DatabaseSync } from 'node:sqlite';
-import { readdirSync, readFileSync } from 'node:fs';
+import { d1, primijeni, nova } from './d1-sqlite.mjs';
 import { sinkronizirajMetu, pregledMreza, metaPodesena } from '../packages/poslovanje/meta.js';
 import { dodajRacun, popisRacuna, ukloniRacun, provjeriRacun } from '../packages/poslovanje/racuni.js';
 
@@ -10,31 +10,6 @@ let pali = 0;
 const ok = (c, m) => { if (!c) { console.error('PAO:', m); pali++; process.exitCode = 1; } else console.log('ok  ', m); };
 const baca = async (f, re, m) => { try { await f(); ok(false, `${m} (nije bacilo grešku)`); } catch (e) { ok(re.test(e.message), `${m} (${e.message})`); } };
 
-/** Najmanji D1 adapter za ovaj test: prepare/bind/run/all/first i batch u transakciji. */
-function d1(db) {
-  const st = (sql) => {
-    let a = [];
-    const o = {
-      bind(...x) { a = x; return o; },
-      run() { const r = db.prepare(sql).run(...a); return Promise.resolve({ success: true, meta: { changes: Number(r.changes) } }); },
-      all() { return Promise.resolve({ results: db.prepare(sql).all(...a) }); },
-      first() { return Promise.resolve(db.prepare(sql).get(...a) ?? null); },
-      _sync() { return db.prepare(sql).run(...a); },
-    };
-    return o;
-  };
-  return {
-    prepare: st,
-    async batch(lista) {
-      db.exec('BEGIN');
-      try { lista.forEach((s) => s._sync()); db.exec('COMMIT'); } catch (e) { db.exec('ROLLBACK'); throw e; }
-      return lista.map(() => ({ success: true }));
-    },
-  };
-}
-const migracije = readdirSync('packages/db/migrations').filter((f) => f.endsWith('.sql')).sort();
-const primijeni = (db, do_ = 99, od = 1) => migracije.filter((f) => +f.slice(0, 4) <= do_ && +f.slice(0, 4) >= od).forEach((f) => db.exec(readFileSync(`packages/db/migrations/${f}`, 'utf8')));
-const nova = (do_) => { const db = new DatabaseSync(':memory:'); primijeni(db, do_); db.exec(`INSERT INTO tenants (id, naziv) VALUES ('t1', 'Test'), ('t2', 'Drugi')`); return db; };
 
 /** Lažna Meta (Graph API) s dvije stranice i dva Instagram računa. */
 function laznaMeta() {

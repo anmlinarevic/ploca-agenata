@@ -108,7 +108,11 @@ export async function apiPoslovanje(request, env, u, tenant, putanja, body, h) {
 
   // ---- Meta (Instagram i Facebook stranica): pregled i ručno osvježavanje (inače svakih 6 sati preko crona) ----
   if (m === 'GET' && putanja === '/api/mreze') return json(await pregledMreza(env, tenant));
-  if (m === 'GET' && putanja === '/api/financije') return json(await pregledFinancija(env, tenant));
+  if (m === 'GET' && putanja === '/api/financije') {
+    const q = new URL(request.url).searchParams;
+    try { return json(await pregledFinancija(env, tenant, new Date(), { mjeseci: q.get('mjeseci'), od: q.get('od'), do: q.get('do') })); }
+    catch (e) { return greska(String(e.message || e), 400); }
+  }
   if (m === 'POST' && putanja === '/api/meta/osvjezi') {
     if (!metaPodesena(env, tenant)) return greska('Meta nije spojena. Upiši token: npx wrangler secret put META_TOKEN', 503);
     const r = await sinkronizirajMetu(env, tenant, { racunId: typeof body?.racun === 'string' ? body.racun : null });
