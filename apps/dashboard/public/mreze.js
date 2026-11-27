@@ -15,7 +15,7 @@
   var VRSTA = { reel: 'Reel', video: 'Video', slika: 'Fotografija', album: 'Album', objava: 'Objava' };
   var DAN_KRATKO = ['Pon', 'Uto', 'Sri', 'Čet', 'Pet', 'Sub', 'Ned'];
 
-  var S = { tab: 'sve', racun: { facebook: 'sve', instagram: 'sve', tiktok: 'sve' }, dodaj: null, uklanjanje: null, racuni: [], podaci: null, ucitano: false, greska: null };
+  var S = { upit: '', mjera: 'pregledi', tab: 'sve', racun: { facebook: 'sve', instagram: 'sve', tiktok: 'sve' }, dodaj: null, uklanjanje: null, racuni: [], podaci: null, ucitano: false, greska: null };
 
   /* ---- pomoćno ---- */
   function n(v) { return v == null ? '–' : tocke(v); }
@@ -53,10 +53,21 @@
   }
 
   /* ---- učitavanje ---- */
+  var brojac = 0;
   function ucitaj() {
-    return Promise.all([P.api('GET', '/api/racuni'), P.api('GET', '/api/mreze')]).then(function (r) {
+    var moj = ++brojac;
+    return Promise.all([P.api('GET', '/api/racuni'), P.api('GET', '/api/mreze' + (S.upit ? '?' + S.upit : ''))]).then(function (r) {
+      if (moj !== brojac) return; // stigao je noviji izbor razdoblja
       S.racuni = r[0].racuni || []; S.podaci = r[1]; S.ucitano = true; S.greska = null; crtaj();
-    }).catch(function (e) { S.greska = e.message; S.ucitano = true; crtaj(); });
+    }).catch(function (e) { if (moj !== brojac) return; S.greska = e.message; S.ucitano = true; crtaj(); });
+  }
+  function dmg(iso) { var q = iso.split('-'); return +q[2] + '. ' + +q[1] + '. ' + q[0] + '.'; }
+  function infoRazdoblja() {
+    var el = $('#raz-info'), rz = S.podaci && S.podaci.razdoblje;
+    if (!rz) { el.hidden = true; return; }
+    var dana = function (n) { return n + (n % 10 === 1 && n % 100 !== 11 ? ' dan' : ' dana'); };
+    el.textContent = 'Razdoblje: ' + dmg(rz.od) + (rz.dana > 1 ? ' – ' + dmg(rz.do) : '') + ' (' + dana(rz.dana) + '). Meta daje dnevne brojke s odgodom od 1 do 2 dana. Doseg je zbroj dnevnog dosega: ista se osoba broji svaki dan, pa za dulja razdoblja nije broj jedinstvenih osoba.';
+    el.hidden = false;
   }
 
   /* ---- tabovi i traka računa ---- */
@@ -134,12 +145,17 @@
     var d = podaciRacuna(r.id), c = d && d.podaci;
     var ime = '<td><button class="racun-ime" type="button" data-otvori="' + esc(r.id) + '"><b>' + esc(r.naziv) + '</b>' + uslugaChip(r) + '</button></td>';
     if (!c || r.mreza === 'tiktok') return ime + '<td class="br" colspan="5"><span class="sitno">' + (r.mreza === 'tiktok' ? 'Brojke dolaze u sljedećoj fazi' : 'Još nema brojki, čeka prvo osvježavanje') + '</span></td><td>' + statusChip(r) + '</td></tr>';
-    var rast = c.pratiteljiRast;
+    var rast = c.pratiteljiRast, rz = d.razdoblje;
+    if (rz) {
+      var pr = rz.pregledi, ps = pr.vrijednost == null ? '<span class="sitno" title="' + esc(rz.dnevnoGreska || 'Dnevne brojke se još učitavaju') + '">–</span>' : tocke(pr.vrijednost) + (pr.promjena == null ? '' : ' <span class="' + (pr.promjena >= 0 ? 'rast' : 'pad') + '" style="font-size:12.5px">' + (pr.promjena >= 0 ? '+' : '') + pr.promjena + ' %</span>') + (rz.pokriveno < S.podaci.razdoblje.dana ? ' <span class="sitno" title="Dnevnih brojki ima za ' + rz.pokriveno + ' od ' + S.podaci.razdoblje.dana + ' dana">*</span>' : '');
+      return ime + '<td class="br">' + n(c.pratitelji) + '</td><td class="br">' + (rast == null ? '<span class="sitno" title="Rast se broji od prvog osvježavanja">–</span>' : '<span class="' + (rast >= 0 ? 'rast' : 'pad') + '">' + (rast >= 0 ? '+' : '−') + tocke(Math.abs(rast)) + '</span>') + '</td>' +
+        '<td class="br">' + ps + '</td><td class="br">' + n(rz.doseg.vrijednost) + '</td><td class="br">' + n(rz.objaveBroj) + '</td><td>' + statusChip(r) + '</td></tr>';
+    }
     return ime + '<td class="br">' + n(c.pratitelji) + '</td><td class="br">' + (rast == null ? '<span class="sitno" title="Rast se broji od prvog osvježavanja">–</span>' : '<span class="' + (rast >= 0 ? 'rast' : 'pad') + '">' + (rast >= 0 ? '+' : '−') + tocke(Math.abs(rast)) + '</span>') + '</td>' +
       '<td class="br">' + n(c.pregledi28) + (c.preglediPromjena == null ? '' : ' <span class="' + (c.preglediPromjena >= 0 ? 'rast' : 'pad') + '" style="font-size:12.5px">' + (c.preglediPromjena >= 0 ? '+' : '') + c.preglediPromjena + ' %</span>') + '</td>' +
       '<td class="br">' + n(c.doseg28) + '</td><td class="br">' + n(c.ukupnoObjava) + '</td><td>' + statusChip(r) + '</td></tr>';
   }
-  var ZAGLAVLJE = '<thead><tr><th>Račun</th><th class="br">Pratitelji</th><th class="br">Rast</th><th class="br">Pregledi, 28 d</th><th class="br">Doseg, 28 d</th><th class="br">Objave</th><th>Status</th></tr></thead>';
+  var ZAGLAVLJE = '<thead><tr><th>Račun</th><th class="br">Pratitelji</th><th class="br">Rast</th><th class="br">Pregledi</th><th class="br">Doseg (zbroj dana)</th><th class="br">Objave</th><th>Status</th></tr></thead>';
   function tablica(rs, grupirano) {
     var redovi = grupirano
       ? ORD.map(function (m) { var l = rs.filter(function (r) { return r.mreza === m; }); return l.length ? '<tr class="mreza-red"><td colspan="7">' + MREZE[m] + '</td></tr><tr>' + l.map(redRacuna).join('<tr>') : ''; }).join('')
@@ -150,16 +166,65 @@
   function sveMreze() {
     var rs = S.racuni;
     if (!rs.length) return '<section class="kartica okvir"><h2>Još nema računa</h2><p class="sitno">Odaberite mrežu iznad i dodajte prvi račun.</p></section>';
-    var pod = rs.map(function (r) { var d = podaciRacuna(r.id); return d && d.podaci ? { r: r, c: d.podaci } : null; }).filter(Boolean);
-    var sumP = 0, sumV = 0, sumR = 0, imaR = false;
-    pod.forEach(function (x) { sumP += x.c.pratitelji || 0; sumV += x.c.pregledi28 || 0; if (x.c.pratiteljiRast != null) { sumR += x.c.pratiteljiRast; imaR = true; } });
+    var pod = rs.map(function (r) { var d = podaciRacuna(r.id); return d && d.podaci ? { r: r, c: d.podaci, rz: d.razdoblje || null } : null; }).filter(Boolean);
+    var sumP = 0, sumV = 0, sumR = 0, imaR = false, imaRz = pod.some(function (x) { return x.rz; });
+    pod.forEach(function (x) { sumP += x.c.pratitelji || 0; sumV += imaRz ? (x.rz && x.rz.pregledi.vrijednost) || 0 : x.c.pregledi28 || 0; if (x.c.pratiteljiRast != null) { sumR += x.c.pratiteljiRast; imaR = true; } });
     var kpi = [
       ['Pratitelji, zbroj', pod.length ? tocke(sumP) : '–', imaR ? '<span class="' + (sumR >= 0 ? 'rast' : 'pad') + '">' + (sumR >= 0 ? '+' : '−') + tocke(Math.abs(sumR)) + '</span> od prvog osvježavanja' : 'rast se broji od prvog osvježavanja'],
-      ['Pregledi, 28 dana', pod.length ? tocke(sumV) : '–', 'zbroj računa; svaka mreža broji preglede po svom'],
+      [imaRz ? 'Pregledi' : 'Pregledi, 28 dana', pod.length ? tocke(sumV) : '–', 'zbroj računa za odabrano razdoblje; svaka mreža broji preglede po svom'],
       ['Računi', String(rs.length), ORD.map(function (m) { var k = racuniMreze(m).length; return k ? MREZE[m] + ' ' + k : null; }).filter(Boolean).join(' · ')]
     ];
     return '<div class="kpi-red">' + kpi.map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('') + '</div>' +
       '<section class="kartica okvir"><div><h2>Računi po mrežama</h2><span class="sitno" style="font-size:13px">Klik na račun otvara njegove brojke. Doseg se ne zbraja među računima jer se ista osoba može pojaviti na više njih.</span></div>' + tablica(rs, true) + '</section>';
+  }
+
+  /* ---- graf kroz vrijeme (pregledi ili doseg po danu; za dulja razdoblja po tjednu) ---- */
+  var GRAF = null;
+  function seriju(serija, mjera, dana) {
+    var vals = serija.filter(function (x) { return x[mjera] != null; });
+    if (dana <= 31) return { pts: vals.map(function (x) { return { od: x.datum, do: x.datum, v: x[mjera] }; }), korak: 1 };
+    var out = [], zadnji = vals.length - 1;
+    for (var i = zadnji; i >= 0; i -= 7) {
+      var dio = vals.slice(Math.max(0, i - 6), i + 1);
+      if (dio.length < 7 && out.length) continue; // nepotpun početni tjedan se ispušta da graf ne pada
+      out.unshift({ od: dio[0].datum, do: dio[dio.length - 1].datum, v: dio.reduce(function (a, x) { return a + x[mjera]; }, 0) });
+    }
+    return { pts: out, korak: 7 };
+  }
+  function grafRazdoblja(r, rz) {
+    var dana = S.podaci.razdoblje.dana, mj = S.mjera === 'doseg' ? 'doseg' : 'pregledi';
+    var naziv = mj === 'doseg' ? 'Doseg (zbroj dana)' : 'Pregledi';
+    var ser = seriju(rz.serija, mj, dana);
+    var glava = '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:flex-start"><div><h2>' + naziv + (dana > 1 ? (ser.korak === 1 ? ' po danu' : ' po tjednu') : '') + '</h2><span class="sitno" style="font-size:13.6px">' + dmg(S.podaci.razdoblje.od) + (dana > 1 ? ' – ' + dmg(S.podaci.razdoblje.do) : '') + '</span></div>' +
+      '<label class="sitno">Mjera <select id="mjera-grafa" class="mali"><option value="pregledi"' + (mj === 'pregledi' ? ' selected' : '') + '>Pregledi</option><option value="doseg"' + (mj === 'doseg' ? ' selected' : '') + '>Doseg (zbroj dana)</option></select></label></div>';
+    if (dana === 1) return '<section class="kartica okvir">' + glava + '<p class="prazno">Za jedan dan nema grafa. Odaberite 7 dana ili dulje.</p></section>';
+    if (ser.pts.length < 2) return '<section class="kartica okvir">' + glava + '<p class="prazno">' + (rz.dnevnoGreska ? 'Meta ne daje dnevne ' + (mj === 'pregledi' ? 'preglede' : 'brojke') + ' za ovaj račun: ' + esc(rz.dnevnoGreska) : 'Za ovo razdoblje još nema dnevnih brojki. Povijest se učitava u komadima po 30 dana, svakih 6 sati.') + '</p></section>';
+    var W = 640, H = 220, L = 46, R = 12, T = 12, B = 26, pts = ser.pts, max = Math.max.apply(null, pts.map(function (p) { return p.v; })), korak = Math.pow(10, Math.floor(Math.log10(Math.max(max, 1)))), vrh = Math.ceil(max / korak) * korak;
+    if (vrh / korak < 3) { korak = korak / 2; vrh = Math.ceil(max / korak) * korak; }
+    var x = function (i) { return L + i / (pts.length - 1) * (W - L - R); }, y = function (v) { return T + (1 - v / vrh) * (H - T - B); };
+    var tk = []; for (var q = 0; q <= vrh + 1e-9; q += korak) tk.push(q); if (tk.length > 5) tk = tk.filter(function (_, i) { return i % 2 === 0; });
+    var lin = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' ');
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(r.naziv + ': ' + naziv + ', ' + dmg(S.podaci.razdoblje.od) + ' do ' + dmg(S.podaci.razdoblje.do)) + '">';
+    tk.forEach(function (v) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)"/><text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="11" fill="var(--ink-soft)">' + kratko(Math.round(v)) + '</text>'; });
+    [0, Math.floor((pts.length - 1) / 2), pts.length - 1].forEach(function (i, k) { s += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (k === 0 ? 'start' : k === 2 ? 'end' : 'middle') + '" font-size="11" fill="var(--ink-soft)">' + P.datum(pts[i].od) + '</text>'; });
+    s += '<path d="' + lin + ' L' + x(pts.length - 1).toFixed(1) + ' ' + y(0) + ' L' + x(0).toFixed(1) + ' ' + y(0) + ' Z" fill="var(--accent)" fill-opacity=".08"/><path d="' + lin + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    s += '<circle cx="' + x(pts.length - 1) + '" cy="' + y(pts[pts.length - 1].v) + '" r="4.5" fill="var(--accent)" stroke="var(--white)" stroke-width="2"/>';
+    s += '<g class="hv" visibility="hidden"><line y1="' + T + '" y2="' + (H - B) + '" stroke="var(--line-strong)"/><circle r="4.5" fill="var(--accent)" stroke="var(--white)" stroke-width="2"/></g><rect x="' + L + '" y="' + T + '" width="' + (W - L - R) + '" height="' + (H - T - B) + '" fill="transparent"/></svg><div class="oblacic" hidden></div>';
+    GRAF = { pts: pts, x: x, y: y, W: W, H: H, L: L, R: R, korak: ser.korak };
+    return '<section class="kartica okvir">' + glava + '<div class="graf" id="graf">' + s + '</div></section>';
+  }
+  function veziGraf() {
+    var el = $('#graf'); if (!el || !GRAF) return;
+    var svg = el.querySelector('svg'), hv = svg.querySelector('.hv'), ln = hv.querySelector('line'), c = hv.querySelector('circle'), ob = el.querySelector('.oblacic');
+    function pokazi(e) {
+      var r = svg.getBoundingClientRect(), sx = (e.clientX - r.left) / r.width * GRAF.W, n2 = GRAF.pts.length;
+      var i = Math.max(0, Math.min(n2 - 1, Math.round((sx - GRAF.L) / (GRAF.W - GRAF.L - GRAF.R) * (n2 - 1)))), p = GRAF.pts[i], px = GRAF.x(i), py = GRAF.y(p.v);
+      hv.setAttribute('visibility', 'visible'); ln.setAttribute('x1', px); ln.setAttribute('x2', px); c.setAttribute('cx', px); c.setAttribute('cy', py);
+      ob.hidden = false; ob.style.left = (px / GRAF.W * r.width) + 'px'; ob.style.top = (py / GRAF.H * r.height) + 'px';
+      ob.innerHTML = (GRAF.korak === 1 ? P.datum(p.od) : P.datum(p.od) + ' – ' + P.datum(p.do)) + ' · <b>' + tocke(p.v) + '</b>';
+    }
+    svg.addEventListener('pointermove', pokazi); svg.addEventListener('pointerdown', pokazi);
+    svg.addEventListener('pointerleave', function () { hv.setAttribute('visibility', 'hidden'); ob.hidden = true; });
   }
 
   /* ---- brojke jednog računa (kao prije, po računu) ---- */
@@ -167,13 +232,29 @@
     var d = podaciRacuna(r.id), c = d && d.podaci, fb = r.mreza === 'facebook';
     if (!c || !r.zadnje) return '<section class="kartica okvir"><h2>' + esc(r.naziv) + ': još nema brojki</h2><p class="sitno">Brojke se pojave nakon prvog osvježavanja računa (do 6 sati) ili klikom na „Osvježi”. Rast pratitelja broji se od tog dana.</p></section>';
     var rast = c.pratiteljiRast, h = '';
-    var kpi = [
-      ['Zadnjih 5 objava', n(c.prosjekZadnjih5), c.promjena5 == null ? 'prosjek pregleda · usporedba kad bude 10 objava s brojkama' : postotak(c.promjena5, 'naspram prethodnih 5')],
-      ['Doseg, 28 dana', n(c.doseg28), c.dosegPromjena == null ? 'koliko je računa vidjelo sadržaj' : postotak(c.dosegPromjena, 'naspram prethodnih 28 dana')],
-      fb ? ['Pregledi, 28 dana', n(c.pregledi28), c.preglediPromjena == null ? 'svi pregledi sadržaja stranice' : postotak(c.preglediPromjena, 'naspram prethodnih 28 dana')]
-        : ['Spremanja po objavi', c.spremanjaPoObjavi == null ? '–' : P.broj(c.spremanjaPoObjavi, 1), 'zadnjih 5 objava · najbolji signal da se netko vraća'],
-      ['Pratitelji', n(c.pratitelji), rast == null ? 'rast se broji od prvog osvježavanja, dan po dan' : '<span class="' + (rast >= 0 ? 'rast' : 'pad') + '">' + (rast >= 0 ? '+' : '') + rast + '</span> od ' + P.datum(c.pratiteljiOd)]
-    ];
+    var rz = d.razdoblje, rzOk = rz && rz.pregledi && S.podaci.razdoblje, kpi;
+    var pratKpi = ['Pratitelji', n(c.pratitelji), rast == null ? 'rast se broji od prvog osvježavanja, dan po dan' : '<span class="' + (rast >= 0 ? 'rast' : 'pad') + '">' + (rast >= 0 ? '+' : '') + rast + '</span> od ' + P.datum(c.pratiteljiOd)];
+    if (rzOk) {
+      var dd = S.podaci.razdoblje.dana, pr = rz.pregledi, ds = rz.doseg;
+      var nepotpuno = rz.pokriveno < dd ? '<span class="pad">dnevnih brojki ima za ' + rz.pokriveno + ' od ' + dd + ' dana' + (rz.povijestDnevnoOd ? ' (učitano od ' + P.datum(rz.povijestDnevnoOd) + ')' : '') + '</span>' : '';
+      var razlog = rz.dnevnoGreska ? '<span class="pad">Meta ne daje: ' + esc(rz.dnevnoGreska) + '</span>' : (rz.pokriveno === 0 ? 'dnevne brojke se još učitavaju (do 6 sati po komadu)' : '');
+      kpi = [
+        ['Pregledi', pr.vrijednost == null ? '–' : tocke(pr.vrijednost), pr.vrijednost == null ? (razlog || 'nema dnevnih brojki za razdoblje') : (nepotpuno || (pr.promjena == null ? 'usporedba nije moguća: prethodno razdoblje nije učitano' : postotak(pr.promjena, 'naspram prethodnog razdoblja')))],
+        ['Doseg (zbroj dana)', ds.vrijednost == null ? '–' : tocke(ds.vrijednost), ds.vrijednost == null ? 'nema dnevnih brojki za razdoblje' : (ds.promjena == null ? 'ista se osoba broji svaki dan' : postotak(ds.promjena, 'naspram prethodnog razdoblja'))],
+        ['Objave u razdoblju', String(rz.objaveBroj), rz.objaveDostupnoOd ? 'ploča čuva objave od ' + P.datum(rz.objaveDostupnoOd) : 'još nema spremljenih objava'],
+        fb ? ['Zadnjih 5 objava', n(c.prosjekZadnjih5), c.promjena5 == null ? 'prosjek pregleda · usporedba kad bude 10 objava s brojkama' : postotak(c.promjena5, 'naspram prethodnih 5')]
+          : ['Spremanja po objavi', c.spremanjaPoObjavi == null ? '–' : P.broj(c.spremanjaPoObjavi, 1), 'zadnjih 5 objava · najbolji signal da se netko vraća'],
+        pratKpi
+      ];
+    } else {
+      kpi = [
+        ['Zadnjih 5 objava', n(c.prosjekZadnjih5), c.promjena5 == null ? 'prosjek pregleda · usporedba kad bude 10 objava s brojkama' : postotak(c.promjena5, 'naspram prethodnih 5')],
+        ['Doseg, 28 dana', n(c.doseg28), c.dosegPromjena == null ? 'koliko je računa vidjelo sadržaj' : postotak(c.dosegPromjena, 'naspram prethodnih 28 dana')],
+        fb ? ['Pregledi, 28 dana', n(c.pregledi28), c.preglediPromjena == null ? 'svi pregledi sadržaja stranice' : postotak(c.preglediPromjena, 'naspram prethodnih 28 dana')]
+          : ['Spremanja po objavi', c.spremanjaPoObjavi == null ? '–' : P.broj(c.spremanjaPoObjavi, 1), 'zadnjih 5 objava · najbolji signal da se netko vraća'],
+        pratKpi
+      ];
+    }
     var v = c.graf, graf, max = Math.max.apply(null, v.map(function (x) { return x.pregledi; }).concat([1]));
     if (!v.length) graf = '<p class="prazno" style="align-self:center">Još nema objava s brojkama.</p>';
     else {
@@ -198,13 +279,14 @@
     if (kad.jedna) redovi.push('Najjača pojedinačna objava: ' + esc(dani[kad.jedna.dan]) + ' oko ' + sati[kad.jedna.sat] + ' h, ' + tocke(kad.jedna.pregledi) + ' pregleda. Jedna objava ne čini obrazac.');
     redovi.push('<span class="sitno" style="font-size:13px">Na temelju ' + objaveRijec(kad.uzorak) + ' s brojkama; preporuka je pouzdanija od oko 15 objava.</span>');
     var uvidi = c.uvidi.length ? c.uvidi.map(function (u) { return '<div class="uvid">' + (IKONA[u.smjer] || RAVNO) + '<span>' + esc(u.tekst) + '</span></div>'; }).join('') : '<p class="prazno">Još premalo objava s brojkama za usporedbu.</p>';
-    var objave = c.objave.length ? c.objave.slice(0, 8).map(function (o) {
+    var objavaIzvor = rzOk ? rz.objave : c.objave;
+    var objave = objavaIzvor.length ? objavaIzvor.slice(0, 8).map(function (o) {
       var brojke = '<span class="brojke"><b>' + n(o.pregledi) + '</b> pregleda<br>' + n(o.doseg) + ' doseg' + (o.spremanja != null ? ' · ' + n(o.spremanja) + ' spr.' : '') + '</span>';
       var tijelo = '<strong>' + esc(o.opis || VRSTA[o.vrsta] || 'Objava') + '</strong>' + brojke + '<span class="meta-l">' + esc((VRSTA[o.vrsta] || 'Objava') + ' · ' + datumHr(o.objavljeno)) + '</span>';
       return o.poveznica ? '<a class="objava-red" href="' + esc(o.poveznica) + '" target="_blank" rel="noopener">' + tijelo + '</a>' : '<div class="objava-red">' + tijelo + '</div>';
     }).join('') : '<p class="prazno">Još nema objava.</p>';
     h += '<section class="kartica okvir sazetak-mreza" style="gap:8px"><h2>Što se vidi iz brojki</h2><span class="sitno" style="font-size:13px">Izračun ploče iz objava računa ' + esc(r.naziv) + '. Tjedni sažetak Analitičara mreža dolazi kad se pokrene agent.</span><div>' + uvidi + '</div></section>' +
-      '<div class="kpi-red">' + kpi.map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('') + '</div>' +
+      '<div class="kpi-red">' + kpi.map(function (k) { return '<div class="kartica kpi"><span class="naziv">' + k[0] + '</span><span class="broj">' + k[1] + '</span><span class="opis">' + k[2] + '</span></div>'; }).join('') + '</div>' + (rzOk ? grafRazdoblja(r, rz) : '') +
       '<div class="par"><section class="kartica okvir"><div style="display:flex;flex-direction:column;gap:2px"><h2>Pregledi zadnjih 10 objava</h2><span class="sitno" style="font-size:13.6px">Svijetli stupci su prethodnih 5, tamni zadnjih 5. Crtkana crta je prosjek zadnjih 5.</span></div><div class="stupci-grafa" role="img" aria-label="' + esc(r.naziv) + ': pregledi zadnjih 10 objava">' + graf + '</div><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft)"><span>starije</span><span>novije</span></div></section>' +
       '<section class="kartica okvir"><div style="display:flex;flex-direction:column;gap:2px"><h2>Kad objaviti</h2><span class="sitno" style="font-size:13.6px">Prosječni pregledi po danu i satu objave, zadnjih 180 dana, samo za ovaj račun.</span></div><div class="toplina" role="table" aria-label="Pregledi po danu i satu objave">' + top + '</div><p style="margin:0;font-size:14.6px;color:var(--ink-mid)">' + redovi.map(function (x) { return '<span style="display:block">' + x + '</span>'; }).join('') + '</p></section></div>' +
       '<section class="kartica okvir" style="gap:6px"><h2>Zadnje objave</h2><span class="sitno" style="font-size:13px">Pregledi · doseg · spremanja. Klik otvara objavu.</span><div>' + objave + '</div></section>';
@@ -221,12 +303,14 @@
 
   /* ---- glavno crtanje ---- */
   function crtaj() {
-    crtajTabove(); crtajTraku();
+    GRAF = null;
+    crtajTabove(); crtajTraku(); infoRazdoblja();
     $('#dodaj-mjesto').innerHTML = panelDodaj();
     if (S.greska) { $('#status-mjesto').innerHTML = ''; $('#sadrzaj').innerHTML = '<p class="poruka greska">' + esc(S.greska) + '</p>'; return; }
     if (!S.ucitano) { $('#sadrzaj').innerHTML = '<p class="prazno">Učitavam…</p>'; return; }
     $('#status-mjesto').innerHTML = statusKartica();
     $('#sadrzaj').innerHTML = S.tab === 'sve' ? sveMreze() : mrezaSadrzaj();
+    veziGraf();
   }
 
   /* ---- događaji ---- */
@@ -253,6 +337,7 @@
         .catch(function (err) { poruka(err.message, 'greska'); return ucitaj(); });
     }
   });
+  document.addEventListener('change', function (e) { if (e.target.id === 'mjera-grafa') { S.mjera = e.target.value; crtaj(); } });
   document.addEventListener('submit', function (e) {
     if (e.target.id !== 'forma-dodaj') return;
     e.preventDefault();
@@ -276,5 +361,6 @@
   });
   window.addEventListener('hashchange', function () { hashProcitaj(); crtaj(); });
 
-  hashProcitaj(); crtaj(); ucitaj();
+  hashProcitaj(); crtaj();
+  RAZ.init($('#razdoblje'), { skrijRaspon: true, onChange: function (r) { S.upit = r.preset === 'custom' ? 'od=' + r.od + '&do=' + r.do : 'dana=' + r.dana; ucitaj(); } });
 })();

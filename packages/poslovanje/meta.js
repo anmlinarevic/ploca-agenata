@@ -12,6 +12,9 @@ const DAN = 86400000;
 const OSVJEZI_UVIDE_MS = 20 * 3600000;   // uvidi objave najviše jednom u 20 sati
 const SVJEZE_DANA = 35;                   // nakon toga se brojke objave više ne osvježavaju
 
+const PROZOR_DANA = 30;                   // Meta daje dnevne uvide u komadima do 30 dana
+const POVIJEST_DANA = 365;                // koliko unazad ploča učitava dnevne brojke
+const NAJVISE_PROZORA_POVIJESTI = 2;      // koliko starijih komada po krugu (ostalo stiže u idućim krugovima)
 export const SATI = [8, 11, 14, 17, 20, 22];
 export const DANI = ['ponedjeljak', 'utorak', 'srijeda', 'četvrtak', 'petak', 'subota', 'nedjelja'];
 
@@ -123,7 +126,7 @@ async function sinkronizirajStranicu(env, tenant, stranica, racuniStranice, k, s
   const uvidiRed = (racun, id, v) => db.prepare(`UPDATE meta_objave SET pregledi = COALESCE(?, pregledi), doseg = COALESCE(?, doseg), spremanja = COALESCE(?, spremanja),
     dijeljenja = COALESCE(?, dijeljenja), klikovi = COALESCE(?, klikovi), lajkovi = COALESCE(?, lajkovi), uvidi_azurirani = ? WHERE tenant_id = ? AND racun_id = ? AND id = ?`)
     .bind(v.pregledi ?? null, v.doseg ?? null, v.spremanja ?? null, v.dijeljenja ?? null, v.klikovi ?? null, v.lajkovi ?? null, sadIso, tenant, racun, id);
-  const izvrsi = async (naredbe) => { const n = naredbe.filter(Boolean); if (n.length) await db.batch(n); };
+  const izvrsi = async (naredbe) => { const n = naredbe.filter(Boolean); for (let i = 0; i < n.length; i += 90) await db.batch(n.slice(i, i + 90)); };
 
   // Unix sekunde za 28 + 28 dana (Meta: since/until)
   const s = (ms) => Math.floor(ms / 1000);
@@ -205,6 +208,14 @@ async function sinkronizirajStranicu(env, tenant, stranica, racuniStranice, k, s
       upozorenja.push(`Facebook: ${e.message}`.slice(0, 220));
     }
 
+    // 5b) dnevni pregledi i doseg: zadnjih 30 dana svaki krug (ispravlja kasne Metine korekcije), a povijest do godine dana po jedan do dva komada.
+    //     Meta ne daje svaku metriku kao dnevni niz za svaku vrstu računa: ako ne da, račun to bilježi (dnevno_greska) i ekran to kaže.
+    const dnevni = [
+      ig && igRacun ? { racun: igRacun, kanal: 'instagram', put: `${ig}/insights`, token: null, metrike: [['reach', 'doseg'], ['views', 'pregledi']] } : null,
+      fbRacun && stranicniToken ? { racun: fbRacun, kanal: 'facebook', put: `${stranica}/insights`, token: stranicniToken, metrike: [['page_total_media_view_unique', 'doseg'], ['page_media_view', 'pregledi']] } : null,
+    ].filter(Boolean);
+    for (const dr of dnevni) await povuciDnevno({ db, k, tenant, dr, danas, kraj, upozorenja, izvrsi });
+
     // 6) uvidi objava ove stranice: prvo nikad osvježene, pa najstarije osvježene, samo mlađe od 35 dana (osim prvog puta)
     const idovi = [fbRacun?.id, igRacun?.id].filter(Boolean);
     const granica = new Date(kraj - SVJEZE_DANA * DAN).toISOString(), staro = new Date(kraj - OSVJEZI_UVIDE_MS).toISOString();
@@ -246,6 +257,56 @@ async function sinkronizirajStranicu(env, tenant, stranica, racuniStranice, k, s
     igRacun && stanje(igRacun, igIme ? `@${igIme}` : null, ig),
   ].filter(Boolean));
   return { objava, uvida, upozorenja, greska, fatalno };
+}
+
+/** Dan na koji se odnosi Metin dnevni uvid: end_time je kraj dana (sljedeće jutro po UTC-u), pa je dan 24 sata prije. */
+export const danIzKrajaDana = (endTime) => datumZg(new Date(Date.parse(endTime) - 24 * 3600000));
+
+/** Dnevni pregledi i doseg jednog računa: najnoviji prozor od 30 dana + do dva starija prozora povijesti. */
+async function povuciDnevno({ db, k, tenant, dr, danas, kraj, upozorenja, izvrsi }) {
+  const dodaj = (iso, d) => { const x = new Date(`${iso}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); };
+  const s = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / 1000);
+  const cilj = dodaj(danas, -POVIJEST_DANA);
+  const zadnjiDan = dodaj(danas, -1);                 // današnji dan nije gotov
+  const prozori = [{ od: dodaj(zadnjiDan, -(PROZOR_DANA - 1)), do: zadnjiDan }];
+  let kursor = dr.racun.povijest_dnevno_od || null;
+  if (kursor == null) kursor = prozori[0].od;       // prvi krug: najnoviji prozor je ujedno početak povijesti
+  for (let i = 0; i < NAJVISE_PROZORA_POVIJESTI && kursor > cilj; i++) {
+    if (!k.ima(2 * dr.metrike.length + 8)) break;     // ostavi zahtjeve za objave i uvide
+    const doD = dodaj(kursor, -1), od = dodaj(doD, -(PROZOR_DANA - 1));
+    prozori.push({ od: od < cilj ? cilj : od, do: doD });
+    kursor = od < cilj ? cilj : od;
+  }
+  let greska = null, najranije = null;
+  for (const [i, w] of prozori.entries()) {
+    const redovi = [];
+    for (const [metrika, mjera] of dr.metrike) {
+      const odg = await k.get(dr.put, { metric: metrika, period: 'day', since: s(w.od), until: s(w.do) + 86400 }, dr.token);
+      if (odg == null) return stanjeDnevno(); // ponestalo zahtjeva: ono što je učitano ostaje, ostalo stiže u idućem krugu
+      if (odg.meka) { greska = `${metrika}: ${odg.meka}`; continue; }   // ostale metrike ipak ostaju
+      const niz = (odg.data || []).find((x) => x.name === metrika)?.values || [];
+      for (const v of niz) {
+        const dan = v.end_time ? danIzKrajaDana(v.end_time) : null;
+        if (dan && dan >= w.od && dan <= w.do && Number.isFinite(+v.value)) redovi.push([dan, mjera, Math.round(+v.value)]);
+      }
+    }
+    await izvrsi(redovi.map(([dan, mjera, v]) => db.prepare(`INSERT INTO brojke_dan (tenant_id, racun_id, datum, mjera, vrijednost) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT (tenant_id, racun_id, datum, mjera) DO UPDATE SET vrijednost = excluded.vrijednost`).bind(tenant, dr.racun.id, dan, mjera, v)));
+    if (najranije == null || w.od < najranije) najranije = w.od;
+    if (greska) break;     // Meta ne daje metriku: starije prozore ne tražimo uzalud
+  }
+  return stanjeDnevno();
+
+  async function stanjeDnevno() {
+    if (greska) {
+      upozorenja.push(`Dnevne brojke (${dr.kanal}): Meta ih ne daje za ovaj račun (${greska}). Za razdoblja dulja od 28 dana nema podataka.`.slice(0, 220));
+      await db.prepare(`UPDATE racuni SET dnevno_greska = ? WHERE tenant_id = ? AND id = ?`).bind(greska.slice(0, 200), tenant, dr.racun.id).run();
+      return;
+    }
+    if (najranije == null) return;
+    await db.prepare(`UPDATE racuni SET dnevno_greska = NULL, povijest_dnevno_od = CASE WHEN povijest_dnevno_od IS NULL OR ? < povijest_dnevno_od THEN ? ELSE povijest_dnevno_od END
+      WHERE tenant_id = ? AND id = ?`).bind(najranije, najranije, tenant, dr.racun.id).run();
+  }
 }
 
 // ---------- izračun za ekran (bez mreže, testira se zasebno) ----------
@@ -332,8 +393,55 @@ export function izracunajKanal({ objave = [], pratitelji = [], razdoblja = {}, d
   };
 }
 
+/** Razdoblje za Mreže: `dana=N` (1 do 366, do jučer) ili `od` i `do` (YYYY-MM-DD, najkasnije jučer). Baca Error za neispravan unos. */
+export function razdobljeMreza(upit = {}, danas) {
+  const DATUM = /^\d{4}-\d{2}-\d{2}$/;
+  const dod = (iso, k) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + k); return d.toISOString().slice(0, 10); };
+  const razl = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / DAN);
+  const jucer = dod(danas, -1);
+  if (upit.od || upit.do) {
+    const od = String(upit.od || ''), doD = String(upit.do || jucer);
+    if (!DATUM.test(od) || !DATUM.test(doD)) throw new Error('Razdoblje: od i do kao YYYY-MM-DD');
+    if (od > doD) throw new Error('Početak razdoblja mora biti prije kraja');
+    if (doD > jucer) throw new Error('Razdoblje može završiti najkasnije jučer');
+    const dana = razl(od, doD) + 1;
+    if (dana > 366) throw new Error('Razdoblje: najviše 366 dana');
+    return { od, do: doD, dana, dod };
+  }
+  const dana = upit.dana == null ? 28 : Number(upit.dana);
+  if (!Number.isInteger(dana) || dana < 1 || dana > 366) throw new Error('Razdoblje: 1 do 366 dana');
+  return { od: dod(jucer, -(dana - 1)), do: jucer, dana, dod };
+}
+
+/**
+ * Dnevne brojke računa za razdoblje (pregledi i doseg), usporedba s prethodnim istim po duljini i objave u razdoblju.
+ * Doseg je po danu: za razdoblje se zbraja, pa nije broj jedinstvenih osoba. Usporedba samo kad je prethodno razdoblje cijelo učitano.
+ */
+async function brojkeRazdoblja(db, tenant, racuni, r, objave) {
+  const prOd = r.dod(r.od, -r.dana), prDo = r.dod(r.od, -1);
+  const redovi = (await db.prepare(`SELECT racun_id, datum, mjera, vrijednost FROM brojke_dan WHERE tenant_id = ? AND mjera IN ('pregledi', 'doseg') AND datum >= ? AND datum <= ? ORDER BY datum`)
+    .bind(tenant, prOd, r.do).all()).results;
+  return Object.fromEntries(racuni.map((rac) => {
+    const moji = redovi.filter((x) => x.racun_id === rac.id);
+    const zbroj = (mjera, od, doD) => { const l = moji.filter((x) => x.mjera === mjera && x.datum >= od && x.datum <= doD); return { v: l.reduce((a, x) => a + x.vrijednost, 0), n: l.length }; };
+    const mjera = (m) => {
+      const ovo = zbroj(m, r.od, r.do), prije = zbroj(m, prOd, prDo);
+      const imaPrije = prije.n === r.dana;
+      return { vrijednost: ovo.n ? ovo.v : null, dana: ovo.n, prethodno: imaPrije ? prije.v : null, promjena: imaPrije && ovo.n === r.dana ? posto(ovo.v, prije.v) : null };
+    };
+    const serija = new Map();
+    for (const x of moji) if (x.datum >= r.od && x.datum <= r.do) { const z = serija.get(x.datum) || { datum: x.datum }; z[x.mjera] = x.vrijednost; serija.set(x.datum, z); }
+    const odlomak = (objave || []).filter((o) => o.racun_id === rac.id && o.objavljeno.slice(0, 10) >= r.od && o.objavljeno.slice(0, 10) <= r.do);
+    return [rac.id, {
+      pregledi: mjera('pregledi'), doseg: mjera('doseg'), serija: [...serija.values()].sort((a, b) => (a.datum < b.datum ? -1 : 1)),
+      pokriveno: mjera('pregledi').dana, objaveBroj: odlomak.length,
+      objave: odlomak.sort((a, b) => (a.objavljeno < b.objavljeno ? 1 : -1)).slice(0, 100).map((o) => ({ id: o.id, vrsta: o.vrsta, objavljeno: o.objavljeno, opis: o.opis, poveznica: o.poveznica, pregledi: o.pregledi, doseg: o.doseg, spremanja: o.spremanja })),
+    }];
+  }));
+}
+
 /** Sve za ekran Mreže: popis računa s brojkama svakog, a `kanali` i `meta` ostaju (prvi račun po mreži) da stari ekran radi dok se ne prebaci. */
-export async function pregledMreza(env, tenant, sada = new Date()) {
+export async function pregledMreza(env, tenant, sada = new Date(), upit = null) {
   const db = env.DB, danas = datumZg(sada);
   const [racuni, objave, prat, raz] = await Promise.all([
     db.prepare(`SELECT * FROM racuni WHERE tenant_id = ? AND aktivan = 1 AND mreza IN ('facebook', 'instagram') ORDER BY mreza, kreirano, id`).bind(tenant).all(),
@@ -349,6 +457,16 @@ export async function pregledMreza(env, tenant, sada = new Date()) {
     id: r.id, mreza: r.mreza, naziv: r.naziv, usluga: r.usluga, status: r.status, zadnje: r.zadnje, zadnjeUspjesno: r.zadnje_uspjesno,
     greska: r.greska, upozorenja: parse(r.upozorenja_json) || [], povijestOd: r.povijest_od, podaci: podaci(r),
   }));
+  const razdoblje = upit && (upit.dana != null || upit.od || upit.do) ? razdobljeMreza(upit, danas) : null;
+  if (razdoblje) {
+    const sve = (await db.prepare(`SELECT * FROM meta_objave WHERE tenant_id = ? AND objavljeno >= ? ORDER BY objavljeno`).bind(tenant, `${razdoblje.dod(razdoblje.od, -1)}T00:00:00Z`).all()).results;
+    const b = await brojkeRazdoblja(db, tenant, racuni.results, razdoblje, sve);
+    const prviPost = (await db.prepare(`SELECT MIN(objavljeno) AS prvi FROM meta_objave WHERE tenant_id = ?`).bind(tenant).first())?.prvi ?? null;
+    for (const r of lista) {
+      const rr = racuni.results.find((x) => x.id === r.id);
+      r.razdoblje = { ...b[r.id], dnevnoGreska: rr?.dnevno_greska ?? null, povijestDnevnoOd: rr?.povijest_dnevno_od ?? null, objaveDostupnoOd: prviPost ? prviPost.slice(0, 10) : null };
+    }
+  }
   const prvi = (m) => lista.find((r) => r.mreza === m) || null;
   const fb = prvi('facebook'), ig = prvi('instagram');
   const najnovije = (k) => lista.map((r) => r[k]).filter(Boolean).sort().pop() ?? null;
@@ -361,6 +479,7 @@ export async function pregledMreza(env, tenant, sada = new Date()) {
       igSpojen: !!racuni.results.find((r) => r.mreza === 'instagram' && r.vanjski_id),
     },
     sati: SATI, dani: DANI,
+    razdoblje: razdoblje ? { od: razdoblje.od, do: razdoblje.do, dana: razdoblje.dana } : null,
     racuni: lista,
     kanali: { instagram: ig ? ig.podaci : prazno(), facebook: fb ? fb.podaci : prazno() },
   };

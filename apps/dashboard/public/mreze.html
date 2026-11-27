@@ -109,6 +109,10 @@ table.racuni tr.mreza-red td { background: var(--accent-soft); font-size: 12px; 
 .chip.greska { background: var(--danger-soft); color: var(--danger); }
 .chip.nepoznato { border: 1px dashed var(--line-strong); color: var(--ink-mid); }
 #dodaj-mjesto:empty, #status-mjesto:empty, #poruka:empty { display: none; }
+.graf { position: relative; }
+.graf svg { display: block; width: 100%; height: auto; overflow: visible; }
+.oblacic { position: absolute; pointer-events: none; background: var(--white); border: 1px solid var(--line-strong); border-radius: 3px; padding: 4px 9px; font-size: 13px; box-shadow: var(--shadow-jastuk); white-space: nowrap; transform: translate(-50%, -125%); z-index: 2; }
+select.mali { border: 1px solid var(--line-strong); border-radius: 3px; background: var(--white); padding: 6px 8px; font-size: 14px; }
 .akcije-racuna { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 </style>
@@ -128,6 +132,8 @@ table.racuni tr.mreza-red td { background: var(--accent-soft); font-size: 12px; 
 
 <main class="omot">
   <div class="traka" id="traka" role="group" aria-label="Računi" hidden></div>
+  <div id="razdoblje"></div>
+  <p class="sitno" id="raz-info" hidden style="margin:0"></p>
   <div id="dodaj-mjesto"></div>
   <p class="poruka" id="poruka" aria-live="polite" style="margin:0"></p>
   <div id="status-mjesto"></div>
@@ -147,4 +153,5 @@ table.racuni tr.mreza-red td { background: var(--accent-soft); font-size: 12px; 
 </main>
 
 <script src="zajednicko.js"></script>
+<script src="razdoblje.js"></script>
 <script src="mreze.js"></script>

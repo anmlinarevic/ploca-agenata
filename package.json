@@ -11,6 +11,7 @@
     "test:prodaja": "node --no-warnings scripts/prodaja-razdoblje-test.mjs",
     "test:objave-racuni": "node --no-warnings scripts/objave-racuni-test.mjs",
     "test:web": "node --no-warnings scripts/gsc-razdoblje-test.mjs",
+    "test:mreze": "node --no-warnings scripts/meta-povijest-test.mjs",
     "demo": "node scripts/demo.mjs"
   },
   "devDependencies": {
